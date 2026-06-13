@@ -1,29 +1,55 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Golden-image setup for plasticdigits/yieldomega (EVM)
-# Run as root on a fresh Ubuntu 24.04 CX33 before snapshotting.
+# Golden-image setup for plasticdigits/yieldomega (EVM / Rabby / Anvil)
+# Run as root on a fresh Ubuntu 24.04 CPX32 (fsn1) before snapshotting.
 set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 WORKSPACE="${WORKSPACE:-/home/agent/workspace}"
 AGENT_USER="${AGENT_USER:-agent}"
-GCH_RUNNER_URL="${GCH_RUNNER_URL:-https://raw.githubusercontent.com/plasticdigits/gitlab-cursor-webhook/main/scripts/gch-cloud-init-runner.sh}"
+GCH_RUNNER_URL="${GCH_RUNNER_URL:-https://gitlab.com/plasticdigits/gitlab-cursor-webhook/-/raw/main/scripts/gch-cloud-init-runner.sh}"
+GCH_IDLE_WRAP_URL="${GCH_IDLE_WRAP_URL:-https://gitlab.com/plasticdigits/gitlab-cursor-webhook/-/raw/main/scripts/gch-agent-idle-wrap.py}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENT_HOME="/home/${AGENT_USER}"
+GCH_GOLDEN_IMAGE_MODEL="${GCH_GOLDEN_IMAGE_MODEL:-composer-2.5}"
+FINALIZE_PROMPT="${SCRIPT_DIR}/gch-golden-image-finalize.md"
+
+_agent_sh() {
+  sudo -u "${AGENT_USER}" env PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 "$@"
+}
 
 echo "==> Base packages"
 apt-get update
+apt-get upgrade -y
 apt-get install -y \
-  build-essential git curl jq sqlite3 postgresql postgresql-contrib \
-  docker.io xvfb chromium-browser unzip ca-certificates
+  build-essential git curl jq sqlite3 ripgrep file \
+  libssl-dev pkg-config iproute2 \
+  xvfb chromium-browser unzip ca-certificates \
+  libnss3 libnspr4 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+  libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+  libgbm1 libasound2t64 libpango-1.0-0 libcairo2 libatspi2.0-0 fonts-liberation
 
 echo "==> Agent user"
 if ! id "${AGENT_USER}" &>/dev/null; then
-  useradd -m -s /bin/bash "${AGENT_USER}"
+  useradd -m -s /bin/bash "${AGENT_USER}" 2>/dev/null || useradd -s /bin/bash "${AGENT_USER}"
 fi
+mkdir -p "${AGENT_HOME}"
+if [[ ! -f "${AGENT_HOME}/.bashrc" ]]; then
+  cp -a /etc/skel/. "${AGENT_HOME}/"
+fi
+chown -R "${AGENT_USER}:${AGENT_USER}" "${AGENT_HOME}"
 passwd -l "${AGENT_USER}"
 echo "${AGENT_USER} ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/"${AGENT_USER}"
 chmod 440 /etc/sudoers.d/"${AGENT_USER}"
 
-echo "==> Docker"
+echo "==> Docker (CE + compose plugin)"
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${VERSION_CODENAME}") stable" \
+  >/etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 systemctl enable --now docker
 usermod -aG docker "${AGENT_USER}"
 
@@ -39,33 +65,150 @@ fi
 echo "==> Rust"
 sudo -u "${AGENT_USER}" bash -lc 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
 
-echo "==> Foundry (EVM)"
-sudo -u "${AGENT_USER}" bash -lc 'curl -L https://foundry.paradigm.xyz | bash && ~/.foundry/bin/foundryup'
-
-echo "==> Node + Playwright"
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+echo "==> Node.js 22 (matches frontend/.nvmrc)"
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt-get install -y nodejs
-sudo -u "${AGENT_USER}" bash -lc 'cd ~ && npm init -y && npx playwright install chromium --with-deps'
 
 echo "==> glab"
-curl -fsSL https://gitlab.com/gitlab-org/cli/-/releases/v1.58.0/downloads/glab_1.58.0_linux_amd64.deb -o /tmp/glab.deb
+GLAB_VERSION="${GLAB_VERSION:-1.102.0}"
+curl -fsSL "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/glab_${GLAB_VERSION}_linux_amd64.deb" \
+  -o /tmp/glab.deb
 dpkg -i /tmp/glab.deb || apt-get install -f -y
 
 echo "==> Cursor CLI"
 sudo -u "${AGENT_USER}" bash -lc 'curl https://cursor.com/install -fsS | bash'
-echo 'export PATH="$HOME/.cursor/bin:$PATH"' >>"/home/${AGENT_USER}/.bashrc"
+if [[ ! -x "${AGENT_HOME}/.local/bin/agent" ]]; then
+  echo "ERROR: Cursor CLI not found at ${AGENT_HOME}/.local/bin/agent" >&2
+  exit 1
+fi
+ln -sf "${AGENT_HOME}/.local/bin/agent" /usr/local/bin/agent
 
-echo "==> Browser profile + Rabby (EVM wallet)"
-sudo -u "${AGENT_USER}" mkdir -p "/home/${AGENT_USER}/.gch/browser-profile"
-# Admin: download Rabby unpacked extension into /home/agent/.gch/extensions/rabby
+echo "==> Cursor CLI config"
+mkdir -p "${AGENT_HOME}/.cursor"
+cat >"${AGENT_HOME}/.cursor/cli-config.json" <<'EOF'
+{
+  "version": 1,
+  "editor": { "vimMode": false },
+  "permissions": { "allow": [], "deny": [] },
+  "approvalMode": "unrestricted",
+  "attribution": {
+    "attributeCommitsToAgent": false,
+    "attributePRsToAgent": false
+  }
+}
+EOF
+chown -R "${AGENT_USER}:${AGENT_USER}" "${AGENT_HOME}/.cursor"
+chmod 600 "${AGENT_HOME}/.cursor/cli-config.json"
+
+echo "==> GCH agent env (system + agent shell)"
+cat >/etc/profile.d/gch-agent.sh <<'EOF'
+# Playwright: no ubuntu26.04-x64 build yet; use 24.04 userspace on golden images.
+export PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64
+EOF
+chmod 644 /etc/profile.d/gch-agent.sh
+
+touch "${AGENT_HOME}/.bashrc"
+if ! grep -q 'GCH job secrets' "${AGENT_HOME}/.bashrc"; then
+  cat >>"${AGENT_HOME}/.bashrc" <<'EOF'
+
+# GCH job secrets (cloud-init writes /etc/gch/job.env per VM)
+if [[ -r /etc/gch/job.env ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source /etc/gch/job.env
+  set +a
+  export GLAB_TOKEN="${GITLAB_TOKEN:-}"
+fi
+EOF
+fi
+if ! grep -q '\.local/bin' "${AGENT_HOME}/.bashrc"; then
+  echo 'export PATH="$HOME/.local/bin:$HOME/.foundry/bin:$PATH"' >>"${AGENT_HOME}/.bashrc"
+fi
+chown "${AGENT_USER}:${AGENT_USER}" "${AGENT_HOME}/.bashrc"
+
+echo "==> GCH agent directories"
+sudo -u "${AGENT_USER}" mkdir -p "${AGENT_HOME}/.gch/browser-profile"
 
 echo "==> Shared cloud-init runner"
-curl -fsSL "${GCH_RUNNER_URL}" -o "/home/${AGENT_USER}/gch-cloud-init-runner.sh"
-chmod +x "/home/${AGENT_USER}/gch-cloud-init-runner.sh"
-chown "${AGENT_USER}:${AGENT_USER}" "/home/${AGENT_USER}/gch-cloud-init-runner.sh"
+RUNNER_DST="${AGENT_HOME}/gch-cloud-init-runner.sh"
+if [[ -f "${SCRIPT_DIR}/gch-cloud-init-runner.sh" ]]; then
+  install -m 755 -o "${AGENT_USER}" -g "${AGENT_USER}" \
+    "${SCRIPT_DIR}/gch-cloud-init-runner.sh" "${RUNNER_DST}"
+elif curl -fsSL "${GCH_RUNNER_URL}" -o "${RUNNER_DST}"; then
+  chown "${AGENT_USER}:${AGENT_USER}" "${RUNNER_DST}"
+  chmod 755 "${RUNNER_DST}"
+else
+  echo "ERROR: add gch-cloud-init-runner.sh next to gch-cloud-setup.sh in the project repo." >&2
+  exit 1
+fi
+
+IDLE_WRAP_DST="${AGENT_HOME}/gch-agent-idle-wrap.py"
+if [[ -f "${SCRIPT_DIR}/gch-agent-idle-wrap.py" ]]; then
+  install -m 755 -o "${AGENT_USER}" -g "${AGENT_USER}" \
+    "${SCRIPT_DIR}/gch-agent-idle-wrap.py" "${IDLE_WRAP_DST}"
+elif curl -fsSL "${GCH_IDLE_WRAP_URL}" -o "${IDLE_WRAP_DST}"; then
+  chown "${AGENT_USER}:${AGENT_USER}" "${IDLE_WRAP_DST}"
+  chmod 755 "${IDLE_WRAP_DST}"
+else
+  echo "WARN: gch-agent-idle-wrap.py not installed; agent may hang after job completes." >&2
+fi
 
 echo "==> Workspace"
 mkdir -p "${WORKSPACE}"
+if [[ -d "${SCRIPT_DIR}/.git" ]]; then
+  rsync -a "${SCRIPT_DIR}/" "${WORKSPACE}/"
+fi
 chown -R "${AGENT_USER}:${AGENT_USER}" "${WORKSPACE}"
 
-echo "Setup complete. Clone repo into ${WORKSPACE}, install Rabby extension, then run pre-snapshot cleanup."
+if [[ -f "${WORKSPACE}/scripts/bootstrap-dev.sh" ]]; then
+  echo "==> Project bootstrap (git submodules + frontend npm ci)"
+  _agent_sh bash -lc "bash '${WORKSPACE}/scripts/bootstrap-dev.sh'"
+fi
+
+if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-vm-toolchain.sh" ]]; then
+  echo "==> Project toolchain (Foundry/Anvil, Rust, glab, Rabby extension, Docker)"
+  _agent_sh bash -lc "bash '${WORKSPACE}/scripts/bootstrap-cloud-vm-toolchain.sh'"
+fi
+
+if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-postgres-native.sh" ]]; then
+  echo "==> Native Postgres (indexer)"
+  bash "${WORKSPACE}/scripts/bootstrap-cloud-postgres-native.sh"
+fi
+
+if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-agent.sh" ]]; then
+  echo "==> Playwright + Rabby dev wallets"
+  if ! pgrep -x Xvfb >/dev/null 2>&1; then
+    Xvfb :99 -screen 0 1920x1080x24 &
+    sleep 1
+  fi
+  _agent_sh env DISPLAY=:99 bash -lc "bash '${WORKSPACE}/scripts/bootstrap-cloud-agent.sh'"
+fi
+
+echo "==> Golden image finalize (Cursor agent)"
+if [[ ! -f "${FINALIZE_PROMPT}" ]]; then
+  echo "ERROR: missing ${FINALIZE_PROMPT} in the project repo." >&2
+  exit 1
+fi
+if [[ -z "${CURSOR_API_KEY:-}" ]]; then
+  echo "ERROR: export CURSOR_API_KEY before running setup (needed for golden-image finalize agent)." >&2
+  exit 1
+fi
+if ! pgrep -x Xvfb >/dev/null 2>&1; then
+  Xvfb :99 -screen 0 1920x1080x24 &
+  sleep 1
+fi
+sudo -u "${AGENT_USER}" env \
+  CURSOR_API_KEY="${CURSOR_API_KEY}" \
+  DISPLAY=:99 \
+  PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 \
+  bash -lc "
+    set -euo pipefail
+    cd '${WORKSPACE}'
+    agent -p \"\$(cat '${FINALIZE_PROMPT}')\" \
+      --model '${GCH_GOLDEN_IMAGE_MODEL}' \
+      --force --trust \
+      --workspace '${WORKSPACE}' \
+      --output-format text
+  "
+
+echo "Setup complete. Review ${AGENT_HOME}/.gch/golden-image-verify.log, then run pre-snapshot cleanup."

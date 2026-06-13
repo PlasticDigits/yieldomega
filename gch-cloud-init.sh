@@ -4,11 +4,11 @@
 set -euo pipefail
 
 source /etc/gch/job.env
-export PATH="/home/agent/.cursor/bin:$PATH"
+export PATH="/home/agent/.local/bin:/home/agent/.foundry/bin:$PATH"
 
-# EVM local chain (optional — enable if agents need Anvil)
-# sudo -u agent docker compose -f /home/agent/workspace/docker-compose.anvil.yml up -d
+# Local EVM chain — agents start Anvil per job when needed (see docs/testing/e2e-anvil.md):
+# sudo -u agent bash -lc 'anvil --host 127.0.0.1 --port 8545 --code-size-limit 524288 &'
+# Full stack (Postgres + DeployDev + indexer): bash scripts/start-qa-local-full-stack.sh
 
-# Playwright / wallet tests can run after agent completes
 source /home/agent/gch-cloud-init-runner.sh
 gch_run_job
