@@ -1007,6 +1007,55 @@ contract TimeArenaTest is Test {
         return (best1, best2, best3);
     }
 
+    /// Security: displaced podium entrant must be re-evaluated (stale third-place).
+    function test_warbow_top_three_reinserts_displaced_entrant() public {
+        address charlie = address(0xC0FFEE);
+        address david = address(0xDA11);
+        for (uint256 i; i < 2; ++i) {
+            address p = i == 0 ? charlie : david;
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+        }
+
+        _ensureLevel(alice, 4);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(CHARM_MAX);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(bob, 4);
+        vm.prank(bob);
+        arena.buy(CHARM_MAX);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(CHARM_MAX);
+
+        _warpPastBuyCooldown();
+        _ensureLevel(charlie, 4);
+        vm.prank(charlie);
+        arena.buy(CHARM_MAX);
+
+        _warpPastBuyCooldown();
+        _ensureLevel(david, 4);
+        for (uint256 i; i < 3; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(david);
+            arena.buy(CHARM_MAX);
+        }
+
+        assertGt(arena.battlePoints(alice), arena.battlePoints(david));
+        assertGt(arena.battlePoints(david), arena.battlePoints(bob));
+        assertGt(arena.battlePoints(bob), arena.battlePoints(charlie));
+
+        (address[3] memory winners,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(winners[0], alice);
+        assertEq(winners[1], david);
+        assertEq(winners[2], bob);
+    }
+
     /// GitLab #312: equal BP tie-break favors lower address.
     function test_warbow_tie_break_lower_address_wins() public {
         address low = address(0x100);

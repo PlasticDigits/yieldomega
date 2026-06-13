@@ -888,12 +888,25 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         }
         for (uint8 r; r < 3; ++r) {
             if (p.winners[r] == address(0) || value > p.values[r]) {
+                address displaced = p.winners[r];
                 p.winners[r] = entrant;
                 p.values[r] = value;
                 _sortPodium(cat);
+                if (displaced != address(0) && displaced != entrant) {
+                    uint256 displacedVal = _podiumMetric(cat, displaced);
+                    if (displacedVal > 0) _updateTopThree(cat, displaced, displacedVal);
+                }
                 return;
             }
         }
+    }
+
+    function _podiumMetric(uint8 cat, address entrant) private view returns (uint256) {
+        if (cat == CAT_WARBOW) return _effectiveBattlePoints(entrant);
+        if (cat == CAT_TIME_BOOSTER) return totalEffectiveTimerSecAdded[entrant];
+        if (cat == CAT_DEFENDED_STREAK) return bestDefendedStreak[entrant];
+        if (cat == CAT_LAST_BUYERS) return buyCount[entrant];
+        return 0;
     }
 
     function _sortPodium(uint8 cat) private {
