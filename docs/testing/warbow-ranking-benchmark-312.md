@@ -1,0 +1,28 @@
+# WarBow ranking gas benchmark (GitLab #312)
+
+Anvil (`forge test`) on Cloud Agent VM, **2026-06-13**.
+
+## Setup
+
+- **10,000** synthetic players with seeded `_battlePoints` (incremental top-3 maintained via `_updateTopThree`).
+- Three top-BP players register on the live WarBow podium via level-4 buys.
+- Measured with `vm.startSnapshotGas` in [`TimeArenaWarbowBenchmark.t.sol`](../../contracts/test/TimeArenaWarbowBenchmark.t.sol).
+
+## Command
+
+```bash
+cd contracts && forge test --match-test test_benchmark_warbow_10k_player_ranking -vv
+```
+
+## Results
+
+| Metric | Gas |
+|--------|-----|
+| Incremental top-3 update (one buy at player 5000) | **369,647** |
+| WarBow `rollPodiumEpoch` after 10k seeded BP | **107,387** |
+
+## Interpretation
+
+Ranking is **incremental O(1)** per BP change; epoch roll reads only the stored top-3 (no full-table scan). Roll gas stays **well under 2M** on Anvil with `--code-size-limit 524288`.
+
+Cross-links: [`arena-v2.md` § WarBow](../product/arena-v2.md), **`INV-TIME-ARENA-AUTOROLL-312`** · **`INV-TIME-ARENA-WARBOW-RANK-312`** in [`invariants-and-business-logic.md`](invariants-and-business-logic.md).

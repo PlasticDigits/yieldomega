@@ -818,11 +818,12 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buy(1e18);
         assertEq(arena.lastBuyEpoch(), 1);
+        uint256 streakEpoch = arena.podiumEpoch(arena.CAT_DEFENDED_STREAK());
 
-        vm.warp(arena.podiumDeadline(2) + 1);
+        vm.warp(arena.podiumDeadline(arena.CAT_DEFENDED_STREAK()) + 1);
         arena.rollPodiumEpoch(arena.CAT_DEFENDED_STREAK());
         assertEq(arena.lastBuyEpoch(), 1);
-        assertEq(arena.podiumEpoch(2), 1);
+        assertEq(arena.podiumEpoch(arena.CAT_DEFENDED_STREAK()), streakEpoch + 1);
     }
 
     function test_warbow_steal_pulls_doub() public {
@@ -904,8 +905,8 @@ contract TimeArenaTest is Test {
         assertEq(arena.podiumEpoch(arena.CAT_WARBOW()), 1);
     }
 
-    /// GitLab #252: roll retains pool; admin finalizeWarbowPodium pays 4:2:1 for past epoch.
-    function test_finalize_warbow_podium_pays_after_roll() public {
+    /// GitLab #312: WarBow roll auto-pays on-chain top-3; admin finalize superseded.
+    function test_warbow_roll_auto_pays_onchain_winners() public {
         _ensureLevel(alice, 4);
         vm.prank(alice);
         arena.buy(10e18);
@@ -922,16 +923,128 @@ contract TimeArenaTest is Test {
         (address[3] memory winners,) = arena.podium(cat);
         assertTrue(winners[0] != address(0));
 
+        uint256 firstBefore = doub.balanceOf(winners[0]);
         vm.warp(arena.podiumDeadline(cat) + 1);
         arena.rollPodiumEpoch(cat);
 
         assertEq(arena.podiumEpoch(cat), 1);
-        assertEq(doub.balanceOf(pool), poolBal, "WarBow roll must not auto-pay");
-
-        uint256 firstBefore = doub.balanceOf(winners[0]);
-        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
         assertTrue(doub.balanceOf(winners[0]) > firstBefore);
         assertTrue(arena.warbowEpochFinalized(0));
+        vm.expectRevert("TimeArena: superseded");
+        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
+    }
+
+    /// GitLab #312: buy succeeds after Last Buy deadline via autoroll.
+    function test_buy_autorolls_after_last_buy_deadline() public {
+        vm.warp(arena.deadline() + 1);
+        uint256 epochBefore = arena.podiumEpoch(arena.CAT_LAST_BUYERS());
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.podiumEpoch(arena.CAT_LAST_BUYERS()), epochBefore + 1);
+        assertGt(arena.deadline(), block.timestamp);
+    }
+
+    /// GitLab #312: WarBow steal succeeds after Last Buy deadline via autoroll.
+    function test_warbow_steal_autorolls_after_last_buy_deadline() public {
+        _seedWarbowStealBand(bob, alice);
+        vm.warp(arena.deadline() + 1);
+        uint256 epochBefore = arena.podiumEpoch(arena.CAT_LAST_BUYERS());
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        assertEq(arena.podiumEpoch(arena.CAT_LAST_BUYERS()), epochBefore + 1);
+    }
+
+    /// GitLab #312: on-chain top-3 matches brute-force for synthetic players.
+    function test_warbow_ranking_matches_brute_force() public {
+        uint256 n = 20;
+        for (uint256 i; i < n; ++i) {
+            address p = address(uint160(0x2000 + i));
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+            _ensureLevel(p, 4);
+            if (i > 0) _warpPastBuyCooldown();
+            uint256 charm = CHARM_MIN + ((i * 31) % (CHARM_MAX - CHARM_MIN));
+            vm.prank(p);
+            arena.buy(charm);
+        }
+
+        (address[3] memory onchain,) = arena.podium(arena.CAT_WARBOW());
+        (address first, address second, address third) = _bruteForceWarbowTop3(n);
+        assertEq(onchain[0], first);
+        assertEq(onchain[1], second);
+        assertEq(onchain[2], third);
+    }
+
+    function _bruteForceWarbowTop3(uint256 n) internal view returns (address first, address second, address third) {
+        address best1;
+        address best2;
+        address best3;
+        uint256 v1;
+        uint256 v2;
+        uint256 v3;
+        for (uint256 i; i < n; ++i) {
+            address p = address(uint160(0x2000 + i));
+            uint256 v = arena.battlePoints(p);
+            if (v == 0) continue;
+            if (v > v1 || (v == v1 && uint160(p) < uint160(best1))) {
+                best3 = best2;
+                v3 = v2;
+                best2 = best1;
+                v2 = v1;
+                best1 = p;
+                v1 = v;
+            } else if (v > v2 || (v == v2 && uint160(p) < uint160(best2))) {
+                best3 = best2;
+                v3 = v2;
+                best2 = p;
+                v2 = v;
+            } else if (v > v3 || (v == v3 && uint160(p) < uint160(best3))) {
+                best3 = p;
+                v3 = v;
+            }
+        }
+        return (best1, best2, best3);
+    }
+
+    /// GitLab #312: equal BP tie-break favors lower address.
+    function test_warbow_tie_break_lower_address_wins() public {
+        address low = address(0x100);
+        address high = address(0x200);
+        for (uint256 i; i < 2; ++i) {
+            address p = i == 0 ? low : high;
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+            _ensureLevel(p, 4);
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(p);
+            arena.buy(CHARM_MIN);
+        }
+        (address[3] memory winners, uint256[3] memory values) = arena.podium(arena.CAT_WARBOW());
+        assertEq(values[0], values[1]);
+        assertEq(winners[0], low);
+        assertEq(winners[1], high);
+    }
+
+    /// GitLab #312: autoroll cannot double-pay within one buy tx.
+    function test_autoroll_no_double_payout_same_tx() public {
+        _ensureLevel(alice, 4);
+        vm.prank(alice);
+        arena.buy(10e18);
+        uint8 cat = arena.CAT_WARBOW();
+        address pool = vaults.activePools(cat);
+        uint256 poolBal = doub.balanceOf(pool);
+        assertGt(poolBal, 0);
+
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        vm.prank(alice);
+        arena.warbowActivateGuard();
+
+        assertTrue(arena.warbowEpochFinalized(0));
+        assertEq(doub.balanceOf(pool), 0);
+        vm.expectRevert("TimeArena: timer live");
+        arena.rollPodiumEpoch(cat);
     }
 
     /// Sets victim BP high and attacker BP low so steal band (2x–10x) passes.

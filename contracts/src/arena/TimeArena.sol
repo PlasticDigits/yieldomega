@@ -366,7 +366,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function rollPodiumEpoch(uint8 category) external nonReentrant {
         require(category < NUM_PODIUM_CATEGORIES, "TimeArena: bad cat");
         require(block.timestamp > podiumDeadline[category], "TimeArena: timer live");
+        _rollPodiumEpoch(category);
+    }
 
+    /// @dev Owner-trusted finalize superseded by on-chain autoroll payout (#312).
+    function finalizeWarbowPodium(uint256, address, address, address) external pure {
+        revert("TimeArena: superseded");
+    }
+
+    function _rollPodiumEpoch(uint8 category) internal {
         address[3] memory winners;
         uint256[3] memory values;
         if (category == CAT_LAST_BUYERS) {
@@ -377,16 +385,16 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             values = p.values;
         }
 
+        uint256 epochBefore = podiumEpoch[category];
         address poolAddr = podiumVaults.activePools(category);
         uint256 poolBal = doub.balanceOf(poolAddr);
-        // WarBow: admin `finalizeWarbowPodium(epoch, …)` pays; roll only clears scores (#252).
-        if (category != CAT_WARBOW && poolBal > 0) {
+        if (poolBal > 0) {
             (uint256 a, uint256 b, uint256 c) = ArenaPodiumSettlement.payoutShares(poolBal);
             podiumVaults.payPodiumWinners(category, winners[0], winners[1], winners[2], a, b, c);
         }
         podiumVaults.rollEpochTranches(category);
 
-        podiumEpoch[category] += 1;
+        podiumEpoch[category] = epochBefore + 1;
         podiumDeadline[category] = block.timestamp + podiumInitialTimerSec[category];
         if (category == CAT_LAST_BUYERS) {
             deadline = podiumDeadline[category];
@@ -395,30 +403,16 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _clearPodium(category);
 
         if (category == CAT_WARBOW) {
+            warbowEpochFinalized[epochBefore] = true;
+            emit WarbowPodiumFinalized(epochBefore, winners[0], winners[1], winners[2]);
             _clearAllBattlePoints();
         }
 
         emit PodiumEpochRolled(category, podiumEpoch[category], winners[0], winners[1], winners[2], poolBal);
     }
 
-    function finalizeWarbowPodium(uint256 epoch, address first, address second, address third)
-        external
-        onlyOwner
-    {
-        require(!warbowEpochFinalized[epoch], "TimeArena: finalized");
-        require(epoch < podiumEpoch[CAT_WARBOW], "TimeArena: bad epoch");
-        warbowEpochFinalized[epoch] = true;
-        address poolAddr = podiumVaults.activePools(CAT_WARBOW);
-        uint256 poolBal = doub.balanceOf(poolAddr);
-        if (poolBal > 0) {
-            (uint256 a, uint256 b, uint256 c) = ArenaPodiumSettlement.payoutShares(poolBal);
-            podiumVaults.payPodiumWinners(CAT_WARBOW, first, second, third, a, b, c);
-        }
-        emit WarbowPodiumFinalized(epoch, first, second, third);
-    }
-
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
-        _requireLive();
+        _requireLiveAndAutoroll();
         _requireWarbowLevel(msg.sender);
         require(victim != address(0) && victim != msg.sender, "TimeArena: bad victim");
         uint256 day = block.timestamp / SECONDS_PER_DAY;
@@ -453,7 +447,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function warbowRevenge(address stealer) external nonReentrant {
-        _requireLive();
+        _requireLiveAndAutoroll();
         _requireWarbowLevel(msg.sender);
         uint256 exp = warbowPendingRevengeExpiryExclusive[msg.sender][stealer];
         require(exp != 0 && block.timestamp < exp, "TimeArena: revenge");
@@ -469,7 +463,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function warbowActivateGuard() external nonReentrant {
-        _requireLive();
+        _requireLiveAndAutoroll();
         _requireWarbowLevel(msg.sender);
         uint256 spent = _pullDoubExact(msg.sender, WARBOW_GUARD_DOUB);
         warbowGuardUntil[msg.sender] = block.timestamp + WARBOW_GUARD_DURATION_SEC;
@@ -477,7 +471,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function claimWarBowFlag() external nonReentrant {
-        _requireLive();
+        _requireLiveAndAutoroll();
         require(warbowPendingFlagOwner == msg.sender, "TimeArena: not flag holder");
         require(block.timestamp >= warbowPendingFlagPlantAt + WARBOW_FLAG_SILENCE_SEC, "TimeArena: flag silence");
         warbowPendingFlagOwner = address(0);
@@ -533,7 +527,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _buyDoub(address buyer, uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) internal {
-        _requireLive();
+        _requireLiveAndAutoroll();
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
 
@@ -551,7 +545,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _buyCred(address buyer, uint256 charmWad) internal {
-        _requireLive();
+        _requireLiveAndAutoroll();
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
         _prepareBuyBeforeTimer();
@@ -831,7 +825,20 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function _requireLive() internal view {
         require(arenaStart > 0, "TimeArena: not started");
         require(!paused, "TimeArena: paused");
-        require(block.timestamp <= deadline, "TimeArena: timer expired");
+    }
+
+    /// @dev Always-live: roll any expired podium timers before buys/WarBow (#312).
+    function _requireLiveAndAutoroll() internal {
+        _requireLive();
+        _autorollExpiredPodiums();
+    }
+
+    function _autorollExpiredPodiums() internal {
+        for (uint8 cat = 0; cat < NUM_PODIUM_CATEGORIES; ++cat) {
+            if (block.timestamp > podiumDeadline[cat]) {
+                _rollPodiumEpoch(cat);
+            }
+        }
     }
 
     function _validateCharm(uint256 charmWad) internal pure {
@@ -893,7 +900,9 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         Podium storage p = _podiums[cat];
         for (uint8 i; i < 2; ++i) {
             for (uint8 j = i + 1; j < 3; ++j) {
-                if (p.values[j] > p.values[i]) {
+                bool higher = p.values[j] > p.values[i];
+                bool tieLowerAddr = p.values[j] == p.values[i] && uint160(p.winners[j]) < uint160(p.winners[i]);
+                if (higher || tieLowerAddr) {
                     (p.winners[i], p.winners[j]) = (p.winners[j], p.winners[i]);
                     (p.values[i], p.values[j]) = (p.values[j], p.values[i]);
                 }

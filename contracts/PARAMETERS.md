@@ -52,7 +52,7 @@ Canonical table: [`ArenaPodiumTimerConfig.sol`](src/arena/libraries/ArenaPodiumT
 | `WARBOW_REVENGE_DOUB` | `1000e18` | Revenge window 24h |
 | Flag claim | `0` | +1000 BP after 300s silence |
 
-Forge: `TimeArena.t.sol::test_warbow_*`, `test_finalize_warbow_podium_pays_after_roll`. Epoch roll clears BP via `warbowBpGeneration`; admin `finalizeWarbowPodium` pays (roll skips auto 4∶2∶1).
+Forge: `TimeArena.t.sol::test_warbow_*`, `test_warbow_roll_auto_pays_onchain_winners`. Epoch roll clears BP via `warbowBpGeneration`; autoroll pays on-chain top-3 **4∶2∶1** ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)). Gas benchmark: `TimeArenaWarbowBenchmark.t.sol::test_benchmark_warbow_10k_player_ranking`.
 
 ## TimeCurve (retired v1 — historical)
 
