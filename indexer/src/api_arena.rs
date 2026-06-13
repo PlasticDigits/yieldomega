@@ -12,7 +12,10 @@ use serde_json::json;
 use sqlx::Row;
 
 use crate::api::{internal_db_error_response, pg_row_required, with_schema_version, AppState, PageParams};
-use crate::api_cursor::{bad_cursor_response, paginated_list_json, BlockLogCursor, ListPageParams};
+use crate::api_cursor::{
+    bad_cursor_response, paginated_list_json, BlockLogCursor, ListPageParams,
+    TimestampBlockLogCursor,
+};
 use crate::arena_platform_usage::arena_platform_usage;
 use crate::arena_podium_live::{
     fetch_live_podium_conn, last_buy_winner_buy_sec_pool, live_row_has_entrant,
@@ -356,25 +359,33 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
     let offset = p.offset.max(0);
     let cursor = match p.cursor.as_deref() {
         None => None,
-        Some(raw) => match BlockLogCursor::decode(raw) {
+        Some(raw) => match TimestampBlockLogCursor::decode(raw) {
             Ok(c) => Some(c),
             Err(_) => return bad_cursor_response(),
         },
     };
 
     let rows = if let Some(c) = cursor {
+        let (null_rank, ts_epoch, block_number, log_index) = c.sort_key_binds();
         match sqlx::query(
             r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
                       timer_hard_reset, paid_with_cred, actual_seconds_added::text,
                       new_deadline::text, buy_index::text, log_index, pay_kind,
                       EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
                FROM idx_arena_buy
-               WHERE (block_number, log_index) < ($1, $2)
+               WHERE (
+                   CASE WHEN block_timestamp IS NULL THEN 0 ELSE 1 END,
+                   COALESCE(EXTRACT(EPOCH FROM block_timestamp)::bigint, 0),
+                   block_number,
+                   log_index
+               ) < ($1, $2, $3, $4)
                ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
-               LIMIT $3"#,
+               LIMIT $5"#,
         )
-        .bind(c.block_number)
-        .bind(c.log_index)
+        .bind(null_rank)
+        .bind(ts_epoch)
+        .bind(block_number)
+        .bind(log_index)
         .bind(limit)
         .fetch_all(&state.pool)
         .await
@@ -482,7 +493,11 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
     let row_count = rows.len() as i64;
     let next_cursor = if row_count == limit {
         rows.last().map(|r| {
-            BlockLogCursor {
+            let block_timestamp_sec = r
+                .get::<Option<String>, _>("block_timestamp_sec")
+                .and_then(|s| s.parse::<i64>().ok());
+            TimestampBlockLogCursor {
+                block_timestamp_sec,
                 block_number: r.get::<i64, _>("block_number"),
                 log_index: r.get::<i32, _>("log_index"),
             }
