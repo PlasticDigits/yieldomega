@@ -92,7 +92,19 @@ Fresh databases use migration [`20240601000000_arena_v2.up.sql`](../../indexer/m
 | `idx_warbow_epoch_score` | Post-log `battlePoints` eth_call snapshots + explicit test/backfill rows ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254), [`warbow_score.rs`](../../indexer/src/warbow_score.rs)) |
 | `idx_arena_podium_pool_top_up` | `PodiumPoolsToppedUp` ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262)) |
 | `idx_arena_vault_funding` | `PodiumFunded` / `SeedFunded` / `AdminVaultFunded` ([#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267)) |
-| `idx_arena_last_buy_epoch_started` | `LastBuyEpochStarted` — global epoch boundary ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278)) |
+| `idx_arena_last_buy_epoch_started` | `LastBuyEpochStarted` — global epoch boundary ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278)); **`LastBuyEpochCharmAnchored`** anchor columns ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)) |
+| `idx_arena_first_buy_cred_scheduled` | `FirstBuyCredScheduled` ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
+| `idx_arena_level_up` | `LevelUp` ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
+| `idx_arena_feature_unlocked` | `FeatureUnlocked` ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
+| `idx_arena_paused_set` | `PausedSet` history ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
+| `idx_arena_warbow_podium_finalized` | `WarbowPodiumFinalized` ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
+| `idx_arena_warbow_flag_claimed` | `WarBowFlagClaimed` ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
+
+<a id="ingest-side-effects-gitlab-317"></a>
+
+#### Ingest side-effects policy ([GitLab #317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317))
+
+Post-log **`eth_call`** snapshots that write **`idx_warbow_epoch_score`** ([`warbow_score.rs`](../../indexer/src/warbow_score.rs)) and **`idx_arena_podium_live`** ([`arena_podium_live.rs`](../../indexer/src/arena_podium_live.rs)) run inside the same per-block Postgres transaction as decoded event inserts ([#140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140)). **Policy:** RPC snapshot failure **aborts** the block transaction (no warn-and-continue). The supervised ingest loop retries the block; derived tables cannot commit partial/stale state when RPC griefing fails mid-block. Map: **`INV-INDEXER-317-INGEST-SIDE-EFFECTS`** · [invariants §317](../testing/invariants-and-business-logic.md#indexer-timearena-events-gitlab-317).
 
 Decode **`TimeArena`**, **`ReferralRegistry`**, and registry vault contracts per [`decoder.rs`](../../indexer/src/decoder.rs). **Legacy v1 launchpad decode paths and `idx_timecurve_*` tables were removed** ([#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263), [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)). **Emitted-event completeness** for persisted families (dedicated `idx_*` tables, **`rollback_after` coverage**) remains mandated by [GitLab #112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) — **`INV-INDEXER-112`** in [invariants — emitted-event coverage](../testing/invariants-and-business-logic.md#indexer-emitted-event-coverage-gitlab-112).
 
