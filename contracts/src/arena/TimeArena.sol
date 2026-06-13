@@ -564,7 +564,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         uint256 credBurn = Math.mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD);
         require(credBurn > 0, "TimeArena: zero cred burn");
         playCred.burn(buyer, credBurn);
-        _accrueCharmOnly(buyer, charmWad);
+        _accrueCharmAndCred(buyer, charmWad, bytes32(0));
         _finishBuy(buyer, charmWad, 0, true, false);
     }
 
@@ -711,14 +711,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
                 emit ReferralCredApplied(buyer, referrer, codeHash, each, each);
             }
         }
-    }
-
-    function _accrueCharmOnly(address buyer, uint256 charmWad) internal {
-        uint256 ep = lastBuyEpoch;
-        epochCharmWad[ep][buyer] += charmWad;
-        epochCharmTotal[ep] += charmWad;
-        charmWeight[buyer] += charmWad;
-        totalCharmWeight += charmWad;
     }
 
     function _applyBuyWarBowBp(address buyer, uint256 remainingBefore, bool hardReset) internal {
