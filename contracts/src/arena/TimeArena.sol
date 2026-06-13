@@ -432,6 +432,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             require(payBypassBurn, "TimeArena: steal limit");
             spent += _pullDoubExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_DOUB);
         }
+        _routeWarbowDoubSpend(spent);
 
         uint256 vbp = _effectiveBattlePoints(victim);
         uint256 abp = _effectiveBattlePoints(msg.sender);
@@ -460,6 +461,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(exp != 0 && block.timestamp < exp, "TimeArena: revenge");
 
         uint256 spent = _pullDoubExact(msg.sender, WARBOW_REVENGE_DOUB);
+        _routeWarbowDoubSpend(spent);
         uint256 take = Math.mulDiv(_effectiveBattlePoints(stealer), WARBOW_STEAL_DRAIN_BPS, 10_000);
         require(take > 0, "TimeArena: revenge zero");
         _subBattlePoints(stealer, take);
@@ -473,6 +475,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _requireLive();
         _requireWarbowLevel(msg.sender);
         uint256 spent = _pullDoubExact(msg.sender, WARBOW_GUARD_DOUB);
+        _routeWarbowDoubSpend(spent);
         warbowGuardUntil[msg.sender] = block.timestamp + WARBOW_GUARD_DURATION_SEC;
         emit WarBowGuard(msg.sender, spent, warbowGuardUntil[msg.sender]);
     }
@@ -625,13 +628,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
                 _updateTopThree(CAT_TIME_BOOSTER, buyer, totalEffectiveTimerSecAdded[buyer]);
             }
         }
+        address prevDsBuyer = _dsLastUnderWindowBuyer;
+        uint256 prevDsStreak = prevDsBuyer != address(0) ? activeDefendedStreak[prevDsBuyer] : 0;
         if (gateLevel >= 3) {
             _extendPodiumTimer(CAT_DEFENDED_STREAK);
             _processDefendedStreak(buyer, remainingBefore, actualSecondsAdded);
         }
         if (gateLevel >= 4) {
             _extendPodiumTimer(CAT_WARBOW);
-            _applyBuyWarBowBp(buyer, remainingBefore, hardReset);
+            _applyBuyWarBowBp(buyer, remainingBefore, hardReset, prevDsBuyer, prevDsStreak);
         }
         if (gateLevel >= 5) {
             _applyWarBowFlagOnBuy(buyer, plantWarBowFlag);
@@ -709,12 +714,30 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         }
     }
 
-    function _applyBuyWarBowBp(address buyer, uint256 remainingBefore, bool hardReset) internal {
+    function _applyBuyWarBowBp(
+        address buyer,
+        uint256 remainingBefore,
+        bool hardReset,
+        address prevDsBuyer,
+        uint256 prevDsStreak
+    ) internal {
         uint256 bp = WARBOW_BASE_BUY_BP;
         if (hardReset) bp += WARBOW_TIMER_RESET_BONUS_BP;
         if (remainingBefore < 30) bp += WARBOW_CLUTCH_BONUS_BP;
+        if (
+            remainingBefore < DEFENDED_STREAK_WINDOW_SEC && prevDsBuyer != address(0) && prevDsBuyer != buyer
+                && prevDsStreak > 0
+        ) {
+            bp += prevDsStreak * WARBOW_STREAK_BREAK_MULT_BP;
+            if (hardReset) bp += WARBOW_AMBUSH_BONUS_BP;
+        }
         _addBattlePoints(buyer, bp);
         _updateTopThree(CAT_WARBOW, buyer, _effectiveBattlePoints(buyer));
+    }
+
+    function _routeWarbowDoubSpend(uint256 amount) private {
+        _routeDoubPrizeSplit(amount);
+        totalDoubRaised += amount;
     }
 
     function battlePoints(address user) external view returns (uint256) {
@@ -898,6 +921,10 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             }
             _updateTopThree(CAT_DEFENDED_STREAK, buyer, bestDefendedStreak[buyer]);
         } else if (remainingBefore >= DEFENDED_STREAK_WINDOW_SEC) {
+            if (_dsLastUnderWindowBuyer != address(0)) {
+                activeDefendedStreak[_dsLastUnderWindowBuyer] = 0;
+                _dsLastUnderWindowBuyer = address(0);
+            }
             activeDefendedStreak[buyer] = 0;
         }
     }

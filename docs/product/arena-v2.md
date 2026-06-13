@@ -92,7 +92,7 @@ Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`Podiu
 | Revenge | 1000e18 |
 | Flag claim | 0 |
 
-BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses, steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity.
+BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses including **streak-break** and **ambush** on qualifying buys ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)), steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity, then **100%** podium routing and **`totalDoubRaised`** increment — same split as **`buy`** ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)).
 
 ## Retired surfaces
 
