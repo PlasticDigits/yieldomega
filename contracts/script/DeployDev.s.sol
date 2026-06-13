@@ -5,7 +5,6 @@ import {Script, console} from "forge-std/Script.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
@@ -45,9 +44,7 @@ contract DeployDev is Script {
         console.log("Doubloon:", address(doub));
 
         PodiumVaults podiumVaults = new PodiumVaults(doub, deployer);
-        AdminSellVault adminVault = new AdminSellVault(doub, deployer);
         console.log("PodiumVaults:", address(podiumVaults));
-        console.log("AdminSellVault:", address(adminVault));
 
         ReferralRegistry referralRegistry = UUPSDeployLib.deployReferralRegistry(IERC20(reserveAsset), 1e18, deployer);
         console.log("ReferralRegistry:", address(referralRegistry));
@@ -59,7 +56,6 @@ contract DeployDev is Script {
         TimeArena arena = UUPSDeployLib.deployTimeArenaProductionDefaults(
             doub,
             podiumVaults,
-            adminVault,
             address(referralRegistry),
             address(playCred),
             1000e18,
@@ -67,7 +63,6 @@ contract DeployDev is Script {
             deployer
         );
         podiumVaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), deployer);
         playCred.mint(E2E_MOCK_WALLET, 1000e18);

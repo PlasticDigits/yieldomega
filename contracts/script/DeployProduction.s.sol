@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {Script, console} from "forge-std/Script.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
@@ -58,7 +57,6 @@ contract DeployProduction is Script {
 
         Doubloon doub = new Doubloon(admin);
         PodiumVaults podiumVaults = new PodiumVaults(doub, admin);
-        AdminSellVault adminVault = new AdminSellVault(doub, admin);
 
         ReferralRegistry referralRegistry =
             UUPSDeployLib.deployReferralRegistry(IERC20(reserveAsset), referralBurnWad, admin);
@@ -68,7 +66,6 @@ contract DeployProduction is Script {
         TimeArena arena = UUPSDeployLib.deployTimeArena(
             doub,
             podiumVaults,
-            adminVault,
             address(referralRegistry),
             address(playCred),
             charmPriceWad,
@@ -81,7 +78,6 @@ contract DeployProduction is Script {
             admin
         );
         podiumVaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), address(arena));
 
         if (startArenaNow) {
@@ -91,7 +87,6 @@ contract DeployProduction is Script {
         console.log("Doubloon:", address(doub));
         console.log("PlayCred:", address(playCred));
         console.log("PodiumVaults:", address(podiumVaults));
-        console.log("AdminSellVault:", address(adminVault));
         console.log("ReferralRegistry:", address(referralRegistry));
         console.log("TimeArena:", address(arena));
         console.log("Deploy admin:", admin);

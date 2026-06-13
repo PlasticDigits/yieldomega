@@ -13,6 +13,8 @@ REGISTRY="${ROOT}/contracts/deployments/local-anvil-registry-rpc-metrics.json"
 
 # shellcheck source=scripts/lib/anvil_deploy_dev.sh
 source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
+# shellcheck source=scripts/lib/anvil_multicall3.sh
+source "${ROOT}/scripts/lib/anvil_multicall3.sh"
 
 die() {
   echo "verify-indexer-rpc-metrics: $*" >&2
@@ -43,6 +45,8 @@ for _ in $(seq 1 30); do
 done
 cast block-number --rpc-url "${RPC}" >/dev/null
 
+yieldomega_ensure_anvil_multicall3 "${RPC}" || die "Multicall3 deploy failed (chain-timer batching #307)"
+
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
 yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
@@ -54,13 +58,12 @@ jq -n \
   --argjson chainId 31337 \
   --arg ta "${TA}" \
   --arg pv "${PV}" \
-  --arg av "${AV}" \
   --arg rr "${RR}" \
   --argjson deployBlock "${DEPLOY_BLOCK}" \
   '{
     _comment: "verify-indexer-rpc-metrics.sh",
     chainId: $chainId,
-    contracts: { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr },
+    contracts: { TimeArena: $ta, PodiumVaults: $pv, ReferralRegistry: $rr },
     deployBlock: $deployBlock
   }' >"${REGISTRY}"
 
