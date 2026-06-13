@@ -389,7 +389,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] First buy: `epochFixedCredBonus[lastBuyEpoch+1][wallet] == 150e18`; second buy from same wallet does **not** add another 150.
 - [ ] First buy in hard-reset band: bonus targets **post-reset** `lastBuyEpoch + 1` (`test_first_buy_hard_reset_targets_post_epoch`).
 - [ ] `claimCred(epoch)` mints pro-rata + bonus; bonus-only claim (no CHARM in epoch) mints **150e18**; reverts while `epoch >= lastBuyEpoch`.
-- [ ] DOUB path still adds **35 CRED** to `epochCredPool` per buy; CRED path does **not** accrue pool.
+- [ ] DOUB and CRED paths each add **35 CRED** to `epochCredPool` per buy ([#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311)).
 - [ ] **`buyWithCred`** has no referral CRED path ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)).
 
 **Automated:** `TimeArena.t.sol::test_buyWithCred_*`, `test_first_buy_*`, `test_claim_cred_*` · `bash scripts/verify-cred-buy-anvil.sh` · `arenaCredBurn.test.ts`.

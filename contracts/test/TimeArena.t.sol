@@ -468,11 +468,63 @@ contract TimeArenaTest is Test {
         vm.stopPrank();
     }
 
+    /// INV-TIME-ARENA-CRED-ACCRUE-CRED-BUY: `buyWithCred` adds 35 CRED to epoch pool (#311).
+    function test_cred_accrue_on_cred_buy() public {
+        uint256 ep = arena.lastBuyEpoch();
+        uint256 poolBefore = arena.epochCredPool(ep);
+        vm.prank(alice);
+        arena.buyWithCred(1e18);
+        assertEq(arena.epochCredPool(ep), poolBefore + 35e18);
+    }
+
     /// INV-TIME-ARENA-CRED-BURN-BUY: `buyWithCred` burns 100 CRED per 1e18 CHARM (#268).
     function test_buy_with_cred() public {
+        uint256 ep = arena.lastBuyEpoch();
+        uint256 poolBefore = arena.epochCredPool(ep);
         vm.prank(alice);
         arena.buyWithCred(1e18);
         assertEq(cred.balanceOf(alice), 1000e18 - 100e18);
+        assertEq(arena.epochCredPool(ep), poolBefore + 35e18);
+    }
+
+    /// INV-TIME-ARENA-CRED-PRO-RATA-MIXED: DOUB + CRED buyers share epoch pool fairly (#311).
+    function test_cred_pro_rata_mixed_doub_and_cred_buyers() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buyWithCred(2e18);
+
+        uint256 ep = 0;
+        assertEq(arena.epochCharmTotal(ep), 3e18);
+        assertEq(arena.epochCredPool(ep), 70e18);
+
+        _endLastBuyEpoch();
+
+        uint256 aliceShare = Math.mulDiv(70e18, 1e18, 3e18);
+        uint256 bobShare = Math.mulDiv(70e18, 2e18, 3e18);
+
+        vm.prank(alice);
+        arena.claimCred(ep);
+        vm.prank(bob);
+        arena.claimCred(ep);
+
+        assertEq(cred.balanceOf(alice), 1000e18 + aliceShare);
+        assertEq(cred.balanceOf(bob), 1000e18 - 200e18 + bobShare);
+        assertLe(aliceShare + bobShare, 70e18);
+        assertGe(aliceShare + bobShare, 70e18 - 2);
+    }
+
+    /// INV-TIME-ARENA-CRED-EPOCH-BOUNDARY: `buyWithCred` at hard reset credits post-reset epoch pool (#311).
+    function test_cred_accrue_buyWithCred_at_epoch_boundary() public {
+        _warpNearHardReset();
+        uint256 epBefore = arena.lastBuyEpoch();
+        vm.prank(alice);
+        arena.buyWithCred(1e18);
+        uint256 epAfter = arena.lastBuyEpoch();
+        assertEq(epAfter, epBefore + 1);
+        assertEq(arena.epochCredPool(epAfter), 35e18);
+        assertEq(arena.epochCredPool(epBefore), 0);
     }
 
     function test_buyWithCred_10charm_burns_1000_cred() public {
