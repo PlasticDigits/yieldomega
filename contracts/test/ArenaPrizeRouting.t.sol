@@ -78,6 +78,9 @@ contract ArenaPrizeRoutingTest is Test {
             assertLe(nxt2[i], share);
             assertEq(cur[i] + nxt[i] + nxt2[i], share);
         }
+        if (catRem > 0) {
+            assertEq(cur[0] + nxt[0] + nxt2[0], baseShare + catRem, "remainder to Last Buy cat 0");
+        }
     }
 
     /// GitLab #313: cross-category remainder wei always lands on Last Buy (cat 0).

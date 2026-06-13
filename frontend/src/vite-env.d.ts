@@ -14,7 +14,6 @@ interface ImportMetaEnv {
   /** Arena v2 `TimeArena` proxy (required — GitLab #266). */
   readonly VITE_TIME_ARENA_ADDRESS: string;
   readonly VITE_PODIUM_VAULTS_ADDRESS: string;
-  readonly VITE_ADMIN_SELL_VAULT_ADDRESS: string;
   readonly VITE_REFERRAL_REGISTRY_ADDRESS: string;
   /** Set to "1" only for Playwright Anvil E2E (mock wallet). */
   readonly VITE_E2E_MOCK_WALLET: string;

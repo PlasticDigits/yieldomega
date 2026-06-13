@@ -333,6 +333,20 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             epoch: u1,
             amount: u2,
         }),
+        next(DecodedEvent::ArenaFirstBuyCredScheduled {
+            buyer: alice,
+            target_epoch: u2,
+            amount: U256::from(150_000_000_000_000_000_000u128),
+        }),
+        next(DecodedEvent::ArenaLevelUp {
+            player: alice,
+            new_level: u2,
+        }),
+        next(DecodedEvent::ArenaFeatureUnlocked {
+            player: alice,
+            feature_level: u1,
+        }),
+        next(DecodedEvent::ArenaPausedSet { paused: true }),
         next(DecodedEvent::ArenaPodiumEpochRolled {
             category: 0,
             epoch: u1,
@@ -358,6 +372,16 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             stealer: addr_byte(0xb3),
             bp_taken: u1,
             doub_spent: u1,
+        }),
+        next(DecodedEvent::ArenaWarbowFlagClaimed {
+            player: alice,
+            bonus_bp: U256::from(500u32),
+        }),
+        next(DecodedEvent::ArenaWarbowPodiumFinalized {
+            epoch: u1,
+            first: alice,
+            second: addr_byte(0xb2),
+            third: addr_byte(0xb3),
         }),
         next(DecodedEvent::ArenaWarbowEpochScore {
             epoch: u1,
@@ -388,6 +412,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             amount_doub_wad: U256::from(DOUB_300),
             pool_address: None,
         }),
+        next(DecodedEvent::ArenaLastBuyEpochCharmAnchored {
+            epoch: u1,
+            anchor_wad: u1,
+            doub_usd_wad: u2,
+            anchor_timestamp: u1,
+        }),
     ];
 
     let mut conn = pool.acquire().await.expect("acquire");
@@ -402,7 +432,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_arena_started", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_arena_last_buy_epoch_started", 100).await,
-        1
+        2
     );
     assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 1);
     let buy_epoch: i64 = sqlx::query_scalar(
@@ -415,10 +445,28 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_arena_referral_cred", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_player_xp", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_play_cred_claim", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_arena_first_buy_cred_scheduled", 100).await,
+        1
+    );
+    assert_eq!(count_where(&pool, "idx_arena_level_up", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_arena_feature_unlocked", 100).await,
+        1
+    );
+    assert_eq!(count_where(&pool, "idx_arena_paused_set", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_podium_epoch", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_warbow_steal", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_warbow_guard", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_warbow_revenge", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_arena_warbow_flag_claimed", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_arena_warbow_podium_finalized", 100).await,
+        1
+    );
     assert_eq!(count_where(&pool, "idx_warbow_epoch_score", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_arena_referral_applied", 100).await,
@@ -433,6 +481,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         1
     );
     assert_eq!(count_where(&pool, "idx_arena_vault_funding", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_arena_last_buy_epoch_started", 100).await,
+        2
+    );
 
     api_vault_funding_smoke(&pool).await;
     api_podium_pool_donations_smoke(&pool).await;
@@ -466,6 +518,14 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 0);
     assert_eq!(
         count_where(&pool, "idx_arena_last_buy_epoch_started", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_arena_level_up", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_arena_feature_unlocked", 100).await,
         0
     );
     assert_eq!(count_where(&pool, "idx_arena_vault_funding", 100).await, 0);

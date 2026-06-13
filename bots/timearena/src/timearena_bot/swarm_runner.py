@@ -11,19 +11,19 @@ from pathlib import Path
 
 from web3 import Web3
 
-from timecurve_bot.anvil_accounts import address_at, private_key_hex
-from timecurve_bot.anvil_extra_addresses import extra_funded_addresses_from_environ, merge_funded_recipients
-from timecurve_bot.config import BotConfig, load_config
-from timecurve_bot.contracts import arena_doub_address, mock_reserve_contract, timecurve_contract
-from timecurve_bot.referral_bootstrap import (
+from timearena_bot.anvil_accounts import address_at, private_key_hex
+from timearena_bot.anvil_extra_addresses import extra_funded_addresses_from_environ, merge_funded_recipients
+from timearena_bot.config import BotConfig, load_config
+from timearena_bot.contracts import arena_doub_address, mock_reserve_contract, timearena_contract
+from timearena_bot.referral_bootstrap import (
     ensure_swarm_referral_registered,
     load_referral_registrar_account,
     referral_registrar_index,
     swarm_referrals_enabled,
 )
-from timecurve_bot.referral_code import normalize_referral_code
-from timecurve_bot.rpc import anvil_dev_bootstrap_funding_if_enabled, assert_chain_id, make_web3
-from timecurve_bot.swarm_layout import (
+from timearena_bot.referral_code import normalize_referral_code
+from timearena_bot.rpc import anvil_dev_bootstrap_funding_if_enabled, assert_chain_id, make_web3
+from timearena_bot.swarm_layout import (
     ALL_FUNDED_INDICES,
     DEFENDER_INDICES,
     FUN_INDICES,
@@ -72,7 +72,7 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
         cfg = _load_config_for_swarm()
     if not cfg.allow_anvil_funding:
         print(
-            "swarm: set YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 (or run: timecurve-bot --allow-anvil-funding swarm) "
+            "swarm: set YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 (or run: timearena-bot --allow-anvil-funding swarm) "
             "for one-shot Anvil native ETH + mock reserve bootstrap.",
             file=sys.stderr,
         )
@@ -84,7 +84,7 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
 
     w3 = make_web3(cfg.rpc_url)
     assert_chain_id(w3, cfg.chain_id)
-    tc = timecurve_contract(w3, cfg.timecurve_address)
+    tc = timearena_contract(w3, cfg.timearena_address)
     doub = arena_doub_address(tc, explicit=cfg.accepted_asset_address)
     asset = mock_reserve_contract(w3, doub)
 
@@ -155,33 +155,33 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
         env = dict(env_base)
         env["YIELDOMEGA_PRIVATE_KEY"] = pk0
         env["YIELDOMEGA_SEED_LOCAL_SLOT"] = str(slot)
-        jobs.append((f"seed-local-{slot}", [py, "-u", "-m", "timecurve_bot.cli", "seed-local"], env))
+        jobs.append((f"seed-local-{slot}", [py, "-u", "-m", "timearena_bot.cli", "seed-local"], env))
 
     for i, d in enumerate(DEFENDER_INDICES):
         env = dict(env_base)
         env["YIELDOMEGA_PRIVATE_KEY"] = private_key_hex(d)
-        jobs.append((f"defender-{i}", [py, "-u", "-m", "timecurve_bot.cli", "defender", "--steps", "3"], env))
+        jobs.append((f"defender-{i}", [py, "-u", "-m", "timearena_bot.cli", "defender", "--steps", "3"], env))
 
     for i, f in enumerate(FUN_INDICES):
         env = dict(env_base)
         env["YIELDOMEGA_PRIVATE_KEY"] = private_key_hex(f)
-        jobs.append((f"fun-{i}", [py, "-u", "-m", "timecurve_bot.cli", "fun"], env))
+        jobs.append((f"fun-{i}", [py, "-u", "-m", "timearena_bot.cli", "fun"], env))
 
     for i, s in enumerate(SHARK_INDICES):
         env = dict(env_base)
         env["YIELDOMEGA_PRIVATE_KEY"] = private_key_hex(s)
-        jobs.append((f"shark-{i}", [py, "-u", "-m", "timecurve_bot.cli", "shark"], env))
+        jobs.append((f"shark-{i}", [py, "-u", "-m", "timearena_bot.cli", "shark"], env))
 
     for i, (atk, vic) in enumerate(PVP_PAIRS):
         env = dict(env_base)
         env["YIELDOMEGA_PRIVATE_KEY"] = private_key_hex(atk)
         env["YIELDOMEGA_PVP_VICTIM_PRIVATE_KEY"] = private_key_hex(vic)
-        jobs.append((f"pvp-{i}", [py, "-u", "-m", "timecurve_bot.cli", "pvp"], env))
+        jobs.append((f"pvp-{i}", [py, "-u", "-m", "timearena_bot.cli", "pvp"], env))
 
     for i, r in enumerate(RANDO_INDICES):
         env = dict(env_base)
         env["YIELDOMEGA_PRIVATE_KEY"] = private_key_hex(r)
-        jobs.append((f"rando-{i}", [py, "-u", "-m", "timecurve_bot.cli", "rando"], env))
+        jobs.append((f"rando-{i}", [py, "-u", "-m", "timearena_bot.cli", "rando"], env))
 
     pids: list[int] = []
     _PID_FILE.write_text("")

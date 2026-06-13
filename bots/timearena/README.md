@@ -1,4 +1,4 @@
-# TimeArena bot (`timecurve-bot`)
+# TimeArena bot (`timearena-bot`)
 
 Python **client** for [`TimeArena`](../../contracts/src/arena/TimeArena.sol) (Arena v2): reads authoritative onchain state and optionally submits normal transactions. It does **not** replace contracts or encode a parallel rules engine.
 
@@ -31,7 +31,7 @@ pip install -e ".[dev]" --user --break-system-packages
 
 See also [`SKILL.md`](SKILL.md) for IDE agent guidance on this package.
 
-The console script is **`timecurve-bot`** (or `python -m timecurve_bot.cli` from `src` on `PYTHONPATH`).
+The console script is **`timearena-bot`** (or `python -m timearena_bot.cli` from `src` on `PYTHONPATH`).
 
 ## Configuration
 
@@ -67,7 +67,7 @@ cd bots/timearena
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 set -a && source .env.local && set +a
-.venv/bin/timecurve-bot inspect
+.venv/bin/timearena-bot inspect
 ```
 
 Optional: run a full local scenario (mint + buys; flag claim depends on on-chain time):
@@ -75,7 +75,7 @@ Optional: run a full local scenario (mint + buys; flag claim depends on on-chain
 ```bash
 # Use Anvil’s default account #0 private key from the Foundry Anvil docs (local-only; never on mainnet).
 export YIELDOMEGA_PRIVATE_KEY=<anvil_default_key_from_foundry_docs>
-.venv/bin/timecurve-bot --send seed-local
+.venv/bin/timearena-bot --send seed-local
 ```
 
 If Anvil is already running on port 8545:
@@ -115,13 +115,13 @@ Use this when Anvil + DeployDev (or `frontend/.env.local`) already exist and you
 6. **`PYTHONPATH=bots/timearena/src`** and the same Python that has `web3` installed, **from repo root**:
 
    ```bash
-   PYTHONPATH=bots/timearena/src python3 -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()"
+   PYTHONPATH=bots/timearena/src python3 -c "from timearena_bot.swarm_runner import run_swarm; run_swarm()"
    ```
 
    Or, from `bots/timearena` after activating the venv:
 
    ```bash
-   timecurve-bot --allow-anvil-funding swarm
+   timearena-bot --allow-anvil-funding swarm
    ```
 
 If `load_config` fails (missing RPC or TimeArena), `run_swarm()` prints a short hint to run **`sync-bot-env-from-frontend.sh`** and stay at repo root.
@@ -129,7 +129,7 @@ If `load_config` fails (missing RPC or TimeArena), `run_swarm()` prints a short 
 ## Implementation note
 
 1. **Export env** — `scripts/anvil-export-bot-env.sh` runs `DeployDev` and writes `YIELDOMEGA_TIME_ARENA_ADDRESS` + DOUB from `TimeArena.doub()`.
-2. **Load config** — `timecurve_bot.config.load_config` reads env (and optional address file), checksums addresses, applies send/dry-run policy.
+2. **Load config** — `timearena_bot.config.load_config` reads env (and optional address file), checksums addresses, applies send/dry-run policy.
 3. **Connect** — `web3.py` HTTP provider; `assert_chain_id` catches mismatched `YIELDOMEGA_CHAIN_ID`.
 4. **Strategies** — call `actions.approve_if_needed`, `buy`, and `Doubloon.mint` (dev MINTER_ROLE) on Anvil only.
 
