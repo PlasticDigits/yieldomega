@@ -183,12 +183,11 @@ fi
 # Postgres is started by bootstrap-cloud-vm-toolchain.sh (do not run bootstrap-cloud-postgres-native.sh again as root — psql defaults to 5432 after port is moved to 5433).
 
 if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-agent.sh" ]]; then
-  echo "==> Playwright + Rabby (wallet import deferred to finalize agent)"
+  echo "==> Playwright + Rabby"
   if ! pgrep -x Xvfb >/dev/null 2>&1; then
     Xvfb :99 -screen 0 1920x1080x24 &
     sleep 1
   fi
-  # Wallet import is slow and can OOM-kill the builder; finalize agent runs it with timeout.
   _agent_sh env \
     DISPLAY=:99 \
     YIELDOMEGA_SKIP_RABBY_WALLET_IMPORT=1 \
@@ -196,6 +195,25 @@ if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-agent.sh" ]]; then
     bash -lc "bash '${WORKSPACE}/scripts/bootstrap-cloud-agent.sh'" || {
     echo "WARN: bootstrap-cloud-agent.sh failed — finalize agent will retry Rabby steps." >&2
   }
+fi
+
+if [[ -f "${WORKSPACE}/scripts/e2e-anvil.sh" ]]; then
+  echo "==> Anvil E2E (required golden-image gate — runs outside Cursor agent; avoids shell-tool exit 143)"
+  mkdir -p "${AGENT_HOME}/.gch"
+  touch "${AGENT_HOME}/.gch/golden-image-verify.log"
+  chown "${AGENT_USER}:${AGENT_USER}" "${AGENT_HOME}/.gch/golden-image-verify.log"
+  _agent_sh env \
+    YIELDOMEGA_GOLDEN_IMAGE=1 \
+    PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 \
+    bash -lc "bash '${WORKSPACE}/scripts/e2e-anvil.sh' 2>&1 | tee '${AGENT_HOME}/.gch/e2e-anvil.log'"
+  if ! grep -q '^Done\.$' "${AGENT_HOME}/.gch/e2e-anvil.log"; then
+    echo "ERROR: e2e-anvil.sh did not complete successfully — see ${AGENT_HOME}/.gch/e2e-anvil.log" >&2
+    exit 1
+  fi
+  if ! grep -q 'e2e-anvil.sh: PASS' "${AGENT_HOME}/.gch/golden-image-verify.log"; then
+    echo "ERROR: golden-image verify log missing e2e-anvil PASS" >&2
+    exit 1
+  fi
 fi
 
 echo "==> Golden image finalize (Cursor agent)"
