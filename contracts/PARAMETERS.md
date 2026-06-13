@@ -16,7 +16,7 @@ Replaces legacy **FeeRouter** five-sink CL8Y table ([#244](https://gitlab.com/Pl
 
 | Destination | Bps (of gross DOUB in) | Share |
 |-------------|------------------------|-------|
-| Each of 4 podium categories | 2500 | **25%** each (remainder → Time Booster) |
+| Each of 4 podium categories | 2500 | **25%** each (remainder → Last Buy) ([#313](https://gitlab.com/PlasticDigits/yieldomega/-/issues/313)) |
 | Per category → current epoch (`activePools`) | 7000 of category share | **70%** |
 | Per category → next epoch (`seedPools`) | 2000 of category share | **20%** |
 | Per category → epoch+2 (`futurePools`) | remainder of category share | **10%** |
