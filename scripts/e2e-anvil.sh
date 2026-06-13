@@ -115,6 +115,9 @@ if [ -n "${KUMBAYA_WETH:-}" ]; then
   export VITE_KUMBAYA_USDM="${KUMBAYA_USDM}"
   export VITE_KUMBAYA_SWAP_ROUTER="${KUMBAYA_ROUTER}"
   export VITE_KUMBAYA_QUOTER="${KUMBAYA_ROUTER}"
+  if [ -n "${KUMBAYA_CL8Y:-}" ]; then
+    export VITE_KUMBAYA_CL8Y="${KUMBAYA_CL8Y}"
+  fi
 fi
 if [ -n "${KUMBAYA_BUY_ROUTER:-}" ]; then
   export VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER="${KUMBAYA_BUY_ROUTER}"
@@ -155,6 +158,14 @@ VITE_KUMBAYA_USDM=${KUMBAYA_USDM}
 VITE_KUMBAYA_SWAP_ROUTER=${KUMBAYA_ROUTER}
 VITE_KUMBAYA_QUOTER=${KUMBAYA_ROUTER}
 EOF
+  if [ -n "${KUMBAYA_CL8Y:-}" ]; then
+    cat >>"${E2E_ENV_FILE}" <<EOF
+VITE_KUMBAYA_CL8Y=${KUMBAYA_CL8Y}
+VITE_KUMBAYA_FEE_DOUB_CL8Y=100
+VITE_KUMBAYA_FEE_CL8Y_WETH=100
+VITE_KUMBAYA_FEE_USDM_WETH=3000
+EOF
+  fi
 fi
 if [ -n "${KUMBAYA_BUY_ROUTER:-}" ]; then
   cat >>"${E2E_ENV_FILE}" <<EOF
@@ -169,13 +180,18 @@ cd "${ROOT}/frontend"
 unset VITE_TIME_ARENA_ADDRESS VITE_PODIUM_VAULTS_ADDRESS VITE_ADMIN_SELL_VAULT_ADDRESS \
   VITE_REFERRAL_REGISTRY_ADDRESS VITE_PLAY_CRED_ADDRESS VITE_INDEXER_URL VITE_LAUNCH_TIMESTAMP \
   VITE_KUMBAYA_WETH VITE_KUMBAYA_USDM VITE_KUMBAYA_SWAP_ROUTER VITE_KUMBAYA_QUOTER \
+  VITE_KUMBAYA_CL8Y VITE_KUMBAYA_FEE_DOUB_CL8Y VITE_KUMBAYA_FEE_CL8Y_WETH VITE_KUMBAYA_FEE_USDM_WETH \
   VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER VITE_KUMBAYA_TIMECURVE_BUY_ROUTER || true
 
 BUILD_STAMP="${ROOT}/frontend/.cache/e2e-anvil-build-${TA}.stamp"
+_kumbaya_cl8y_in_dist() {
+  [[ -z "${KUMBAYA_CL8Y:-}" ]] || grep -rq "${KUMBAYA_CL8Y}" dist/assets/ 2>/dev/null
+}
 if [[ "${YIELDOMEGA_E2E_FORCE_BUILD:-0}" != "1" ]] \
   && [[ -f "${BUILD_STAMP}" ]] \
   && [[ -d dist/assets ]] \
-  && grep -rq "${TA}" dist/assets/ 2>/dev/null; then
+  && grep -rq "${TA}" dist/assets/ 2>/dev/null \
+  && _kumbaya_cl8y_in_dist; then
   _e2e_note "Reusing frontend dist for TimeArena ${TA}"
 else
   _e2e_note "npm run build (Vite production)..."

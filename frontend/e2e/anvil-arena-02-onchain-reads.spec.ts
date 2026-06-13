@@ -28,6 +28,10 @@ test.describe("Anvil Arena onchain reads", () => {
     await expect(page.getByTestId("arena-charm-cred-card")).toBeVisible();
     await expect(page.getByTestId("arena-last-buy-chip")).toBeVisible();
     await expect(page.getByTestId("arena-timer-chip-gate-1")).toBeVisible();
-    await expect(page.getByText("Last Buy epoch:", { exact: false })).toBeVisible();
+    const epochCorner = page.getByTestId("arena-timer-panel-epoch-corner");
+    await expect(epochCorner).toBeVisible();
+    await expect(epochCorner).toContainText("Last Buy");
+    // Indexer-off E2E: podium epoch is indexer-only (#301); placeholder is "EPOCH —".
+    await expect(epochCorner).toContainText("EPOCH");
   });
 });

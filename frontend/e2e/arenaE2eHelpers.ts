@@ -57,18 +57,22 @@ export async function selectPayWith(
   asset: "cl8y" | "eth" | "usdm" | "cred",
 ): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
-  // Menu options render in a document.body portal, not inside the buy panel.
-  const option = page.getByTestId(`arena-simple-rate-pay-option-${asset}`);
-  if (await option.isVisible().catch(() => false)) {
-    await option.click();
+  const trigger = buyPanel.getByTestId("arena-simple-amount-pay-token");
+  const option = buyPanel.locator(`[data-pay-token-value="${asset}"]`);
+  const labelPattern = asset === "cl8y" ? /DOUB|CL8Y/i : new RegExp(asset, "i");
+  const ariaLabel = await trigger.getAttribute("aria-label").catch(() => null);
+  if (ariaLabel && labelPattern.test(ariaLabel)) {
     return;
   }
-  const trigger = buyPanel.getByTestId("arena-simple-rate-pay-picker-trigger");
+  if (await option.isVisible().catch(() => false)) {
+    await option.click();
+    await expect(trigger).toHaveAttribute("aria-label", labelPattern);
+    return;
+  }
   await expect(trigger).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
   await trigger.click();
   await expect(option).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
   await option.click();
-  const labelPattern = asset === "cl8y" ? /DOUB|CL8Y/i : new RegExp(asset, "i");
   await expect(trigger).toHaveAttribute("aria-label", labelPattern);
 }
 
@@ -78,43 +82,52 @@ export async function setCharmSliderMin(page: Page): Promise<void> {
   await expect(buyPanel.getByText("Loading buy limits…")).toHaveCount(0, {
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
-  const cl8ySpendInput = buyPanel.getByLabel(/Exact CL8Y spend/i);
-  if ((await cl8ySpendInput.count()) > 0) {
-    await expect(cl8ySpendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  const doubSpendInput = buyPanel.getByLabel(/Exact (CL8Y|DOUB) spend/i);
+  if ((await doubSpendInput.count()) > 0) {
+    await expect(doubSpendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
     // Dev deploy uses 1000 DOUB/CHARM; headroom pushes min spend above 1000 DOUB.
-    await cl8ySpendInput.fill("2000");
-    await cl8ySpendInput.blur();
+    await doubSpendInput.fill("2000");
+    await doubSpendInput.blur();
     await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
     return;
   }
 
-  const kumbayaSpend = buyPanel.getByLabel(/Exact (ETH|USDM) spend/i);
-  if ((await kumbayaSpend.count()) === 0) {
+  const altSpend = buyPanel.getByLabel(/Exact (ETH|USDM|CRED) spend/i);
+  if ((await altSpend.count()) === 0) {
     return;
   }
 
-  await expect(kumbayaSpend).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
-  await expect(buyPanel.getByText("Could not quote this route")).toHaveCount(0);
+  await expect(altSpend).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  const isKumbaya = (await buyPanel.getByLabel(/Exact (ETH|USDM) spend/i).count()) > 0;
+  if (isKumbaya) {
+    await expect(buyPanel.getByText("Could not quote this route")).toHaveCount(0);
+  }
 
   const slider = buyPanel.locator("input.arena-buy-spend-range");
   await expect(slider).toHaveCount(1, { timeout: ARENA_E2E_TIMEOUT_MS });
   await slider.fill("0");
 
-  await expect(buyPanel.getByText("Loading CHARM preview…")).toHaveCount(0, {
-    timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
-  });
-  await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
-    timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
-  });
-
-  try {
-    await expect(buyPanel.getByTestId("arena-simple-buy-charm")).toBeEnabled({
+  if (isKumbaya) {
+    await expect(buyPanel.getByText("Loading CHARM preview…")).toHaveCount(0, {
       timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
     });
-  } catch {
-    const panelText = await buyPanel.innerText();
-    throw new Error(`Buy CTA stayed disabled after Kumbaya quote wait.\n${panelText}`);
+    await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
+      timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
+    });
+    try {
+      await expect(buyPanel.getByTestId("arena-simple-buy-charm")).toBeEnabled({
+        timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
+      });
+    } catch {
+      const panelText = await buyPanel.innerText();
+      throw new Error(`Buy CTA stayed disabled after Kumbaya quote wait.\n${panelText}`);
+    }
+    return;
   }
+
+  await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
+    timeout: ARENA_E2E_TIMEOUT_MS,
+  });
 }
