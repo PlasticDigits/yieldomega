@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PlayerIdentity } from "@/components/arena";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -24,10 +24,18 @@ import {
 import type { SaleSessionPhase } from "@/pages/arena/arenaSimplePhase";
 import { moveWarbowTargetListIndex } from "@/pages/arena/warbowTargetListKeyboard";
 
+function targetIsInsideAddressAction(target: EventTarget | null): boolean {
+  return Boolean(
+    target && (target as HTMLElement).closest?.("a[href], .address-inline__profile-btn"),
+  );
+}
+
 type Props = {
   phase: SaleSessionPhase;
   playerLevel?: bigint | number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
+  /** Opens wallet profile modal instead of explorer (#258, #318). */
+  onOpenWalletProfile?: (address: string) => void;
   warbowTargets?: readonly WarbowTarget[];
   /** Indexer-sourced viewer BP when `VITE_INDEXER_URL` is set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
   indexerViewerBattlePoints?: bigint;
@@ -72,6 +80,7 @@ export function ArenaWarbowHeroPanel({
   phase,
   playerLevel,
   onFeatureHelp,
+  onOpenWalletProfile,
   warbowTargets = [],
   indexerViewerBattlePoints,
   indexerWarbowHead,
@@ -253,7 +262,10 @@ export function ArenaWarbowHeroPanel({
                       "warbow-target-row",
                       selected ? "warbow-target-row--selected" : "",
                     ].filter(Boolean).join(" ")}
-                    onClick={() => w.setStealVictimInput(target.address)}
+                    onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                      if (targetIsInsideAddressAction(event.target)) return;
+                      w.setStealVictimInput(target.address);
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
@@ -268,6 +280,7 @@ export function ArenaWarbowHeroPanel({
                         tailHexDigits={6}
                         size={18}
                         className="warbow-target-row__identity"
+                        onOpenProfile={onOpenWalletProfile}
                       />
                       <span className="warbow-target-row__meta">
                         {target.source === "podium" && target.rank ? `#${target.rank} WarBow` : "Recent buyer"}
@@ -291,7 +304,19 @@ export function ArenaWarbowHeroPanel({
                 <StatusMessage variant="error">{w.stealVictimFormatError}</StatusMessage>
               )}
               <p className="warbow-target-selection">
-                Target: <strong>{w.stealVictim ? <PlayerIdentity address={w.stealVictim} tailHexDigits={6} size={16} /> : "Select a rival"}</strong>
+                Target:{" "}
+                <strong>
+                  {w.stealVictim ? (
+                    <PlayerIdentity
+                      address={w.stealVictim}
+                      tailHexDigits={6}
+                      size={16}
+                      onOpenProfile={onOpenWalletProfile}
+                    />
+                  ) : (
+                    "Select a rival"
+                  )}
+                </strong>
               </p>
               <label className="warbow-hero-actions__checkbox">
                 <input

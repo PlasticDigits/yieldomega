@@ -7,7 +7,6 @@ import { addresses } from "@/lib/addresses";
 const ARENA_VAULT_ROWS: { label: string; key: keyof typeof addresses }[] = [
   { label: "Time Arena", key: "timeArena" },
   { label: "Podium vaults", key: "podiumVaults" },
-  { label: "Admin sell vault", key: "adminSellVault" },
 ];
 
 /** Minimal Arena v2 address list with the standard blockie + explorer treatment. */
@@ -24,8 +23,7 @@ export function ArenaVaultAddressesPanel() {
   if (rows.length === 0) {
     return (
       <StatusMessage variant="muted">
-        Arena address configured; set optional <code>VITE_PODIUM_VAULTS_ADDRESS</code> /{" "}
-        <code>VITE_ADMIN_SELL_VAULT_ADDRESS</code> for vault rows.
+        Arena address configured; set optional <code>VITE_PODIUM_VAULTS_ADDRESS</code> for vault rows.
       </StatusMessage>
     );
   }

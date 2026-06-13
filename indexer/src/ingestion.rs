@@ -9,7 +9,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use alloy_primitives::{Address, B256};
 use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockTransactionsKind, Filter};
-use eyre::Result;
+use eyre::{Result, WrapErr};
 use sqlx::PgPool;
 
 use crate::config::Config;
@@ -396,7 +396,7 @@ pub async fn run(
                                     DecodedEvent::ArenaWarbowEpochScore { .. }
                                 );
                                 if !players.is_empty() && !skip_rpc {
-                                    if let Err(e) = warbow_score::snapshot_warbow_players_after_log(
+                                    warbow_score::snapshot_warbow_players_after_log(
                                         provider,
                                         arena,
                                         &decoded,
@@ -405,17 +405,15 @@ pub async fn run(
                                         rpc_metrics,
                                     )
                                     .await
-                                    {
-                                        tracing::warn!(
-                                            block = decoded.block_number,
-                                            tx = %decoded.tx_hash,
-                                            ?e,
-                                            "ingestion: warbow BP snapshot skipped"
-                                        );
-                                    }
+                                    .wrap_err_with(|| {
+                                        format!(
+                                            "ingestion: warbow BP snapshot failed block={} tx={:#x}",
+                                            decoded.block_number, decoded.tx_hash
+                                        )
+                                    })?;
                                 }
                                 if arena_podium_live::should_snapshot_live_podium(&decoded.event) {
-                                    if let Err(e) = arena_podium_live::snapshot_live_podium_after_log(
+                                    arena_podium_live::snapshot_live_podium_after_log(
                                         provider,
                                         arena,
                                         &decoded,
@@ -423,14 +421,12 @@ pub async fn run(
                                         rpc_metrics,
                                     )
                                     .await
-                                    {
-                                        tracing::warn!(
-                                            block = decoded.block_number,
-                                            tx = %decoded.tx_hash,
-                                            ?e,
-                                            "ingestion: live podium snapshot skipped"
-                                        );
-                                    }
+                                    .wrap_err_with(|| {
+                                        format!(
+                                            "ingestion: live podium snapshot failed block={} tx={:#x}",
+                                            decoded.block_number, decoded.tx_hash
+                                        )
+                                    })?;
                                 }
                             }
                         }
