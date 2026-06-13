@@ -832,20 +832,28 @@ contract TimeArenaTest is Test {
         _warpPastBuyCooldown();
         vm.prank(alice);
         arena.buy(1e18);
-        uint256 balBefore = doub.balanceOf(address(arena));
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 raisedBefore = arena.totalDoubRaised();
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
         _warpPastBuyCooldown();
         vm.prank(alice);
         arena.warbowSteal(bob, false);
-        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + arena.WARBOW_STEAL_DOUB());
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.totalDoubRaised(), raisedBefore + arena.WARBOW_STEAL_DOUB());
     }
 
     /// GitLab #252: guard pulls 10_000 DOUB.
     function test_warbow_guard_pulls_doub() public {
         _ensureLevel(alice, 4);
-        uint256 balBefore = doub.balanceOf(address(arena));
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 raisedBefore = arena.totalDoubRaised();
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
         vm.prank(alice);
         arena.warbowActivateGuard();
-        assertEq(doub.balanceOf(address(arena)) - balBefore, 10_000e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + arena.WARBOW_GUARD_DOUB());
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.totalDoubRaised(), raisedBefore + arena.WARBOW_GUARD_DOUB());
         assertGt(arena.warbowGuardUntil(alice), block.timestamp);
     }
 
@@ -854,10 +862,14 @@ contract TimeArenaTest is Test {
         _seedWarbowStealBand(bob, alice);
         vm.prank(alice);
         arena.warbowSteal(bob, false);
-        uint256 balBefore = doub.balanceOf(address(arena));
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 raisedBefore = arena.totalDoubRaised();
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
         vm.prank(bob);
         arena.warbowRevenge(alice);
-        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + arena.WARBOW_REVENGE_DOUB());
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.totalDoubRaised(), raisedBefore + arena.WARBOW_REVENGE_DOUB());
     }
 
     /// GitLab #252: fourth steal on same victim in a UTC day pulls steal + 50_000 DOUB override.
@@ -868,10 +880,15 @@ contract TimeArenaTest is Test {
             arena.warbowSteal(bob, false);
             _boostWarbowVictim(bob);
         }
-        uint256 balBefore = doub.balanceOf(address(arena));
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 raisedBefore = arena.totalDoubRaised();
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
+        uint256 expected = arena.WARBOW_STEAL_DOUB() + arena.WARBOW_STEAL_LIMIT_BYPASS_DOUB();
         vm.prank(alice);
         arena.warbowSteal(bob, true);
-        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18 + 50_000e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + expected);
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.totalDoubRaised(), raisedBefore + expected);
     }
 
     /// GitLab #252: flag claim costs zero DOUB and awards BP.
@@ -888,6 +905,80 @@ contract TimeArenaTest is Test {
         arena.claimWarBowFlag();
         assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
         assertEq(arena.battlePoints(alice), bpBefore + arena.WARBOW_FLAG_CLAIM_BP());
+    }
+
+    /// GitLab #310: streak-break BP when a different buyer buys under the defended-streak window.
+    function test_warbow_streak_break_bp() public {
+        _ensureLevel(alice, 4);
+        _ensureLevel(bob, 4);
+        for (uint256 i; i < 3; ++i) {
+            _warpNearHardReset();
+            _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(1e18);
+        }
+        assertEq(arena.activeDefendedStreak(alice), 3);
+
+        _warpRemaining(_below[0] + 30);
+        uint256 bpBefore = arena.battlePoints(bob);
+        vm.prank(bob);
+        arena.buy(1e18);
+        uint256 expected =
+            arena.WARBOW_BASE_BUY_BP() + 3 * arena.WARBOW_STREAK_BREAK_MULT_BP();
+        assertEq(arena.battlePoints(bob) - bpBefore, expected);
+    }
+
+    /// GitLab #310: ambush bonus stacks on hard reset + streak break under window.
+    function test_warbow_ambush_bp_on_hard_reset_streak_break() public {
+        _ensureLevel(alice, 4);
+        _ensureLevel(bob, 4);
+        _warpUnderDefendedStreakWindowNoHardReset();
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        _warpUnderDefendedStreakWindowNoHardReset();
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.activeDefendedStreak(alice), 2);
+
+        _warpNearHardReset();
+        uint256 bpBefore = arena.battlePoints(bob);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(1e18);
+        uint256 expected = arena.WARBOW_BASE_BUY_BP() + arena.WARBOW_TIMER_RESET_BONUS_BP()
+            + 2 * arena.WARBOW_STREAK_BREAK_MULT_BP() + arena.WARBOW_AMBUSH_BONUS_BP();
+        assertEq(arena.battlePoints(bob) - bpBefore, expected);
+    }
+
+    /// GitLab #310: WarBow steal routes 100% DOUB to podium vaults like buy.
+    function test_warbow_steal_routes_doub_split() public {
+        _seedWarbowStealBand(bob, alice);
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + arena.WARBOW_STEAL_DOUB());
+        assertEq(doub.balanceOf(address(arena)), 0);
+        assertEq(doub.balanceOf(address(adminVault)), 0);
+    }
+
+    function _warpUnderDefendedStreakWindow() internal {
+        _warpRemaining(_below[0] + 30);
+    }
+
+    /// Remaining in (hard-reset band, defended-streak window) — streak window without timer snap.
+    function _warpUnderDefendedStreakWindowNoHardReset() internal {
+        _warpRemaining(_below[0] + 30);
+    }
+
+    function _warpRemaining(uint256 target) internal {
+        uint256 dl = arena.deadline();
+        uint256 remaining = dl > block.timestamp ? dl - block.timestamp : 0;
+        require(target < arena.DEFENDED_STREAK_WINDOW_SEC(), "bad timer config");
+        if (remaining > target) {
+            vm.warp(block.timestamp + remaining - target);
+        }
+        _freezeCharmPrice();
     }
 
     /// GitLab #252: WarBow epoch roll clears live battlePoints (generation bump).

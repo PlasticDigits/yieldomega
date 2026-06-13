@@ -52,6 +52,10 @@ Canonical table: [`ArenaPodiumTimerConfig.sol`](src/arena/libraries/ArenaPodiumT
 | `WARBOW_REVENGE_DOUB` | `1000e18` | Revenge window 24h |
 | Flag claim | `0` | +1000 BP after 300s silence |
 
+All WarBow DOUB spends (**steal / guard / revenge**, including steal-limit bypass) route **100%** to podium vaults via the same **`_routeDoubPrizeSplit`** as **`buy`** and increment **`totalDoubRaised`** ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)); no DOUB stranded on **`TimeArena`**.
+
+Buy-path WarBow BP includes **streak-break** (`activeDefendedStreak × WARBOW_STREAK_BREAK_MULT_BP` when a different buyer buys under **`DEFENDED_STREAK_WINDOW_SEC`**) and **ambush** (+`WARBOW_AMBUSH_BONUS_BP` on hard reset + streak break), matching [`warbow_buy_bp_delta`](../../simulations/timecurve_sim/model.py).
+
 Forge: `TimeArena.t.sol::test_warbow_*`, `test_finalize_warbow_podium_pays_after_roll`. Epoch roll clears BP via `warbowBpGeneration`; admin `finalizeWarbowPodium` pays (roll skips auto 4∶2∶1).
 
 ## TimeCurve (retired v1 — historical)
@@ -72,11 +76,11 @@ Forge: `TimeArena.t.sol::test_warbow_*`, `test_finalize_warbow_podium_pays_after
 | WarBow timer-reset bonus BP | **500** | `WARBOW_TIMER_RESET_BONUS_BP` (when remaining &lt; 13m before buy) | Fixed |
 | WarBow clutch bonus BP | **150** | `WARBOW_CLUTCH_BONUS_BP` (remaining &lt; 30s before buy) | Fixed |
 | WarBow streak-break mult | **100** BP per prior active streak count | `WARBOW_STREAK_BREAK_MULT_BP` | Fixed |
-| WarBow ambush bonus BP | **200** | With hard reset + streak break under window | Fixed |
+| WarBow ambush bonus BP | **200** | With hard reset + streak break under window — wired in `_applyBuyWarBowBp` ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)) | Fixed |
 | WarBow flag claim BP | **1000** | `WARBOW_FLAG_CLAIM_BP`; silence **300s** | Fixed |
-| WarBow steal / revenge spend (FeeRouter) | **1e18** each | `WARBOW_STEAL_BURN_WAD`, `WARBOW_REVENGE_BURN_WAD`; routed like **`buy`**; **`totalRaised +=` gross** | Fixed |
-| WarBow steal limit bypass spend | **50e18** | When victim already hit 3 steals that UTC day (`WARBOW_BYPASS_BURN_WAD`) | Fixed |
-| WarBow guard spend / duration | **10e18** / **6h** | `WARBOW_GUARD_BURN_WAD`, `WARBOW_GUARD_DURATION_SEC` | Fixed |
+| WarBow steal / revenge spend | **1000e18** each | `WARBOW_STEAL_DOUB`, `WARBOW_REVENGE_DOUB`; routed like **`buy`** via `_routeDoubPrizeSplit`; **`totalDoubRaised +=` gross** ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)) | Fixed |
+| WarBow steal limit bypass spend | **50_000e18** | When daily steal cap exceeded (`WARBOW_STEAL_LIMIT_BYPASS_DOUB`); same routing as steal | Fixed |
+| WarBow guard spend / duration | **10_000e18** / **6h** | `WARBOW_GUARD_DOUB`, `WARBOW_GUARD_DURATION_SEC`; same routing as **`buy`** ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)) | Fixed |
 | WarBow steal drain BPS | **1000** (10%) normal, **100** (1%) guarded | `WARBOW_STEAL_DRAIN_BPS`, `WARBOW_STEAL_DRAIN_GUARDED_BPS` | Fixed |
 | WarBow steal BP bracket | **2×–10×** attacker BP | `warbowSteal`: **`victimBP ≥ 2 × attackerBP`** and **`victimBP ≤ 10 × attackerBP`** (reverts **`TimeCurve: steal 2x rule`** / **`TimeCurve: steal 10x cap`**) — [GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211) | Fixed |
 | Defended streak window | **900** seconds | `DEFENDED_STREAK_WINDOW_SEC` — remaining time **below** this before buy counts as “under 15 minutes” | Fixed |
