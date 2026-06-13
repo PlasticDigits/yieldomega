@@ -153,7 +153,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 
 - [ ] From repo root: `bash scripts/e2e-anvil.sh` completes **green** (Foundry + `npm ci` in `frontend/` as needed).
 - [ ] If you only run Playwright manually: `cd frontend && ANVIL_E2E=1 VITE_E2E_MOCK_WALLET=1` after a matching build — confirm **one** worker in the list reporter or config.
-- [ ] **ETH route** test: after **`arena-paywith-eth`**, expect **Quoted ETH spend** (aria-label) and a resolved quoted amount (not `…`) before moving the slider; then **Buy CHARM** enabled after quote refresh (see [arena-views — Buy quote refresh](../frontend/arena-views.md#buy-quote-refresh-kumbaya-issue-56), issue #56).
+- [ ] **ETH route** test: after **`arena-paywith-eth`**, expect **Quoted ETH spend** (aria-label) and a resolved quoted amount (not `…`) before moving the slider; then **Buy CHARM** enabled after quote refresh (see [arena-views — pay modes](../frontend/arena-views.md#pay-modes), issue #56).
 - [ ] **Optional:** For **back-to-back buys** from the **same** mock wallet without real-time waits, deploy with **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** ([issue #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)) — see [e2e-anvil — buy cooldown](e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88) and [DeployDev buy cooldown](#manual-qa-issue-88) below.
 
 **Doc map:** [e2e-anvil — Concurrency](e2e-anvil.md#anvil-e2e-concurrency-gitlab-87) · [invariants — Anvil E2E](invariants-and-business-logic.md#anvil-e2e-playwright-concurrency-and-pay-mode-selectors-issue-87)
@@ -547,7 +547,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 ### Truth order
 
-1. [arena-views — Arena sniper-shark](../frontend/arena-views.md#arena-sniper-shark-cutout-issue-80)
+1. [arena-views — command console art](../frontend/arena-views.md#arena-command-console-gitlab-291)
 2. [`frontend/public/art/README.md`](../../frontend/public/art/README.md)
 3. `TimeArenaPage.tsx` and `CutoutDecoration.tsx`
 
@@ -593,7 +593,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 4. **`/`** still shows the same hub; **no** double layout (single **`RootLayout`** outlet).
 5. **Post-launch (optional):** rebuild with **`VITE_LAUNCH_TIMESTAMP`** in the **past** → **`/`** is Arena, **`/home`** is still the full hub.
 
-**Doc map:** [`arena-views.md` — LaunchCountdown → Simple handoff](../frontend/arena-views.md#launchcountdown--simple-handoff) · [invariants — #199](invariants-and-business-logic.md#launchgate-home-route--no-env-parity-gitlab-199) · [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx)
+**Doc map:** [invariants — #199](invariants-and-business-logic.md#launchgate-home-route--no-env-parity-gitlab-199) · [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx)
 
 <a id="manual-qa-issue-223"></a>
 
@@ -621,7 +621,7 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 - [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts) · [`chainMismatchWriteGuard.test.ts`](../../frontend/src/lib/chainMismatchWriteGuard.test.ts)
 - [`ChainMismatchWriteBarrier.tsx`](../../frontend/src/components/ChainMismatchWriteBarrier.tsx), [`SwitchToTargetChainButton.tsx`](../../frontend/src/components/SwitchToTargetChainButton.tsx)
 
-**Doc map:** [`wallet-connection.md`](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [`arena-views.md`](../frontend/arena-views.md#wrong-network-write-gating-issue-95) · [invariants — #95](invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95) · [§ #106 — `/vesting` claim race](#manual-qa-issue-106)
+**Doc map:** [`wallet-connection.md`](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [invariants — #95](invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95) · [§ #106 — `/vesting` claim race](#manual-qa-issue-106)
 
 <a id="manual-qa-issue-194-arena-buy-chain-visual"></a>
 
@@ -644,7 +644,7 @@ Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (o
 - [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) · [`index.css`](../../frontend/src/index.css) (`arena-simple__cta--wrong-network`)
 - [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts)
 
-**Doc map:** [`arena-views.md` §194](../frontend/arena-views.md#arena-buy-charm-wrong-chain-visual-gitlab-194) · [invariants — `INV-FRONTEND-194-ARENA-BUY-CHAIN`](invariants-and-business-logic.md#arena-buy-charm-wrong-chain-visual-gitlab-194)
+**Doc map:** [invariants — `INV-FRONTEND-194-ARENA-BUY-CHAIN`](invariants-and-business-logic.md#arena-buy-charm-wrong-chain-visual-gitlab-194)
 
 <a id="manual-qa-issue-144-wallet-session-drift-on-buy"></a>
 
@@ -742,7 +742,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, or 
 5. **Recent buys:** **Cannot reach indexer · cached data may be stale**, not **Waiting for the first buy** when empty/offline.
 6. **Recovery:** indexer back → pill **live**.
 
-**Doc map:** [arena-views — #96](../frontend/arena-views.md#indexer-offline-ux-issue-96) · [invariants — #96](invariants-and-business-logic.md#indexer-offline-ux-and-backoff-gitlab-96)
+**Doc map:** [invariants — #96](invariants-and-business-logic.md#indexer-offline-ux-and-backoff-gitlab-96)
 
 <a id="manual-qa-issue-97"></a>
 

@@ -47,8 +47,6 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 **Wrong-network / Rabby (required for full PASS):** The mock connector cannot change `chainId`. For [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) and issue paths such as [#277](https://gitlab.com/PlasticDigits/yieldomega/-/issues/277) **#7**, use Rabby — [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md) · `bash scripts/verify-rabby-chain-mismatch.sh` · [`.cursor/skills/rabby-cloud-verification/SKILL.md`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
 
-**Collection** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts placeholder **under construction** routes (not NFT reads).
-
 **Referrals `/referrals` (issue #64)** — [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts): mock wallet registers a code and asserts share-link copy UX. See [`referrals.md`](../product/referrals.md) and [manual QA — #64](manual-qa-checklists.md#manual-qa-issue-64).
 
 ## Environment contract (build time)
@@ -235,6 +233,21 @@ The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../
 **Hermetic regressions (no Anvil):** `bash scripts/verify-e2e-anvil-trap.sh` · `bash scripts/test-anvil-deploy-cl8y-extract.sh` · `bash scripts/test-anvil-deploy-caller-scope.sh` (CI **`scripts-smoke`**).
 
 **Invariant map:** [`INV-ANVIL-E2E-279-TRAP`](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279) · [`INV-ANVIL-E2E-279-CL8Y-EXTRACT`](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279).
+
+<a id="verify-anvil-script-helpers-gitlab-324"></a>
+
+### Indexer-backed verify script helpers ([GitLab #324](https://gitlab.com/PlasticDigits/yieldomega/-/issues/324))
+
+Indexer smoke scripts (`verify-podium-live-anvil.sh`, `verify-wallet-profile-anvil.sh`, …) share bootstrap via:
+
+| Module | Role |
+|--------|------|
+| [`verify_anvil_common.sh`](../../scripts/lib/verify_anvil_common.sh) | Port-scoped `pkill`, Anvil spawn/wait, `anvil_send`, cooldown warp, guarded PID cleanup |
+| [`verify_indexer_stack.sh`](../../scripts/lib/verify_indexer_stack.sh) | DeployDev export, local registry JSON, Postgres app DB reset, indexer spawn, `/v1/status` wait |
+
+Callers set **`VERIFY_SCRIPT_PREFIX`** so log lines keep script-specific prefixes for MR checklists. **`yieldomega_verify_boot_indexer_stack`** composes the full Anvil → deploy → PG → indexer path; scripts add scenario-specific buys/assertions afterward.
+
+**Not in CI** (local/manual only — rejected [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309)). Hermetic lib smoke: `bash scripts/test-verify-anvil-lib.sh`. Legacy v1 **`verify-timecurve-post-end-gates-anvil.sh`** removed (Arena v2 incompatible).
 
 ## Related
 
