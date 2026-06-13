@@ -93,7 +93,7 @@ contract TimeArenaBuyRouter is ReentrancyGuard, Ownable2Step {
         bytes calldata path
     ) external payable nonReentrant {
         TimeArena ta = timeArena;
-        if (ta.arenaStart() == 0 || ta.paused() || block.timestamp > ta.deadline()) {
+        if (ta.arenaStart() == 0 || ta.paused()) {
             revert TimeArenaBuyRouter__BadPhase();
         }
         if (charmWad < 99e16 || charmWad > 10e18) revert TimeArenaBuyRouter__CharmBounds();

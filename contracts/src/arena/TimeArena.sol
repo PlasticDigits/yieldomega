@@ -435,6 +435,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(take > 0, "TimeArena: steal zero");
         _subBattlePoints(victim, take);
         _addBattlePoints(msg.sender, take);
+        _updateTopThree(CAT_WARBOW, victim, _effectiveBattlePoints(victim));
         _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
 
         if (victimSteals < type(uint8).max) stealsReceivedOnDay[victim][day] = victimSteals + 1;
@@ -457,6 +458,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(take > 0, "TimeArena: revenge zero");
         _subBattlePoints(stealer, take);
         _addBattlePoints(msg.sender, take);
+        _updateTopThree(CAT_WARBOW, stealer, _effectiveBattlePoints(stealer));
         _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
         warbowPendingRevengeExpiryExclusive[msg.sender][stealer] = 0;
         emit WarBowRevenge(msg.sender, stealer, take, spent);
@@ -917,7 +919,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         Podium storage p = _podiums[cat];
         for (uint8 r; r < 3; ++r) {
             if (p.winners[r] == entrant) {
-                if (value > p.values[r]) p.values[r] = value;
+                p.values[r] = value;
                 _sortPodium(cat);
                 return;
             }
