@@ -12,6 +12,7 @@ import {TimeMath} from "../libraries/TimeMath.sol";
 import {ArenaBuyRouting} from "./libraries/ArenaBuyRouting.sol";
 import {ArenaPodiumSettlement} from "./libraries/ArenaPodiumSettlement.sol";
 import {ArenaPodiumTimerConfig} from "./libraries/ArenaPodiumTimerConfig.sol";
+import {ArenaCharmBounds} from "./libraries/ArenaCharmBounds.sol";
 import {ArenaXp} from "./libraries/ArenaXp.sol";
 import {AnvilKumbayaRouter} from "../fixtures/AnvilKumbayaFixture.sol";
 import {AnvilKumbayaPools} from "../fixtures/AnvilKumbayaPools.sol";
@@ -64,8 +65,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 public constant WARBOW_REVENGE_WINDOW_SEC = 24 hours;
 
     uint256 internal constant WAD = 1e18;
-    uint256 internal constant CHARM_MIN_WAD = 99e16;
-    uint256 internal constant CHARM_MAX_WAD = 10e18;
 
     IERC20 public doub;
     PodiumVaults public podiumVaults;
@@ -728,27 +727,49 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return _effectiveBattlePoints(user);
     }
 
+    /// @dev Default PodiumVaults maps every pool slot to `address(podiumVaults)` — one ERC-20 xfer
+    /// instead of twelve per buy (#316). Per-tranche events unchanged; economics unchanged (#300).
     function _routeDoubPrizeSplit(uint256 amount) private returns (uint256 routed) {
         (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) = ArenaBuyRouting.splitBuyAmount(amount);
+        address vaultAddr = address(podiumVaults);
+        bool batchToVault = amount > 0;
+        for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS && batchToVault; ++i) {
+            if (
+                podiumVaults.activePools(i) != vaultAddr || podiumVaults.seedPools(i) != vaultAddr
+                    || podiumVaults.futurePools(i) != vaultAddr
+            ) {
+                batchToVault = false;
+            }
+        }
+        if (batchToVault) {
+            doub.safeTransfer(vaultAddr, amount);
+            routed = amount;
+        }
         for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS; ++i) {
             uint256 ep = podiumEpoch[i];
             if (cur[i] > 0) {
                 address pool = podiumVaults.activePools(i);
-                doub.safeTransfer(pool, cur[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, cur[i]);
+                    routed += cur[i];
+                }
                 podiumVaults.notifyPodiumEpochFunded(i, ep, cur[i], pool);
-                routed += cur[i];
             }
             if (nxt[i] > 0) {
                 address pool = podiumVaults.seedPools(i);
-                doub.safeTransfer(pool, nxt[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, nxt[i]);
+                    routed += nxt[i];
+                }
                 podiumVaults.notifyPodiumEpochFunded(i, ep + 1, nxt[i], pool);
-                routed += nxt[i];
             }
             if (nxt2[i] > 0) {
                 address pool = podiumVaults.futurePools(i);
-                doub.safeTransfer(pool, nxt2[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, nxt2[i]);
+                    routed += nxt2[i];
+                }
                 podiumVaults.notifyPodiumEpochFunded(i, ep + 2, nxt2[i], pool);
-                routed += nxt2[i];
             }
         }
     }
@@ -762,18 +783,35 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         private
         returns (uint256 routed)
     {
+        address vaultAddr = address(podiumVaults);
+        uint256 batchAmount;
+        bool batchToVault = true;
+        for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS; ++i) {
+            batchAmount += act[i] + sed[i];
+            if (podiumVaults.activePools(i) != vaultAddr || podiumVaults.seedPools(i) != vaultAddr) {
+                batchToVault = false;
+            }
+        }
+        if (batchToVault && batchAmount > 0) {
+            doub.safeTransfer(vaultAddr, batchAmount);
+            routed = batchAmount;
+        }
         for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS; ++i) {
             if (act[i] > 0) {
                 address pool = podiumVaults.activePools(i);
-                doub.safeTransfer(pool, act[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, act[i]);
+                    routed += act[i];
+                }
                 podiumVaults.notifyPodiumFunded(i, act[i], pool);
-                routed += act[i];
             }
             if (sed[i] > 0) {
                 address pool = podiumVaults.seedPools(i);
-                doub.safeTransfer(pool, sed[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, sed[i]);
+                    routed += sed[i];
+                }
                 podiumVaults.notifySeedFunded(i, sed[i], pool);
-                routed += sed[i];
             }
         }
     }
@@ -835,7 +873,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _validateCharm(uint256 charmWad) internal pure {
-        require(charmWad >= CHARM_MIN_WAD && charmWad <= CHARM_MAX_WAD, "TimeArena: charm bounds");
+        ArenaCharmBounds.validate(charmWad);
     }
 
     function _trackLastBuyer(address buyer) private {
@@ -890,6 +928,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _sortPodium(uint8 cat) private {
+        // Bubble-sort on three slots is O(1) and cheaper than heap setup (#316).
         Podium storage p = _podiums[cat];
         for (uint8 i; i < 2; ++i) {
             for (uint8 j = i + 1; j < 3; ++j) {
