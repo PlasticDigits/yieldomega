@@ -63,7 +63,7 @@ Arena v2 Postgres projections (fresh DB only — see [Arena v2 schema](#arena-v2
 - **`idx_arena_referral_cred`**, **`idx_arena_referral_applied`**, **`idx_referral_code_registered`** — referral CRED and codes ([#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
 - **`idx_arena_podium_pool_top_up`**, **`idx_arena_vault_funding`** — manual podium top-ups ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262)) and per-buy vault splits ([#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267))
 
-**Retired:** legacy **`timecurve_*`** / **`idx_timecurve_*`** buy, prize, and WarBow tables; Rabbit Treasury **`Burrow*`** projections — decode paths and HTTP removed ([#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263), [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)). Historical Rabbit spec: [rabbit-treasury.md](../product/rabbit-treasury.md).
+**Retired:** legacy **`timecurve_*`** / **`idx_timecurve_*`** buy, prize, and WarBow tables; Rabbit Treasury **`Burrow*`** projections — decode paths and HTTP removed ([#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263), [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)). Historical context: [arena-v2.md § Retired surfaces](../product/arena-v2.md#retired-surfaces), [treasury-contracts.md](../onchain/treasury-contracts.md).
 
 - **factions** — membership rules referencing NFT traits.
 - **Derived** winner rows must record **derivation rules** (contract version + block) for auditability.
