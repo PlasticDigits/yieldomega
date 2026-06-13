@@ -8,7 +8,6 @@ import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {TimeMath} from "../src/libraries/TimeMath.sol";
 import {
@@ -31,7 +30,6 @@ contract TimeArenaEpochCharmPriceTest is Test {
     Doubloon doub;
     PlayCred cred;
     PodiumVaults vaults;
-    AdminSellVault adminVault;
     TimeArena arena;
     AnvilKumbayaRouter kumbaya;
     MockCl8yReserve cl8y;
@@ -57,17 +55,15 @@ contract TimeArenaEpochCharmPriceTest is Test {
         doub = new Doubloon(admin);
         cred = new PlayCred(admin);
         vaults = new PodiumVaults(doub, admin);
-        adminVault = new AdminSellVault(doub, admin);
 
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, vaults, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
         vaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         cred.grantRole(cred.MINTER_ROLE(), address(arena));
         arena.startArena();
 
@@ -105,6 +101,38 @@ contract TimeArenaEpochCharmPriceTest is Test {
         vm.prank(alice);
         arena.buy(1e18);
         assertApproxEqRel(before - doub.balanceOf(alice), expected, 1e12);
+    }
+
+    /// GitLab #315 — `doubOwedForBuy` is `view` and matches immediate `buy` DOUB pull within epoch.
+    function test_doubOwedForBuy_matches_buy_within_epoch() public {
+        vm.warp(arena.epochAnchorTimestamp() + ONE_DAY / 2);
+        uint256 charm = 1e18;
+        uint256 preview = arena.doubOwedForBuy(charm);
+        uint256 before = doub.balanceOf(alice);
+        vm.prank(alice);
+        arena.buy(charm);
+        assertEq(before - doub.balanceOf(alice), preview, "preview matches buy within epoch");
+    }
+
+    /// GitLab #315 — at hard-reset boundary, preview samples re-anchor before state write.
+    function test_doubOwedForBuy_matches_buy_at_hard_reset_boundary() public {
+        _wireKumbayaSpot();
+
+        vm.warp(arena.deadline() - 600);
+
+        kumbaya.setPair(address(cl8y), address(doub), 200_000e18, 100_000_000e18);
+
+        uint256 preview = arena.doubOwedForBuy(CHARM_MIN);
+        uint256 stalePriceOwed = Math.mulDiv(CHARM_MIN, arena.effectiveCharmPriceWad(), WAD);
+        assertLt(preview, stalePriceOwed, "preview uses sampled anchor, not stale effective price");
+
+        uint256 before = doub.balanceOf(alice);
+        vm.prank(alice);
+        arena.buy(CHARM_MIN);
+        uint256 paid = before - doub.balanceOf(alice);
+
+        assertEq(preview, paid, "doubOwedForBuy equals buy DOUB at hard-reset boundary");
+        assertEq(paid, Math.mulDiv(CHARM_MIN, arena.effectiveCharmPriceWad(), WAD), "buy uses post-reset anchor");
     }
 
     function test_buyWithCred_ignores_epoch_growth() public {
