@@ -370,7 +370,7 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
                       EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
                FROM idx_arena_buy
                WHERE (block_number, log_index) < ($1, $2)
-               ORDER BY block_number DESC, log_index DESC
+               ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
                LIMIT $3"#,
         )
         .bind(c.block_number)
@@ -389,7 +389,7 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
                       new_deadline::text, buy_index::text, log_index, pay_kind,
                       EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
                FROM idx_arena_buy
-               ORDER BY block_number DESC, log_index DESC
+               ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
                LIMIT $1 OFFSET $2"#,
         )
         .bind(limit)
