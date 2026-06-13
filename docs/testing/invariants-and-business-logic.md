@@ -109,7 +109,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
 | **`INV-TIME-ARENA-ROUTE-SPLIT`** | **100%** podium vaults per DOUB buy (**0%** admin); **25%** × 4 categories; **70/20/10** epoch tranches ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)); **no** retired v1 five-sink CL8Y routing ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)) | [`ArenaPrizeRouting.t.sol`](../../contracts/test/ArenaPrizeRouting.t.sol), `TimeArena.t.sol::test_buy_routes_doub_split`, `test_buy_routes_epoch_tranches_worked_example` · [fee-routing](../onchain/fee-routing-and-governance.md) · [§300](#arena-prize-routing-gitlab-300) |
-| **`INV-ADMIN-SELL-VAULT-249`** | `sellDoubToUsdm(minOut)` is **`onlyOwner`**; swaps full DOUB balance via configured router; USDM to **`adminAccount`** | [`AdminSellVault.t.sol`](../../contracts/test/AdminSellVault.t.sol) (mock `exactInputSingle` + [`AnvilMockUSDM`](../../contracts/src/fixtures/AnvilKumbayaFixture.sol)) · [#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249) |
+| **`INV-ADMIN-SELL-VAULT-249`** | **Retired ([#314](https://gitlab.com/PlasticDigits/yieldomega/-/issues/314))** — `AdminSellVault` removed from arena deploy; historical evidence in git before #314 | [#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249) |
 | **`INV-TIME-ARENA-TIMER-EXTEND`** | Qualifying buy adds **+120s** when not in hard-reset band | `test_timer_extension_without_hard_reset`, `TimeMath.t.sol::testFuzz_extendDeadlineOrReset_arenaProfile` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
 | **`INV-TIME-ARENA-EPOCH-CHARM-GROWTH`** | DOUB `buy` uses **`effectiveCharmPriceWad()`** = epoch anchor × exp(ln(1.1)×elapsed/86400); hard-reset buy re-anchors TWAP **before** DOUB pull; **`LastBuyEpochCharmAnchored`** emitted | `TimeArenaEpochCharmPrice.t.sol`, `TimeArena.t.sol` ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)) · [detail §305](#timearena-epoch-charm-price-gitlab-305) |
 | **`INV-TIME-ARENA-CRED-FLAT`** | **`buyWithCred`** burns **`CRED_PER_CHARM_WAD`** only; no reads of epoch DOUB price | `TimeArenaEpochCharmPrice.t.sol::test_buyWithCred_ignores_epoch_growth` ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)) |
@@ -493,7 +493,7 @@ Onchain notifications: **`PodiumEpochFunded`** on each DOUB **`buy`** ([#300](ht
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
-| **`INV-ARENA-PRIZE-ROUTING-300-ZERO-ADMIN`** | DOUB **`buy`** sends **0%** to **`AdminSellVault`** | `TimeArena.t.sol::test_buy_routes_doub_split` |
+| **`INV-ARENA-PRIZE-ROUTING-300-ZERO-ADMIN`** | DOUB **`buy`** sends **0%** to any admin fee sink; **`AdminSellVault`** not deployed ([#314](https://gitlab.com/PlasticDigits/yieldomega/-/issues/314)) | `TimeArena.t.sol::test_buy_routes_doub_split` |
 | **`INV-ARENA-PRIZE-ROUTING-300-25PCT`** | Each of 4 categories receives **25%** of buy (± remainder → Time Booster) | `ArenaPrizeRouting.t.sol`, `testFuzz_splitBuy_no_dust` |
 | **`INV-ARENA-PRIZE-ROUTING-300-702010`** | Per category: **70% / 20% / 10%** → `podiumEpoch[cat]`, `+1`, `+2` | `test_buy_routes_epoch_tranches_worked_example`, `testFuzz_epoch_split_per_category_bps` |
 | **`INV-ARENA-PRIZE-ROUTING-300-ROLL`** | `rollPodiumEpoch` pays active 4∶2∶1 and **`rollEpochTranches`** promotes seed/future | `test_roll_promotes_epoch_tranches_and_pays_active`, `test_finalize_warbow_podium_pays_after_roll` |
@@ -560,7 +560,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 | Area | Intent (short) | Spec |
 |------|----------------|------|
 | **TimeArena** | DOUB/CRED buys, four podium timers, 100% podium buy routing (25% × 4 · 70/20/10 epoch tranches ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300))), epoch CRED, XP, DOUB WarBow, always-live (`paused` only) | [arena-v2.md](../product/arena-v2.md), [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) |
-| **PodiumVaults / AdminSellVault** | Active/seed pools, admin vault, `rollPodiumEpoch`, manual top-up ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)) | [arena-v2.md](../product/arena-v2.md) |
+| **PodiumVaults** | Active/seed pools, `rollPodiumEpoch`, manual top-up ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)) | [arena-v2.md](../product/arena-v2.md) |
 | **ReferralRegistry** | Code registration; referred-buy **flat 5 CRED per side** on DOUB buys ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272); baseline [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)) | [referrals.md](../product/referrals.md) |
 | **DoubPresaleVesting** | Presale DOUB vesting schedule + claims gate | [`DoubPresaleVesting.sol`](../../contracts/src/vesting/DoubPresaleVesting.sol) |
 | **Indexer** | Arena + referral decode; per-block tx ([#140](#indexer-transactional-block-ingestion-gitlab-140)); reorg rollback | [`REORG_STRATEGY.md`](../../indexer/REORG_STRATEGY.md), [indexer design](../indexer/design.md) |
@@ -703,7 +703,7 @@ Cross-links: [`docs/indexer/design.md` §306](../indexer/design.md#indexer-json-
 
 ### Indexer production registry (GitLab [#156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156))
 
-**INV-INDEXER-156:** With **`INDEXER_PRODUCTION`**, registry must include **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`ReferralRegistry`**, valid **`chain_id`**, and **`deploy_block > 0`** (except Anvil **31337**).
+**INV-INDEXER-156:** With **`INDEXER_PRODUCTION`**, registry must include **`TimeArena`**, **`PodiumVaults`**, **`ReferralRegistry`**, valid **`chain_id`**, and **`deploy_block > 0`** (except Anvil **31337**). Legacy **`AdminSellVault`** key is optional ([#314](https://gitlab.com/PlasticDigits/yieldomega/-/issues/314)).
 
 <a id="retired-v1-reserve-removal-gitlab-242"></a>
 
@@ -728,7 +728,20 @@ Product: [arena-v2 § retired surfaces](../product/arena-v2.md#retired-surfaces)
 | **`INV-DEPLOY-281-DEV-WALLET-SEED`** | Idempotent **`KEY_EVM_1..3`** seed after DeployDev: minter PK aligned with **`PRIVATE_KEY`**, loopback-only, balance skip, clear **`MINTER_ROLE`** diagnostic | [`seed-evm-dev-wallets-anvil.sh`](../../scripts/seed-evm-dev-wallets-anvil.sh), [`verify-evm-dev-wallet-seed-anvil.sh`](../../scripts/verify-evm-dev-wallet-seed-anvil.sh) ([#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281)) |
 | **`INV-DEPLOY-281-EXTRA-MINTER`** | When seed minter ≠ deploy broadcaster, **`DeployDev`** grants **`MINTER_ROLE`** to **`YIELDOMEGA_SEED_MINTER_ADDRESS`** (dev chain only) | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol), [`anvil_deployer_key.sh`](../../scripts/lib/anvil_deployer_key.sh) ([#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281)) |
 | **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no Leprechaun/Rabbit/Presale/v1 launchpad cores | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
-| **`INV-DEPLOY-259-REGISTRY`** | Registry JSON: TimeArena, PodiumVaults, AdminSellVault, PlayCred | [`scripts/lib/arena_v2_registry_from_broadcast.sh`](../../scripts/lib/arena_v2_registry_from_broadcast.sh) |
+| **`INV-DEPLOY-259-REGISTRY`** | Registry JSON: TimeArena, PodiumVaults, PlayCred, ReferralRegistry | [`scripts/lib/arena_v2_registry_from_broadcast.sh`](../../scripts/lib/arena_v2_registry_from_broadcast.sh) |
+| **`INV-DEPLOY-314-NO-ADMIN-VAULT`** | Arena deploy omits **`AdminSellVault`**; `TimeArena.initialize` has no admin vault param; reserved storage slot only | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol), [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) · [#314](https://gitlab.com/PlasticDigits/yieldomega/-/issues/314) |
+
+<a id="arena-deploy-no-admin-sell-vault-gitlab-314"></a>
+
+### Arena deploy without AdminSellVault (GitLab [#314](https://gitlab.com/PlasticDigits/yieldomega/-/issues/314))
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-DEPLOY-314-NO-ADMIN-VAULT`** | **`DeployDev`** / **`DeployProduction`** do not deploy **`AdminSellVault`**; Anvil registry JSON omits the key | `bash scripts/verify-evm-dev-wallet-seed-anvil.sh`, `bash scripts/start-local-anvil-stack.sh --no-frontend` |
+| **`INV-DEPLOY-314-BUY-ZERO-ADMIN`** | Buy path still routes **100%** to podiums | `TimeArena.t.sol::test_buy_routes_doub_split` |
+| **`INV-DEPLOY-314-KUMBAYA-SURPLUS`** | Kumbaya buy-router DOUB dust → deployer (`doubSurplusRecipient`), not admin vault | [`DeployKumbayaAnvilFixtures.s.sol`](../../contracts/script/DeployKumbayaAnvilFixtures.s.sol) |
+
+Ops: [`deployment-guide` §314](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
 
 Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · E2E: [`e2e-anvil.md`](e2e-anvil.md) · dev-wallet seed: [`e2e-anvil.md` § dev-wallet seed](e2e-anvil.md#anvil-dev-wallet-seed-gitlab-281) ([#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281)).
 

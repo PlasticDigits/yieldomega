@@ -8,7 +8,6 @@ import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {TimeMath} from "../src/libraries/TimeMath.sol";
 import {
@@ -31,7 +30,6 @@ contract TimeArenaEpochCharmPriceTest is Test {
     Doubloon doub;
     PlayCred cred;
     PodiumVaults vaults;
-    AdminSellVault adminVault;
     TimeArena arena;
     AnvilKumbayaRouter kumbaya;
     MockCl8yReserve cl8y;
@@ -57,17 +55,15 @@ contract TimeArenaEpochCharmPriceTest is Test {
         doub = new Doubloon(admin);
         cred = new PlayCred(admin);
         vaults = new PodiumVaults(doub, admin);
-        adminVault = new AdminSellVault(doub, admin);
 
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, vaults, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
         vaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         cred.grantRole(cred.MINTER_ROLE(), address(arena));
         arena.startArena();
 

@@ -17,7 +17,6 @@ import {AnvilKumbayaRouter} from "../fixtures/AnvilKumbayaFixture.sol";
 import {AnvilKumbayaPools} from "../fixtures/AnvilKumbayaPools.sol";
 import {ArenaCharmPriceTwap} from "../oracle/ArenaCharmPriceTwap.sol";
 import {PodiumVaults} from "./PodiumVaults.sol";
-import {AdminSellVault} from "./AdminSellVault.sol";
 import {IReferralRegistry} from "../interfaces/IReferralRegistry.sol";
 import {IPlayCred} from "../interfaces/IPlayCred.sol";
 
@@ -69,7 +68,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     IERC20 public doub;
     PodiumVaults public podiumVaults;
-    AdminSellVault public adminSellVault;
+    /// @dev Reserved storage — former `AdminSellVault` slot (GitLab #314). Do not repurpose.
+    address private __reservedAdminSellVault;
     IReferralRegistry public referralRegistry;
     IPlayCred public playCred;
 
@@ -205,7 +205,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function initialize(
         IERC20 _doub,
         PodiumVaults _podiumVaults,
-        AdminSellVault _adminSellVault,
         address _referralRegistry,
         address _playCred,
         uint256 _charmPriceWad,
@@ -220,7 +219,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         __Ownable_init(upgradeAdmin);
         require(address(_doub) != address(0), "TimeArena: zero doub");
         require(address(_podiumVaults) != address(0), "TimeArena: zero vaults");
-        require(address(_adminSellVault) != address(0), "TimeArena: zero admin vault");
         require(_charmPriceWad > 0, "TimeArena: zero price");
         require(_buyCooldownSec > 0, "TimeArena: zero cooldown");
 
@@ -234,7 +232,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         doub = _doub;
         podiumVaults = _podiumVaults;
-        adminSellVault = _adminSellVault;
         if (_referralRegistry != address(0)) {
             referralRegistry = IReferralRegistry(_referralRegistry);
         }
