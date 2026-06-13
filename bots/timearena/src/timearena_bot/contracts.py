@@ -27,11 +27,6 @@ def timearena_contract(w3: Web3, address: str) -> Contract:
     return w3.eth.contract(address=Web3.to_checksum_address(address), abi=_load_abi("timearena.json"))
 
 
-def timecurve_contract(w3: Web3, address: str) -> Contract:
-    """Alias for Arena v2 (`TimeArena` proxy address in env)."""
-    return timearena_contract(w3, address)
-
-
 def erc20_contract(w3: Web3, address: str) -> Contract:
     return w3.eth.contract(address=Web3.to_checksum_address(address), abi=_load_abi("erc20.json"))
 

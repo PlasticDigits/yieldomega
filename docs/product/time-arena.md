@@ -48,7 +48,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 | Destination | Share | Notes |
 |-------------|-------|--------|
-| Each of 4 podium categories | 25% | 100% to prizes ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) |
+| Each of 4 podium categories | 25% | 100% to prizes ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)); `amount % 4` remainder wei → **Last Buy (cat 0)** ([#313](https://gitlab.com/PlasticDigits/yieldomega/-/issues/313)) |
 | Per category → epoch / +1 / +2 | 70% / 20% / 10% | `activePools` / `seedPools` / `futurePools` |
 
 **0%** admin take on buys. Library: [`ArenaBuyRouting`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol). Events: **`PodiumEpochFunded`**. Indexer: **`GET /v1/arena/vault-funding/*`** ([#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267)).
@@ -64,8 +64,8 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 ## Play CRED + epoch CHARM
 
 - **`PlayCred`**: non-transferable ERC-20; **`MINTER_ROLE`** for TimeArena (+ optional **`CredGrantor`**).
-- **`buyWithCred(charmWad)`**: burns `charmWad × 100e18 / 1e18` CRED; min/max CHARM band applies; **no** DOUB routing and **no** epoch CRED pool accrual on CRED-only buys ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)).
-- **CRED yield:** each **DOUB** buy adds **35 CRED** (18 decimals) to the current Last Buy epoch accrual pool (`epochCredPool[lastBuyEpoch]`).
+- **`buyWithCred(charmWad)`**: burns `charmWad × 100e18 / 1e18` CRED; min/max CHARM band applies; **no** DOUB routing; adds **35 CRED** to epoch pool like DOUB buys ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268), [#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311)).
+- **CRED yield:** each **DOUB or CRED** buy adds **35 CRED** (18 decimals) to the current Last Buy epoch accrual pool (`epochCredPool[lastBuyEpoch]`).
 - **Last Buy epoch CHARM:** `epochCharmWad[epoch][user]` and `epochCharmTotal[epoch]` track weight per epoch. On Last Buy hard reset → **`lastBuyEpoch`** increments; prior epoch becomes claimable.
 - **`claimCred(epoch)`** (requires `epoch < lastBuyEpoch`): pro-rata share of `epochCredPool[epoch]` by `epochCharmWad`, plus any **`epochFixedCredBonus`**; zeros epoch CHARM weight onchain for that user/epoch.
 - **First buy ever** (DOUB or CRED, per wallet): schedules **`FIRST_BUY_CRED_BONUS = 1100e18`** (110% of starter `buyWithCred` burn at `ONBOARDING_STARTER_CHARM_WAD = 10e18`) in **`epochFixedCredBonus[lastBuyEpoch + 1]`**; emits **`FirstBuyCredScheduled`** — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268), onboarding [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299). **`INV-TIME-ARENA-FIRST-BUY-CRED-BONUS`**.
@@ -118,7 +118,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 | Topic | Shipped onchain / UI | Approved / follow-up |
 |-------|---------------------|----------------------|
-| DOUB buy remainder wei | [`ArenaBuyRouting`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol): `amount % 4` → **WarBow (cat 3)** | Product target: **Last Buy (cat 0)** — contract change tracked separately from [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320) |
+| DOUB buy remainder wei | [`ArenaBuyRouting`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol): `amount % 4` → **Last Buy (cat 0)** ([#313](https://gitlab.com/PlasticDigits/yieldomega/-/issues/313)) | Resolved — shipped matches product target |
 | Pause scope | **`_requireLive()`** on buys, CRED buys, WarBow spends, **`claimWarBowFlag`** | All participant writes blocked when **`paused`** — [pause ops](../operations/pause-and-final-signoff.md) |
 | Play surface podiums | **`/`**: timer carousel + chips; four-card grid on **`/arena/protocol` only** | Do not reintroduce removed decision row or `ArenaSubnav` in docs ([#298](https://gitlab.com/PlasticDigits/yieldomega/-/issues/298)) |
 

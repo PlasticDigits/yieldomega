@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Fixed HD wallet indices for `timecurve-bot swarm` (3× each strategy + 3 rando)."""
+"""Fixed HD wallet indices for `timearena-bot swarm` (3× each strategy + 3 rando)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ SHARK_INDICES: tuple[int, ...] = (15, 16, 17)
 PVP_PAIRS: tuple[tuple[int, int], ...] = ((18, 19), (20, 21), (22, 23))
 RANDO_INDICES: tuple[int, ...] = (24, 25, 26)
 
-# Dedicated registrar for `timecurve-bot swarm` referral bootstrap (disjoint from buyer indices).
+# Dedicated registrar for `timearena-bot swarm` referral bootstrap (disjoint from buyer indices).
 REFERRAL_REGISTRAR_INDEX: int = 27
 
 MIN_ANVIL_ACCOUNTS = 30

@@ -1128,8 +1128,8 @@ export function ArenaSimplePage({
 
           {session.phase === "saleStartPending" && (
             <StatusMessage variant="muted">
-              The sale has not opened yet. The Buy CHARM action will unlock automatically when the
-              countdown above reaches zero.
+              The arena has not opened yet. Buy CHARM unlocks automatically when the countdown above
+              reaches zero.
             </StatusMessage>
           )}
 
@@ -1179,6 +1179,7 @@ export function ArenaSimplePage({
             phase={session.phase}
             playerLevel={playerLevelRaw}
             onFeatureHelp={openFeatureHelp}
+            onOpenWalletProfile={onOpenWalletProfile}
             warbowTargets={warbowTargets}
             indexerViewerBattlePoints={indexerViewerWarbowBattlePoints}
             indexerWarbowHead={indexerWarbowHead}

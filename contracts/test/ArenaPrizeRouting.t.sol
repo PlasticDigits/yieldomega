@@ -20,12 +20,12 @@ contract ArenaPrizeRoutingTest is Test {
         assertEq(sum, 1000e18);
     }
 
-    function test_split_remainder_to_last_category_and_t10_tranche() public pure {
+    function test_split_remainder_to_last_buy_and_t10_tranche() public pure {
         (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) =
             ArenaBuyRouting.splitBuyAmount(1003);
-        // 1003 / 4 = 250 rem 3 → cat 3 share = 253
-        assertEq(cur[0] + nxt[0] + nxt2[0], 250);
-        assertEq(cur[3] + nxt[3] + nxt2[3], 253);
+        // 1003 / 4 = 250 rem 3 → cat 0 (Last Buy) share = 253
+        assertEq(cur[0] + nxt[0] + nxt2[0], 253);
+        assertEq(cur[3] + nxt[3] + nxt2[3], 250);
         uint256 sum;
         for (uint8 i; i < 4; ++i) {
             sum += cur[i] + nxt[i] + nxt2[i];
@@ -72,11 +72,14 @@ contract ArenaPrizeRoutingTest is Test {
         uint256 baseShare = amount / 4;
         uint256 catRem = amount % 4;
         for (uint8 i; i < 4; ++i) {
-            uint256 share = baseShare + (i == 3 ? catRem : 0);
+            uint256 share = baseShare + (i == 0 ? catRem : 0);
             assertLe(cur[i], share);
             assertLe(nxt[i], share);
             assertLe(nxt2[i], share);
             assertEq(cur[i] + nxt[i] + nxt2[i], share);
+        }
+        if (catRem > 0) {
+            assertEq(cur[0] + nxt[0] + nxt2[0], baseShare + catRem, "remainder to Last Buy cat 0");
         }
     }
 }

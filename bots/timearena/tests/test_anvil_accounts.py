@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-from timecurve_bot.anvil_accounts import private_key_hex
+from timearena_bot.anvil_accounts import private_key_hex
 
 
 def test_anvil_account0_matches_foundry_default() -> None:

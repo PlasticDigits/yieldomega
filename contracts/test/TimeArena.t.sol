@@ -10,7 +10,6 @@ import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
@@ -23,7 +22,6 @@ contract TimeArenaTest is Test {
     Doubloon doub;
     PlayCred cred;
     PodiumVaults vaults;
-    AdminSellVault adminVault;
     TimeArena arena;
 
     address alice = address(0xA11CE);
@@ -46,17 +44,15 @@ contract TimeArenaTest is Test {
         doub = new Doubloon(admin);
         cred = new PlayCred(admin);
         vaults = new PodiumVaults(doub, admin);
-        adminVault = new AdminSellVault(doub, admin);
 
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, vaults, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
         vaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         cred.grantRole(cred.MINTER_ROLE(), address(arena));
         arena.startArena();
 
@@ -81,7 +77,6 @@ contract TimeArenaTest is Test {
         arena.buy(charm);
 
         assertEq(doub.balanceOf(address(vaults)), owed);
-        assertEq(doub.balanceOf(address(adminVault)), 0);
         assertEq(doub.balanceOf(address(arena)), 0);
         assertEq(arena.totalDoubRaised(), owed);
 
@@ -246,15 +241,13 @@ contract TimeArenaTest is Test {
     function test_feeOnTransfer_buy_reverts_erc20Parity() public {
         MockERC20FeeOnTransfer feeDoub = new MockERC20FeeOnTransfer(100);
         PodiumVaults v = new PodiumVaults(feeDoub, admin);
-        AdminSellVault av = new AdminSellVault(feeDoub, admin);
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (feeDoub, v, av, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (feeDoub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         TimeArena feeArena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(feeArena));
-        av.setArena(address(feeArena));
         feeArena.startArena();
         feeDoub.mint(alice, 1_000_000e18);
         vm.prank(alice);
@@ -468,11 +461,63 @@ contract TimeArenaTest is Test {
         vm.stopPrank();
     }
 
+    /// INV-TIME-ARENA-CRED-ACCRUE-CRED-BUY: `buyWithCred` adds 35 CRED to epoch pool (#311).
+    function test_cred_accrue_on_cred_buy() public {
+        uint256 ep = arena.lastBuyEpoch();
+        uint256 poolBefore = arena.epochCredPool(ep);
+        vm.prank(alice);
+        arena.buyWithCred(1e18);
+        assertEq(arena.epochCredPool(ep), poolBefore + 35e18);
+    }
+
     /// INV-TIME-ARENA-CRED-BURN-BUY: `buyWithCred` burns 100 CRED per 1e18 CHARM (#268).
     function test_buy_with_cred() public {
+        uint256 ep = arena.lastBuyEpoch();
+        uint256 poolBefore = arena.epochCredPool(ep);
         vm.prank(alice);
         arena.buyWithCred(1e18);
         assertEq(cred.balanceOf(alice), 1000e18 - 100e18);
+        assertEq(arena.epochCredPool(ep), poolBefore + 35e18);
+    }
+
+    /// INV-TIME-ARENA-CRED-PRO-RATA-MIXED: DOUB + CRED buyers share epoch pool fairly (#311).
+    function test_cred_pro_rata_mixed_doub_and_cred_buyers() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buyWithCred(2e18);
+
+        uint256 ep = 0;
+        assertEq(arena.epochCharmTotal(ep), 3e18);
+        assertEq(arena.epochCredPool(ep), 70e18);
+
+        _endLastBuyEpoch();
+
+        uint256 aliceShare = Math.mulDiv(70e18, 1e18, 3e18);
+        uint256 bobShare = Math.mulDiv(70e18, 2e18, 3e18);
+
+        vm.prank(alice);
+        arena.claimCred(ep);
+        vm.prank(bob);
+        arena.claimCred(ep);
+
+        assertEq(cred.balanceOf(alice), 1000e18 + aliceShare);
+        assertEq(cred.balanceOf(bob), 1000e18 - 200e18 + bobShare);
+        assertLe(aliceShare + bobShare, 70e18);
+        assertGe(aliceShare + bobShare, 70e18 - 2);
+    }
+
+    /// INV-TIME-ARENA-CRED-EPOCH-BOUNDARY: `buyWithCred` at hard reset credits post-reset epoch pool (#311).
+    function test_cred_accrue_buyWithCred_at_epoch_boundary() public {
+        _warpNearHardReset();
+        uint256 epBefore = arena.lastBuyEpoch();
+        vm.prank(alice);
+        arena.buyWithCred(1e18);
+        uint256 epAfter = arena.lastBuyEpoch();
+        assertEq(epAfter, epBefore + 1);
+        assertEq(arena.epochCredPool(epAfter), 35e18);
+        assertEq(arena.epochCredPool(epBefore), 0);
     }
 
     function test_buyWithCred_10charm_burns_1000_cred() public {
@@ -832,20 +877,28 @@ contract TimeArenaTest is Test {
         _warpPastBuyCooldown();
         vm.prank(alice);
         arena.buy(1e18);
-        uint256 balBefore = doub.balanceOf(address(arena));
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 raisedBefore = arena.totalDoubRaised();
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
         _warpPastBuyCooldown();
         vm.prank(alice);
         arena.warbowSteal(bob, false);
-        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + arena.WARBOW_STEAL_DOUB());
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.totalDoubRaised(), raisedBefore + arena.WARBOW_STEAL_DOUB());
     }
 
     /// GitLab #252: guard pulls 10_000 DOUB.
     function test_warbow_guard_pulls_doub() public {
         _ensureLevel(alice, 4);
-        uint256 balBefore = doub.balanceOf(address(arena));
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 raisedBefore = arena.totalDoubRaised();
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
         vm.prank(alice);
         arena.warbowActivateGuard();
-        assertEq(doub.balanceOf(address(arena)) - balBefore, 10_000e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + arena.WARBOW_GUARD_DOUB());
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.totalDoubRaised(), raisedBefore + arena.WARBOW_GUARD_DOUB());
         assertGt(arena.warbowGuardUntil(alice), block.timestamp);
     }
 
@@ -854,10 +907,14 @@ contract TimeArenaTest is Test {
         _seedWarbowStealBand(bob, alice);
         vm.prank(alice);
         arena.warbowSteal(bob, false);
-        uint256 balBefore = doub.balanceOf(address(arena));
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 raisedBefore = arena.totalDoubRaised();
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
         vm.prank(bob);
         arena.warbowRevenge(alice);
-        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + arena.WARBOW_REVENGE_DOUB());
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.totalDoubRaised(), raisedBefore + arena.WARBOW_REVENGE_DOUB());
     }
 
     /// GitLab #252: fourth steal on same victim in a UTC day pulls steal + 50_000 DOUB override.
@@ -868,10 +925,15 @@ contract TimeArenaTest is Test {
             arena.warbowSteal(bob, false);
             _boostWarbowVictim(bob);
         }
-        uint256 balBefore = doub.balanceOf(address(arena));
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 raisedBefore = arena.totalDoubRaised();
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
+        uint256 expected = arena.WARBOW_STEAL_DOUB() + arena.WARBOW_STEAL_LIMIT_BYPASS_DOUB();
         vm.prank(alice);
         arena.warbowSteal(bob, true);
-        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18 + 50_000e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + expected);
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.totalDoubRaised(), raisedBefore + expected);
     }
 
     /// GitLab #252: flag claim costs zero DOUB and awards BP.
@@ -888,6 +950,79 @@ contract TimeArenaTest is Test {
         arena.claimWarBowFlag();
         assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
         assertEq(arena.battlePoints(alice), bpBefore + arena.WARBOW_FLAG_CLAIM_BP());
+    }
+
+    /// GitLab #310: streak-break BP when a different buyer buys under the defended-streak window.
+    function test_warbow_streak_break_bp() public {
+        _ensureLevel(alice, 4);
+        _ensureLevel(bob, 4);
+        for (uint256 i; i < 3; ++i) {
+            _warpNearHardReset();
+            _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(1e18);
+        }
+        assertEq(arena.activeDefendedStreak(alice), 3);
+
+        _warpRemaining(_below[0] + 30);
+        uint256 bpBefore = arena.battlePoints(bob);
+        vm.prank(bob);
+        arena.buy(1e18);
+        uint256 expected =
+            arena.WARBOW_BASE_BUY_BP() + 3 * arena.WARBOW_STREAK_BREAK_MULT_BP();
+        assertEq(arena.battlePoints(bob) - bpBefore, expected);
+    }
+
+    /// GitLab #310: ambush bonus stacks on hard reset + streak break under window.
+    function test_warbow_ambush_bp_on_hard_reset_streak_break() public {
+        _ensureLevel(alice, 4);
+        _ensureLevel(bob, 4);
+        _warpUnderDefendedStreakWindowNoHardReset();
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        _warpUnderDefendedStreakWindowNoHardReset();
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.activeDefendedStreak(alice), 2);
+
+        _warpNearHardReset();
+        uint256 bpBefore = arena.battlePoints(bob);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(1e18);
+        uint256 expected = arena.WARBOW_BASE_BUY_BP() + arena.WARBOW_TIMER_RESET_BONUS_BP()
+            + 2 * arena.WARBOW_STREAK_BREAK_MULT_BP() + arena.WARBOW_AMBUSH_BONUS_BP();
+        assertEq(arena.battlePoints(bob) - bpBefore, expected);
+    }
+
+    /// GitLab #310: WarBow steal routes 100% DOUB to podium vaults like buy.
+    function test_warbow_steal_routes_doub_split() public {
+        _seedWarbowStealBand(bob, alice);
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore + arena.WARBOW_STEAL_DOUB());
+        assertEq(doub.balanceOf(address(arena)), 0);
+    }
+
+    function _warpUnderDefendedStreakWindow() internal {
+        _warpRemaining(_below[0] + 30);
+    }
+
+    /// Remaining in (hard-reset band, defended-streak window) — streak window without timer snap.
+    function _warpUnderDefendedStreakWindowNoHardReset() internal {
+        _warpRemaining(_below[0] + 30);
+    }
+
+    function _warpRemaining(uint256 target) internal {
+        uint256 dl = arena.deadline();
+        uint256 remaining = dl > block.timestamp ? dl - block.timestamp : 0;
+        require(target < arena.DEFENDED_STREAK_WINDOW_SEC(), "bad timer config");
+        if (remaining > target) {
+            vm.warp(block.timestamp + remaining - target);
+        }
+        _freezeCharmPrice();
     }
 
     /// GitLab #252: WarBow epoch roll clears live battlePoints (generation bump).
@@ -956,11 +1091,9 @@ contract TimeArenaTest is Test {
     }
 
     function test_topUpPodiumPools_700_matches_buy_prize_vaults() public {
-        uint256 adminBefore = doub.balanceOf(address(adminVault));
         vm.prank(alice);
         arena.topUpPodiumPools(700e18);
         assertEq(doub.balanceOf(address(vaults)), 700e18);
-        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
         assertEq(doub.balanceOf(address(arena)), 0);
         assertEq(arena.totalDoubRaised(), 0);
     }
@@ -993,14 +1126,12 @@ contract TimeArenaTest is Test {
 
     function test_topUpPodiumPools_reverts_without_allowance_no_vault_mutation() public {
         uint256 vaultBefore = doub.balanceOf(address(vaults));
-        uint256 adminBefore = doub.balanceOf(address(adminVault));
         vm.prank(bob);
         doub.approve(address(arena), 0);
         vm.prank(bob);
         vm.expectRevert();
         arena.topUpPodiumPools(1e18);
         assertEq(doub.balanceOf(address(vaults)), vaultBefore);
-        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
     }
 
     /// GitLab #300: buy routes 100% to podiums; top-up (#261) uses legacy 10:7.5 active:seed — distinct paths.
@@ -1014,16 +1145,12 @@ contract TimeArenaTest is Test {
         topUpArena.topUpPodiumPools(700e18);
 
         assertEq(doub.balanceOf(address(_vaultsFor(buyArena))), 1000e18);
-        assertEq(doub.balanceOf(address(_adminFor(buyArena))), 0);
         assertEq(doub.balanceOf(address(_vaultsFor(topUpArena))), 700e18);
-        assertEq(doub.balanceOf(address(_adminFor(topUpArena))), 0);
     }
 
-    function test_topUpPodiumPools_1000_admin_vault_unchanged() public {
-        uint256 adminBefore = doub.balanceOf(address(adminVault));
+    function test_topUpPodiumPools_1000_routes_all_to_vaults() public {
         vm.prank(alice);
         arena.topUpPodiumPools(1000e18);
-        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
         assertEq(doub.balanceOf(address(vaults)), 1000e18);
     }
 
@@ -1044,15 +1171,13 @@ contract TimeArenaTest is Test {
 
     function _newArena() internal returns (TimeArena a) {
         PodiumVaults v = new PodiumVaults(doub, admin);
-        AdminSellVault av = new AdminSellVault(doub, admin);
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, v, av, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         a = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(a));
-        av.setArena(address(a));
         a.startArena();
         vm.prank(alice);
         doub.approve(address(a), type(uint256).max);
@@ -1060,10 +1185,6 @@ contract TimeArenaTest is Test {
 
     function _vaultsFor(TimeArena a) internal view returns (PodiumVaults) {
         return PodiumVaults(a.podiumVaults());
-    }
-
-    function _adminFor(TimeArena a) internal view returns (AdminSellVault) {
-        return AdminSellVault(a.adminSellVault());
     }
 
     /// @dev Fresh arena + ReferralRegistry for GitLab #253 referral CRED tests.
@@ -1074,14 +1195,12 @@ contract TimeArenaTest is Test {
         reserve = new MockCL8Y();
         reg = UUPSDeployLib.deployReferralRegistry(IERC20(address(reserve)), 1e18, admin);
         PodiumVaults v = new PodiumVaults(doub, admin);
-        AdminSellVault av = new AdminSellVault(doub, admin);
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
             (
                 doub,
                 v,
-                av,
                 address(reg),
                 address(cred),
                 1000e18,
@@ -1096,7 +1215,6 @@ contract TimeArenaTest is Test {
         );
         ar = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(ar));
-        av.setArena(address(ar));
         cred.grantRole(cred.MINTER_ROLE(), address(ar));
         ar.startArena();
     }
@@ -1284,5 +1402,171 @@ contract TimeArenaTest is Test {
         wallets[0] = alice;
         arena.grandfatherProgression(wallets);
         assertEq(arena.level(alice), 5);
+    }
+
+    // --- GitLab #316: pause matrix (blocks all user-facing mutating paths via `_requireLive`) ---
+
+    /// Prevents buys while ops pause is active (front-run / incident response).
+    function test_pause_blocks_buy() public {
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.buy(1e18);
+    }
+
+    function test_pause_blocks_buyWithCred() public {
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.buyWithCred(1e18);
+    }
+
+    function test_pause_blocks_warbow_steal() public {
+        _seedWarbowStealBand(bob, alice);
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.warbowSteal(bob, false);
+    }
+
+    function test_pause_blocks_warbow_guard() public {
+        _ensureLevel(alice, 4);
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.warbowActivateGuard();
+    }
+
+    function test_pause_blocks_warbow_revenge() public {
+        _seedWarbowStealBand(bob, alice);
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        arena.setPaused(true);
+        vm.prank(bob);
+        vm.expectRevert("TimeArena: paused");
+        arena.warbowRevenge(alice);
+    }
+
+    function test_pause_blocks_claimWarBowFlag() public {
+        _ensureLevel(alice, 5);
+        arena.setTimeArenaBuyRouter(address(this));
+        doub.mint(address(this), 10_000e18);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buyFor(alice, 1e18, bytes32(0), true);
+        vm.warp(block.timestamp + arena.WARBOW_FLAG_SILENCE_SEC());
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.claimWarBowFlag();
+    }
+
+    // --- GitLab #316: WarBow revert matrix ---
+
+    /// Prevents stealing outside the 2×–10× BP band (whale griefing low-BP wallets).
+    function test_warbow_steal_reverts_steal_band() public {
+        _ensureLevel(alice, 4);
+        _boostWarbowVictim(alice);
+        _ensureLevel(bob, 4);
+        vm.prank(bob);
+        arena.buy(1e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: steal band");
+        arena.warbowSteal(bob, false);
+    }
+
+    /// Prevents bypassing the daily steal cap without paying the override burn.
+    function test_warbow_steal_reverts_steal_limit() public {
+        _seedWarbowStealBand(bob, alice);
+        for (uint256 i; i < 3; ++i) {
+            vm.prank(alice);
+            arena.warbowSteal(bob, false);
+            _boostWarbowVictim(bob);
+        }
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: steal limit");
+        arena.warbowSteal(bob, false);
+    }
+
+    /// Prevents revenge after the 24h window (stale grudge txs).
+    function test_warbow_revenge_reverts_expired() public {
+        _seedWarbowStealBand(bob, alice);
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        uint256 exp = block.timestamp + arena.WARBOW_REVENGE_WINDOW_SEC();
+        while (arena.deadline() < exp + 1) {
+            _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(1e18);
+        }
+        vm.warp(exp + 1);
+        vm.prank(bob);
+        vm.expectRevert("TimeArena: revenge");
+        arena.warbowRevenge(alice);
+    }
+
+    function test_warbow_revenge_reverts_no_pending() public {
+        _ensureLevel(alice, 4);
+        _ensureLevel(bob, 4);
+        vm.prank(bob);
+        vm.expectRevert("TimeArena: revenge");
+        arena.warbowRevenge(alice);
+    }
+
+    /// Prevents non-holders from claiming planted flags.
+    function test_warbow_flag_reverts_not_holder() public {
+        _ensureLevel(alice, 5);
+        arena.setTimeArenaBuyRouter(address(this));
+        doub.mint(address(this), 10_000e18);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buyFor(alice, 1e18, bytes32(0), true);
+        vm.warp(block.timestamp + arena.WARBOW_FLAG_SILENCE_SEC());
+        vm.prank(bob);
+        vm.expectRevert("TimeArena: not flag holder");
+        arena.claimWarBowFlag();
+    }
+
+    /// Prevents early flag claims before the silence period.
+    function test_warbow_flag_reverts_silence() public {
+        _ensureLevel(alice, 5);
+        arena.setTimeArenaBuyRouter(address(this));
+        doub.mint(address(this), 10_000e18);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buyFor(alice, 1e18, bytes32(0), true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: flag silence");
+        arena.claimWarBowFlag();
+    }
+
+    /// Prevents double-paying a WarBow epoch (admin finalize replay).
+    function test_finalize_warbow_podium_reverts_double() public {
+        _ensureLevel(alice, 4);
+        vm.prank(alice);
+        arena.buy(10e18);
+        uint8 cat = arena.CAT_WARBOW();
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
+        (address[3] memory winners,) = arena.podium(cat);
+        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
+        vm.expectRevert("TimeArena: finalized");
+        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
+    }
+
+    function test_finalize_warbow_podium_reverts_bad_epoch() public {
+        vm.expectRevert("TimeArena: bad epoch");
+        arena.finalizeWarbowPodium(99, alice, bob, address(0));
+    }
+
+    function test_warbow_steal_reverts_bad_victim_zero() public {
+        _ensureLevel(alice, 4);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: bad victim");
+        arena.warbowSteal(address(0), false);
+    }
+
+    function test_warbow_steal_reverts_bad_victim_self() public {
+        _ensureLevel(alice, 4);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: bad victim");
+        arena.warbowSteal(alice, false);
     }
 }
