@@ -590,6 +590,19 @@ Follow-up to [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) / 
 
 Doc: [e2e-anvil.md §279 troubleshooting](e2e-anvil.md#anvil-e2e-trap-and-mock-cl8y-extract-gitlab-279) · manual QA: [§279](manual-qa-checklists.md#manual-qa-issue-279).
 
+<a id="anvil-e2e-ci-defaults-gitlab-322"></a>
+
+### Anvil E2E defaults + CI lint (GitLab [#322](https://gitlab.com/PlasticDigits/yieldomega/-/issues/322))
+
+Gap follow-up from [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309): frontend **lint** in GitHub **`frontend-test`** job; Anvil E2E **referrals** + optional **indexer-first** mode; document GitLab vs GitHub CI split.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-CI-322-FRONTEND-LINT`** | GitHub **`unit-tests`** job **`frontend-test`** runs **`npm run lint`** (errors block; warnings allowed until cleanup) | [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml) · `cd frontend && npm run lint` |
+| **`INV-ANVIL-E2E-322-REFERRALS-DEFAULT`** | Default **`scripts/e2e-anvil.sh`** Playwright set includes **`e2e/anvil-referrals.spec.ts`** | `bash scripts/e2e-anvil.sh` |
+| **`INV-ANVIL-E2E-322-INDEXER-MODE`** | **`YIELDOMEGA_E2E_INDEXER=1`** starts Postgres-backed indexer, inlines **`VITE_INDEXER_URL`**, runs **`e2e/anvil-indexer-first.spec.ts`** | `YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh` · [e2e-anvil.md §301](e2e-anvil.md#indexer-first-vs-minimal-e2e-gitlab-301) |
+| **`INV-DEVOPS-322-GITLAB-CI-MINIMAL`** | No `.gitlab-ci.yml`; GitLab is issue/MR host; merge gate stays on GitHub Actions | [ci.md §322](ci.md#gitlab-github-ci-split-gitlab-322) |
+
 <a id="anvil-deploy-dev-caller-scope-gitlab-289"></a>
 
 ### Anvil DeployDev caller scope (GitLab [#289](https://gitlab.com/PlasticDigits/yieldomega/-/issues/289))
