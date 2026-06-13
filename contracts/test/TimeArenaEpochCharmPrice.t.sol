@@ -117,6 +117,29 @@ contract TimeArenaEpochCharmPriceTest is Test {
         assertEq(cred.balanceOf(alice), before - 100e18);
     }
 
+    function test_doubOwedForBuy_matches_buy_within_epoch() public {
+        vm.warp(arena.epochAnchorTimestamp() + ONE_DAY / 2);
+        uint256 charm = 1e18;
+        uint256 preview = arena.doubOwedForBuy(charm);
+        uint256 before = doub.balanceOf(alice);
+        vm.prank(alice);
+        arena.buy(charm);
+        assertEq(before - doub.balanceOf(alice), preview, "preview == DOUB pulled");
+    }
+
+    function test_doubOwedForBuy_matches_buy_at_hard_reset_boundary() public {
+        _wireKumbayaSpot();
+
+        vm.warp(arena.deadline() - 600);
+        kumbaya.setPair(address(cl8y), address(doub), 200_000e18, 100_000_000e18);
+
+        uint256 preview = arena.doubOwedForBuy(CHARM_MIN);
+        uint256 before = doub.balanceOf(alice);
+        vm.prank(alice);
+        arena.buy(CHARM_MIN);
+        assertEq(before - doub.balanceOf(alice), preview, "hard-reset preview == DOUB pulled");
+    }
+
     function test_hard_reset_reanchors_and_prices_at_new_anchor() public {
         _wireKumbayaSpot();
 

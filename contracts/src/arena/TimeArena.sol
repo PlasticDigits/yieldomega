@@ -308,8 +308,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return TimeMath.growWad(anchor, CHARM_GROWTH_RATE_WAD, elapsed);
     }
 
-    /// @dev DOUB wei owed for a buy at the current block — previews hard-reset re-anchor (#305).
-    function doubOwedForBuy(uint256 charmWad) external returns (uint256) {
+    /// @notice Staticcall-safe gross DOUB preview for `buy` / `buyFor` at the current block (#315).
+    /// @dev When Last Buy is in the hard-reset band (`remaining < podiumResetBelowRemainingSec[0]`),
+    ///      samples the same anchor as `_reanchorEpochCharmPrice` **before** the buy writes state:
+    ///      Anvil spot via `setCharmAnchorOracle`, MegaETH **4326** Kumbaya V3 TWAP (`ArenaCharmPriceTwap`),
+    ///      or falls back to stored `epochCharmAnchorWad` / `charmPriceWad`. Otherwise uses
+    ///      `effectiveCharmPriceWad()` (epoch anchor + 10%/day growth). External pool/oracle reads
+    ///      are view-only — no state writes on this path. TWAP re-anchor is sampled at tx time, so
+    ///      same-block sandwich cannot underpay vs the executed buy (#315).
+    function doubOwedForBuy(uint256 charmWad) external view returns (uint256) {
         if (_willLastBuyHardReset()) {
             (uint256 anchorWad,) = _sampleCharmAnchor();
             return Math.mulDiv(charmWad, anchorWad, WAD);
@@ -810,7 +817,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         charmPriceWad = wad;
     }
 
-    function _sampleCharmAnchor() internal returns (uint256 anchorWad, uint256 doubUsdWad) {
+    /// @dev Read-only anchor sample for hard-reset re-anchor and `doubOwedForBuy` preview (#315).
+    function _sampleCharmAnchor() internal view returns (uint256 anchorWad, uint256 doubUsdWad) {
         if (charmAnchorKumbayaRouter != address(0) && charmAnchorCl8y != address(0)) {
             return AnvilKumbayaPools.charmPriceWadFromSpot(
                 AnvilKumbayaRouter(charmAnchorKumbayaRouter),

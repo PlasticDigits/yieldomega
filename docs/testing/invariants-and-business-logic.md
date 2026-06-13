@@ -421,6 +421,17 @@ Fuzz parity (DOUB pull + charm bounds): `TimeArena.t.sol::testFuzz_*` ([#246](ht
 | **`INV-TIME-ARENA-INDEXER-EPOCH-PRICE`** | **`GET /v1/arena/timers`** exposes effective + anchor fields; **`GET /v1/arena/last-buy-epoch-pricing`** lists epoch anchors | `integration_stage2.rs`, `chain_timer.rs` |
 | **`INV-TIME-ARENA-FRONTEND-EFFECTIVE-PRICE`** | Buy sizing / Kumbaya quoter read **`effectiveCharmPriceWad`** (indexer-first via `charm_price_wad`) | `arenaV2SaleSessionBridge.test.ts`, `timeArenaBuySubmitSizing.test.ts` |
 
+<a id="doubowedforbuy-preview-gitlab-315"></a>
+
+### `doubOwedForBuy` preview mutability (GitLab [#315](https://gitlab.com/PlasticDigits/yieldomega/-/issues/315))
+
+| ID | Rule | Verify |
+|----|------|--------|
+| **`INV-TIME-ARENA-DOUB-OWED-PREVIEW`** | **`doubOwedForBuy(charmWad)`** is **`view`** (staticcall-safe); hard-reset band samples TWAP/spot anchor via `_sampleCharmAnchor`; otherwise `effectiveCharmPriceWad()`; preview equals immediate `buy` DOUB pull | `TimeArenaEpochCharmPrice.t.sol::test_doubOwedForBuy_matches_buy_within_epoch`, `::test_doubOwedForBuy_matches_buy_at_hard_reset_boundary` |
+| **`INV-TIME-ARENA-DOUB-OWED-ROUTER`** | **`TimeArenaBuyRouter.buyViaKumbaya`** sizes gross DOUB from **`doubOwedForBuy`** (not `effectiveCharmPriceWad` alone) | `TimeArenaBuyRouter.t.sol`, `bash scripts/verify-time-arena-buy-router-anvil.sh` |
+
+Integrator docs: [kumbaya.md § doubOwedForBuy](../integrations/kumbaya.md). NatSpec + [`PARAMETERS.md`](../../contracts/PARAMETERS.md). **TWAP manipulation:** anchor sampled at tx time; same-block preview cannot underpay executed buy.
+
 <a id="arena-charm-twap-init-gitlab-303"></a>
 
 ### Arena production charm TWAP init (GitLab [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303))
