@@ -173,12 +173,19 @@ fi
 # Postgres is started by bootstrap-cloud-vm-toolchain.sh (do not run bootstrap-cloud-postgres-native.sh again as root — psql defaults to 5432 after port is moved to 5433).
 
 if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-agent.sh" ]]; then
-  echo "==> Playwright + Rabby dev wallets"
+  echo "==> Playwright + Rabby (wallet import deferred to finalize agent)"
   if ! pgrep -x Xvfb >/dev/null 2>&1; then
     Xvfb :99 -screen 0 1920x1080x24 &
     sleep 1
   fi
-  _agent_sh env DISPLAY=:99 bash -lc "bash '${WORKSPACE}/scripts/bootstrap-cloud-agent.sh'"
+  # Wallet import is slow and can OOM-kill the builder; finalize agent runs it with timeout.
+  _agent_sh env \
+    DISPLAY=:99 \
+    YIELDOMEGA_SKIP_RABBY_WALLET_IMPORT=1 \
+    YIELDOMEGA_SKIP_RABBY_INJECTION_VERIFY=1 \
+    bash -lc "bash '${WORKSPACE}/scripts/bootstrap-cloud-agent.sh'" || {
+    echo "WARN: bootstrap-cloud-agent.sh failed — finalize agent will retry Rabby steps." >&2
+  }
 fi
 
 echo "==> Golden image finalize (Cursor agent)"

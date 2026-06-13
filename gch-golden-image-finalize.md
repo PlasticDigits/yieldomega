@@ -10,7 +10,14 @@ Complete any remaining setup and verify everything works. Use passwordless sudo 
    - Confirm unpacked Rabby at `/opt/cursor/browser-extensions/rabby/manifest.json`
    - If missing, run: `sudo bash scripts/install-browser-extensions.sh`
    - Chrome profile for Rabby: `/opt/cursor/chrome-profile-rabby`
-   - Re-run wallet import if needed: `bash scripts/bootstrap-cloud-agent.sh` (requires `DISPLAY=:99` or `xvfb-run`)
+   - Import dev wallets if marker missing (`/opt/cursor/chrome-profile-rabby/.yieldomega-rabby-dev-wallets-ready`):
+     ```bash
+     pkill -9 -f 'chrome-profile-rabby' 2>/dev/null || true
+     rm -f /opt/cursor/chrome-profile-rabby/SingletonLock
+     YIELDOMEGA_RABBY_WALLET_IMPORT_TIMEOUT_SEC=600 \
+       xvfb-run -a bash -c 'cd frontend && node ../scripts/setup-rabby-dev-wallets.mjs'
+     ```
+     If import hangs or is killed, note **SKIP** in the verify log — agents can still run mock-wallet E2E; full Rabby QA is documented in `docs/testing/rabby-cloud-agent-qa.md`.
 
 2. **Anvil (local EVM)**
    - Verify Foundry (`forge`, `cast`, `anvil`) on PATH (`~/.foundry/bin`)
@@ -36,13 +43,27 @@ Complete any remaining setup and verify everything works. Use passwordless sudo 
    - `bash scripts/verify-cloud-postgres.sh` (indexer Postgres on port 5433)
    - Project tests: `FOUNDRY_PROFILE=ci forge test` (contracts), `cd frontend && npm test` if documented
 
-5. **Write report**
-   - Summarize what you installed, configured, and verified
-   - List any failures or manual follow-ups for the admin
-   - Save to `/home/agent/.gch/golden-image-verify.log`
+5. **Write report (required — do this even if earlier steps fail)**
+   - **Always** create `/home/agent/.gch/golden-image-verify.log` before you finish — success or failure.
+   - Run `mkdir -p /home/agent/.gch` if needed.
+   - For each check above, record **PASS**, **FAIL**, or **SKIP** with the command run and relevant output.
+   - If a step fails, hangs, or is skipped, note why and continue; do **not** exit without writing the log.
+   - End the log with an overall line: `OVERALL: PASS` or `OVERALL: FAIL` plus a short summary.
+   - Example:
+     ```bash
+     mkdir -p /home/agent/.gch
+     # append results as you go, then:
+     tee /home/agent/.gch/golden-image-verify.log <<'EOF'
+     === yieldomega golden image verify ===
+     ...
+     OVERALL: FAIL — Rabby wallet import SKIP (OOM); injection PASS; postgres PASS
+     EOF
+     ```
+   - Confirm the file exists: `test -f /home/agent/.gch/golden-image-verify.log && wc -l /home/agent/.gch/golden-image-verify.log`
 
 ## Constraints
 
+- **Writing `/home/agent/.gch/golden-image-verify.log` is mandatory.** Do not end your turn until that file exists on disk.
 - Do **not** run pre-snapshot cleanup (admin runs that before imaging)
 - Do **not** commit or push changes unless required to verify the build; if you commit, do not add Cursor attribution trailers
 - Prefer project-documented versions and paths (`AGENTS.md`, `docs/testing/rabby-cloud-agent-qa.md`)

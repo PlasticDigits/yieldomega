@@ -45,10 +45,21 @@ fi
 
 if [[ -f "${ROOT}/scripts/setup-rabby-dev-wallets.mjs" ]]; then
   echo "==> Rabby dev wallets (KEY_EVM_1..3)"
-  if command -v xvfb-run >/dev/null 2>&1; then
-    xvfb-run -a bash -c "cd '${ROOT}/frontend' && node '${ROOT}/scripts/setup-rabby-dev-wallets.mjs'" || {
-      echo "Warning: automated Rabby import failed; import keys manually (see AGENTS.md)." >&2
-    }
+  if [[ "${YIELDOMEGA_SKIP_RABBY_WALLET_IMPORT:-0}" == "1" ]]; then
+    echo "    Skip (YIELDOMEGA_SKIP_RABBY_WALLET_IMPORT=1). Run later or use gch-golden-image-finalize.md."
+  elif [[ -f "${YIELDOMEGA_RABBY_MARKER}" ]]; then
+    echo "    already configured (${YIELDOMEGA_RABBY_MARKER})"
+  elif command -v xvfb-run >/dev/null 2>&1; then
+    wallet_import_timeout="${YIELDOMEGA_RABBY_WALLET_IMPORT_TIMEOUT_SEC:-600}"
+    if command -v timeout >/dev/null 2>&1; then
+      timeout "${wallet_import_timeout}" xvfb-run -a bash -c "cd '${ROOT}/frontend' && node '${ROOT}/scripts/setup-rabby-dev-wallets.mjs'" || {
+        echo "Warning: automated Rabby import failed or timed out after ${wallet_import_timeout}s (see AGENTS.md)." >&2
+      }
+    else
+      xvfb-run -a bash -c "cd '${ROOT}/frontend' && node '${ROOT}/scripts/setup-rabby-dev-wallets.mjs'" || {
+        echo "Warning: automated Rabby import failed; import keys manually (see AGENTS.md)." >&2
+      }
+    fi
   elif [[ -n "${DISPLAY:-}" ]]; then
     (cd "${ROOT}/frontend" && node "${ROOT}/scripts/setup-rabby-dev-wallets.mjs") || {
       echo "Warning: automated Rabby import failed; import keys manually (see AGENTS.md)." >&2
@@ -60,10 +71,14 @@ if [[ -f "${ROOT}/scripts/setup-rabby-dev-wallets.mjs" ]]; then
   fi
 fi
 
-echo "==> Rabby extension injection (headed Playwright Chromium)"
-if ! bash "${ROOT}/scripts/verify-rabby-playwright-injection.sh"; then
-  echo "bootstrap-cloud-agent.sh: Rabby injection smoke failed." >&2
-  exit 1
+if [[ "${YIELDOMEGA_SKIP_RABBY_INJECTION_VERIFY:-0}" == "1" ]]; then
+  echo "==> Rabby extension injection smoke skipped (YIELDOMEGA_SKIP_RABBY_INJECTION_VERIFY=1)"
+else
+  echo "==> Rabby extension injection (headed Playwright Chromium)"
+  if ! bash "${ROOT}/scripts/verify-rabby-playwright-injection.sh"; then
+    echo "bootstrap-cloud-agent.sh: Rabby injection smoke failed." >&2
+    exit 1
+  fi
 fi
 
 # shellcheck source=scripts/lib/evm_dev_keys.sh
