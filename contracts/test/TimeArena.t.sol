@@ -181,7 +181,7 @@ contract TimeArenaTest is Test {
         arena.buy(1e18);
 
         address pool = vaults.activePools(cat);
-        uint256 activeBefore = doub.balanceOf(pool);
+        uint256 activeBefore = vaults.activePoolBalance(cat);
         assertGt(activeBefore, 0);
 
         (address[3] memory winners,) = arena.podium(cat);
@@ -192,7 +192,7 @@ contract TimeArenaTest is Test {
 
         assertEq(arena.podiumEpoch(cat), 1);
         assertTrue(doub.balanceOf(winners[0]) > firstBefore, "4:2:1 payout from rolled active pool");
-        assertGt(doub.balanceOf(pool), 0, "former seed tranche promoted to active");
+        assertGt(vaults.activePoolBalance(cat), 0, "former seed tranche promoted to active");
     }
 
     function test_timer_hard_reset_increments_epoch() public {
@@ -1082,8 +1082,9 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buy(10e18);
         uint8 cat = arena.CAT_WARBOW();
-        address pool = vaults.activePools(cat);
-        uint256 poolBal = doub.balanceOf(pool);
+        (address[3] memory winners,) = arena.podium(cat);
+        uint256 firstBefore = doub.balanceOf(winners[0]);
+        uint256 poolBal = vaults.activePoolBalance(cat);
         assertGt(poolBal, 0);
 
         vm.warp(arena.podiumDeadline(cat) + 1);
@@ -1091,9 +1092,70 @@ contract TimeArenaTest is Test {
         arena.warbowActivateGuard();
 
         assertTrue(arena.warbowEpochFinalized(0));
-        assertEq(doub.balanceOf(pool), 0);
+        assertGt(doub.balanceOf(winners[0]), firstBefore, "single autoroll payout");
         vm.expectRevert("TimeArena: timer live");
         arena.rollPodiumEpoch(cat);
+    }
+
+    /// Security: multi-expired autoroll must pay each category's active tranche, not the commingled vault.
+    function test_autoroll_multi_expired_pays_each_category_tranche() public {
+        address carol = address(0xCA801);
+        address dave = address(0xDA11);
+        address eve = address(0xE0E0);
+        for (uint256 i; i < 3; ++i) {
+            address p = i == 0 ? carol : (i == 1 ? dave : eve);
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+        }
+
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(10e18);
+        }
+
+        _warpPastBuyCooldown();
+        vm.prank(carol);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(dave);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(eve);
+        arena.buy(1e18);
+
+        uint8 lastBuy = arena.CAT_LAST_BUYERS();
+        uint8 warbow = arena.CAT_WARBOW();
+        (address[3] memory lbWinners,) = arena.podium(lastBuy);
+        (address[3] memory wbWinners,) = arena.podium(warbow);
+        assertEq(lbWinners[0], eve);
+        assertEq(wbWinners[0], alice);
+
+        assertGt(vaults.activePoolBalance(lastBuy), 0);
+        assertGt(vaults.activePoolBalance(warbow), 0);
+
+        uint256 eveBefore = doub.balanceOf(eve);
+        uint256 warbowFirstBefore = doub.balanceOf(wbWinners[0]);
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+
+        uint256 maxDeadline = arena.podiumDeadline(lastBuy);
+        for (uint8 c = 0; c < arena.NUM_PODIUM_CATEGORIES(); ++c) {
+            uint256 d = arena.podiumDeadline(c);
+            if (d > maxDeadline) maxDeadline = d;
+        }
+        vm.warp(maxDeadline + 1);
+
+        vm.prank(eve);
+        arena.buy(1e18);
+
+        assertTrue(arena.warbowEpochFinalized(0));
+        uint256 warbowGain = doub.balanceOf(wbWinners[0]) - warbowFirstBefore;
+        uint256 eveGain = doub.balanceOf(eve) - eveBefore;
+        assertGt(warbowGain, 0, "WarBow #1 paid from WarBow tranche");
+        assertGt(eveGain, 0, "Last Buy #1 paid from Last Buy tranche");
+        assertLt(eveGain, (vaultBefore * 4) / 7, "Last Buy did not capture 4/7 of entire vault");
+        assertGt(warbowGain + eveGain, 0, "both categories received payout");
     }
 
     /// Sets victim BP high and attacker BP low so steal band (2x–10x) passes.

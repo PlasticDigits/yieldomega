@@ -386,8 +386,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         }
 
         uint256 epochBefore = podiumEpoch[category];
-        address poolAddr = podiumVaults.activePools(category);
-        uint256 poolBal = doub.balanceOf(poolAddr);
+        uint256 poolBal = podiumVaults.activePoolBalance(category);
         if (poolBal > 0) {
             (uint256 a, uint256 b, uint256 c) = ArenaPodiumSettlement.payoutShares(poolBal);
             podiumVaults.payPodiumWinners(category, winners[0], winners[1], winners[2], a, b, c);
@@ -729,18 +728,21 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             if (cur[i] > 0) {
                 address pool = podiumVaults.activePools(i);
                 doub.safeTransfer(pool, cur[i]);
+                podiumVaults.creditTranche(i, 0, cur[i]);
                 podiumVaults.notifyPodiumEpochFunded(i, ep, cur[i], pool);
                 routed += cur[i];
             }
             if (nxt[i] > 0) {
                 address pool = podiumVaults.seedPools(i);
                 doub.safeTransfer(pool, nxt[i]);
+                podiumVaults.creditTranche(i, 1, nxt[i]);
                 podiumVaults.notifyPodiumEpochFunded(i, ep + 1, nxt[i], pool);
                 routed += nxt[i];
             }
             if (nxt2[i] > 0) {
                 address pool = podiumVaults.futurePools(i);
                 doub.safeTransfer(pool, nxt2[i]);
+                podiumVaults.creditTranche(i, 2, nxt2[i]);
                 podiumVaults.notifyPodiumEpochFunded(i, ep + 2, nxt2[i], pool);
                 routed += nxt2[i];
             }
@@ -760,12 +762,14 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             if (act[i] > 0) {
                 address pool = podiumVaults.activePools(i);
                 doub.safeTransfer(pool, act[i]);
+                podiumVaults.creditTranche(i, 0, act[i]);
                 podiumVaults.notifyPodiumFunded(i, act[i], pool);
                 routed += act[i];
             }
             if (sed[i] > 0) {
                 address pool = podiumVaults.seedPools(i);
                 doub.safeTransfer(pool, sed[i]);
+                podiumVaults.creditTranche(i, 1, sed[i]);
                 podiumVaults.notifySeedFunded(i, sed[i], pool);
                 routed += sed[i];
             }
