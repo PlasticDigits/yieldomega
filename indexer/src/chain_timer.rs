@@ -18,6 +18,11 @@ use crate::rpc_http::{
     rpc_first_ok_instrumented,
 };
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
+use crate::chain_timer_poll::{
+    chain_timer_poll_mode, chain_timer_sleep_after_cycle, deadline_proximity_sec_from_env,
+    head_block_number_unchanged, idle_poll_ms_from_env, idle_short_circuit_applicable,
+    refresh_snapshot_polled_at_ms, ChainTimerPollMode,
+};
 use crate::rpc_poll_health::RpcPollHealth;
 use crate::sale_state::{
     sale_state_from_returns, SEL_PAUSED, SEL_TOTAL_DOUB_RAISED, TimecurveSaleStateSnapshot,
@@ -233,12 +238,71 @@ pub async fn run_poll_loop(
         }
     };
 
+    let idle_poll_ms = idle_poll_ms_from_env();
+    let deadline_proximity_sec = deadline_proximity_sec_from_env();
     let mut health = RpcPollHealth::new();
+    let mut previous: Option<TimecurveHeadSnapshot> = None;
+    let mut last_mode: Option<ChainTimerPollMode> = None;
+
     loop {
-        match poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await {
+        let now_wall_sec = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        let poll_result = if idle_short_circuit_applicable(
+            &health,
+            previous.as_ref(),
+            now_wall_sec,
+            deadline_proximity_sec,
+        ) {
+            match rpc_first_ok_instrumented(
+                &providers,
+                Some(&rpc_metrics),
+                RpcMethod::BlockNumber,
+                RpcCaller::ChainTimer,
+                |p| p.get_block_number(),
+            )
+            .await
+            {
+                Ok(bn) if previous
+                    .as_ref()
+                    .is_some_and(|p| head_block_number_unchanged(p, bn)) =>
+                {
+                    health.report_success();
+                    let mut snap = previous.clone().expect("short-circuit requires previous");
+                    refresh_snapshot_polled_at_ms(&mut snap);
+                    Ok(snap)
+                }
+                Ok(_) => poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await,
+                Err(_) => poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await,
+            }
+        } else {
+            poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await
+        };
+
+        let poll_succeeded = poll_result.is_ok();
+        let mode = match poll_result {
             Ok(snap) => {
                 health.report_success();
-                *cache.write().await = Some(snap);
+                let mode = chain_timer_poll_mode(
+                    previous.as_ref(),
+                    &snap,
+                    now_wall_sec,
+                    deadline_proximity_sec,
+                );
+                if last_mode != Some(mode) {
+                    tracing::debug!(
+                        mode = mode.as_str(),
+                        idle_poll_ms,
+                        deadline_proximity_sec,
+                        "chain_timer: poll spacing mode"
+                    );
+                    last_mode = Some(mode);
+                }
+                *cache.write().await = Some(snap.clone());
+                previous = Some(snap);
+                mode
             }
             Err(e) => {
                 tracing::debug!(?e, "chain_timer: poll failed");
@@ -247,9 +311,12 @@ pub async fn run_poll_loop(
                 } else {
                     health.report_failure_debounced();
                 }
+                ChainTimerPollMode::Fast
             }
-        }
-        tokio::time::sleep(health.backoff_sleep()).await;
+        };
+
+        let sleep = chain_timer_sleep_after_cycle(&health, poll_succeeded, mode, idle_poll_ms);
+        tokio::time::sleep(sleep).await;
     }
 }
 
