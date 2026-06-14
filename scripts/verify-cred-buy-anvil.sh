@@ -99,6 +99,8 @@ burned="$(python3 -c "print(int('${bal_before}') - int('${bal_after}'))")"
 assert_eq "${burned}" "100000000000000000000" "buyWithCred(1e18) burn"
 
 epoch="$(cast_u256 "${TA}" "lastBuyEpoch()(uint256)")"
+pool="$(cast call "${TA}" "epochCredPool(uint256)(uint256)" "${epoch}" --rpc-url "${RPC}" | awk '{print $1}')"
+assert_eq "${pool}" "35000000000000000000" "buyWithCred(1e18) epochCredPool +35 CRED"
 target="$(python3 -c "print(int('${epoch}') + 1)")"
 bonus="$(cast call "${TA}" "epochFixedCredBonus(uint256,address)(uint256)" "${target}" "${ALICE}" \
   --rpc-url "${RPC}" | awk '{print $1}')"
@@ -136,7 +138,7 @@ CAROL="${ANVIL_ACCOUNTS[2]:-}"
 anvil_send_mint "${CAROL}" "10000000000000000000000"
 anvil_send "${CAROL}" "${TA}" "buyWithCred(uint256)" "${starter}"
 level1="$(cast call "${TA}" "level(address)(uint256)" "${CAROL}" --rpc-url "${RPC}" | awk '{print $1}')"
-assert_eq "${level1}" "1" "first starter buy level 1"
+assert_eq "${level1}" "2" "first starter buy level 2 (10 CHARM = 10 XP)"
 warp_past_cooldown
 anvil_send "${CAROL}" "${TA}" "buyWithCred(uint256)" "${starter}"
 level2="$(cast call "${TA}" "level(address)(uint256)" "${CAROL}" --rpc-url "${RPC}" | awk '{print $1}')"
