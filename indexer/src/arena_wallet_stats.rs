@@ -63,8 +63,8 @@ fn parse_u128_decimal(s: &str) -> u128 {
     s.parse::<u128>().unwrap_or(0)
 }
 
-fn pending_cred_from_epoch_parts(weight: u128, total: u128, doub_buys: u64, bonus: u128) -> u128 {
-    let pool = (doub_buys as u128).saturating_mul(CRED_PER_BUY_WAD);
+fn pending_cred_from_epoch_parts(weight: u128, total: u128, epoch_buys: u64, bonus: u128) -> u128 {
+    let pool = (epoch_buys as u128).saturating_mul(CRED_PER_BUY_WAD);
     let pro_rata = if weight > 0 && total > 0 {
         pool.saturating_mul(weight) / total
     } else {
@@ -85,7 +85,7 @@ async fn fetch_global_last_buy_epoch(pool: &PgPool) -> Result<u64, sqlx::Error> 
 struct EpochCharmCredParts {
     weight: u128,
     total: u128,
-    doub_buys: u64,
+    epoch_buys: u64,
 }
 
 async fn fetch_epoch_charm_cred_parts(
@@ -96,7 +96,7 @@ async fn fetch_epoch_charm_cred_parts(
     let row = sqlx::query(
         r#"SELECT COALESCE(SUM(CASE WHEN buyer = $1 THEN charm_wad ELSE 0 END), 0)::text AS weight,
                   COALESCE(SUM(charm_wad), 0)::text AS total,
-                  COUNT(*) FILTER (WHERE NOT paid_with_cred)::bigint AS doub_buys
+                  COUNT(*)::bigint AS epoch_buys
            FROM idx_arena_buy
            WHERE last_buy_epoch = $2"#,
     )
@@ -107,7 +107,7 @@ async fn fetch_epoch_charm_cred_parts(
     Ok(EpochCharmCredParts {
         weight: parse_u128_decimal(&row.get::<String, _>("weight")),
         total: parse_u128_decimal(&row.get::<String, _>("total")),
-        doub_buys: row.get::<i64, _>("doub_buys").max(0) as u64,
+        epoch_buys: row.get::<i64, _>("epoch_buys").max(0) as u64,
     })
 }
 
@@ -151,7 +151,7 @@ async fn pending_cred_for_epoch(
     } else {
         0
     };
-    Ok(pending_cred_from_epoch_parts(parts.weight, parts.total, parts.doub_buys, bonus).to_string())
+    Ok(pending_cred_from_epoch_parts(parts.weight, parts.total, parts.epoch_buys, bonus).to_string())
 }
 
 async fn fetch_cred_balance_wad(pool: &PgPool, wallet: &str) -> Result<String, sqlx::Error> {
@@ -394,7 +394,8 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
         "last_buy_epoch": last_buy_epoch.to_string(),
         "epoch_charm_wad": epoch_charm_wad,
         "epoch_charm_total_wad": epoch_charm_total_wad,
-        "epoch_doub_buy_count": epoch_parts.doub_buys.to_string(),
+        "epoch_buy_count": epoch_parts.epoch_buys.to_string(),
+        "epoch_doub_buy_count": epoch_parts.epoch_buys.to_string(),
         "pending_cred_accrual": pending_cred_accrual,
         "claimable_cred_epoch": claimable_cred_epoch,
         "claimable_cred": claimable_cred,

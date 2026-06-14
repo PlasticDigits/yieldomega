@@ -17,7 +17,6 @@ Authoritative game rules and balances remain onchain. The indexer and frontend o
 | `Doubloon` | DOUB ERC-20 |
 | `PlayCred` | Non-transferable arena CRED |
 | `PodiumVaults` | Eight podium prize pools |
-| `AdminSellVault` | Owner-only DOUB liquidation (not funded by buys — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) |
 | `ReferralRegistry` | UUPS — CL8Y burn to register codes |
 | `TimeArena` | UUPS — timers, buys, CRED, XP, WarBow |
 
@@ -58,9 +57,9 @@ export REFERRAL_REGISTRATION_BURN_WAD='1000000000000000000'
 export START_ARENA='0'   # set 1 to call startArena() in-script; else owner calls after deploy
 ```
 
-Registry JSON keys: **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`PlayCred`**, **`ReferralRegistry`**, **`Doubloon`**, optional **`TimeArenaBuyRouter`**. Frontend: **`VITE_TIME_ARENA_ADDRESS`**, **`VITE_PODIUM_VAULTS_ADDRESS`**, **`VITE_ADMIN_SELL_VAULT_ADDRESS`**, **`VITE_REFERRAL_REGISTRY_ADDRESS`**.
+Registry JSON keys: **`TimeArena`**, **`PodiumVaults`**, **`PlayCred`**, **`ReferralRegistry`**, **`Doubloon`**, optional **`TimeArenaBuyRouter`**. Frontend: **`VITE_TIME_ARENA_ADDRESS`**, **`VITE_PODIUM_VAULTS_ADDRESS`**, **`VITE_REFERRAL_REGISTRY_ADDRESS`**. Legacy **`AdminSellVault`** removed ([#314](https://gitlab.com/PlasticDigits/yieldomega/-/issues/314)).
 
-**Invariants:** [`INV-DEPLOY-259`](../testing/invariants-and-business-logic.md#arena-v2-deploy-gitlab-259) · Forge: [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol).
+**Invariants:** [`INV-DEPLOY-259`](../testing/invariants-and-business-logic.md#arena-v2-deploy-gitlab-259) · [`INV-DEPLOY-314`](../testing/invariants-and-business-logic.md#arena-deploy-no-admin-sell-vault-gitlab-314) · Forge: [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol).
 
 ### QA verification (agent, GitLab [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259))
 
@@ -71,7 +70,7 @@ Recorded **2026-05-30** on `main` @ `ab89966` (QA agent — not manual `@brouie`
 | `FOUNDRY_PROFILE=ci forge test --match-contract DevStackIntegration` | **6/6 pass** |
 | `bash scripts/e2e-anvil.sh` | DeployDev + Kumbaya OK; **`e2e/anvil-arena-*.spec.ts`** (6 tests: mount, reads, DOUB/ETH wallet writes, CRED buy) — see [e2e-anvil.md](../testing/e2e-anvil.md) ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)) |
 | `scripts/deploy-megaeth-contracts.sh --help` | Arena v2 env defaults present |
-| `scripts/write-production-registry-from-broadcast.sh` (Anvil `DeployProduction` broadcast) | Emits `TimeArena`, `PodiumVaults`, `AdminSellVault`, `PlayCred`, `ReferralRegistry`, `Doubloon` |
+| `scripts/write-production-registry-from-broadcast.sh` (Anvil `DeployProduction` broadcast) | Emits `TimeArena`, `PodiumVaults`, `PlayCred`, `ReferralRegistry`, `Doubloon` |
 | `bash scripts/check-megaevm-contract-sizes.sh` (MegaEVM [#72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72)) | Largest runtime: `TimeArena` **26,222 B** ≪ 512 KiB limit |
 | `SKIP_ANVIL_RICH_STATE=1 bash scripts/start-local-anvil-stack.sh` | DeployDev + registry JSON OK; indexer readiness blocked by local Postgres pool timeout in this run (infra — not deploy script) |
 
@@ -111,7 +110,6 @@ Example Arena v2 registry:
     "Doubloon": "0x...",
     "PlayCred": "0x...",
     "PodiumVaults": "0x...",
-    "AdminSellVault": "0x...",
     "ReferralRegistry": "0x...",
     "TimeArena": "0x...",
     "TimeArenaBuyRouter": ""
@@ -190,7 +188,6 @@ export VITE_DOTMEGA_REGISTRY_ADDRESS='0x5B424C6CCba77b32b9625a6fd5A30D409d20d997
 # Proxies from registry JSON (`contracts` keys match deploy log labels)
 export VITE_TIME_ARENA_ADDRESS="$(jq -r '.contracts.TimeArena' "$REGISTRY_PATH")"
 export VITE_PODIUM_VAULTS_ADDRESS="$(jq -r '.contracts.PodiumVaults' "$REGISTRY_PATH")"
-export VITE_ADMIN_SELL_VAULT_ADDRESS="$(jq -r '.contracts.AdminSellVault' "$REGISTRY_PATH")"
 export VITE_REFERRAL_REGISTRY_ADDRESS="$(jq -r '.contracts.ReferralRegistry' "$REGISTRY_PATH")"
 export VITE_DOUBLOON_ADDRESS="$(jq -r '.contracts.Doubloon' "$REGISTRY_PATH")"
 
@@ -217,7 +214,7 @@ Minimum checks before announcing the deployment:
 - Confirm every proxy address in the registry is the proxy, not an implementation.
 - Confirm explorer verification links for deployed contracts.
 - Confirm **`TimeArena.started()`** and timer state after **`startArena()`** (or defer if owner starts later).
-- Confirm **`PodiumVaults.arena()`** and **`AdminSellVault.arena()`** point at the **`TimeArena`** proxy.
+- Confirm **`PodiumVaults.arena()`** points at the **`TimeArena`** proxy.
 - Confirm **`PlayCred`** grants **`MINTER_ROLE`** to **`TimeArena`**.
 - Confirm `/v1/status` reports the correct chain and indexer progress after startup.
 - Confirm the frontend reads arena timers from the deployed chain/indexer and does not point at Anvil defaults.
