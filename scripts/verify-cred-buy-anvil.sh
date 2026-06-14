@@ -22,7 +22,11 @@ log() {
 }
 
 cast_u256() {
-  cast call "$1" "$2" --rpc-url "${RPC}" | awk '{print $1}'
+  if [[ $# -gt 2 ]]; then
+    cast call "$1" "$2" "${@:3}" --rpc-url "${RPC}" | awk '{print $1}'
+  else
+    cast call "$1" "$2" --rpc-url "${RPC}" | awk '{print $1}'
+  fi
 }
 
 assert_eq() {
@@ -92,14 +96,14 @@ assert_eq "${rate}" "100000000000000000000" "CRED_PER_CHARM_WAD"
 anvil_send_mint "${ALICE}" "10000000000000000000000"
 anvil_send_mint "${BOB}" "10000000000000000000000"
 
-bal_before="$(cred_balance "${ALICE}")"
 epoch="$(cast_u256 "${TA}" "lastBuyEpoch()(uint256)")"
-pool_before="$(cast call "${TA}" "epochCredPool(uint256)(uint256)" "${epoch}" --rpc-url "${RPC}" | awk '{print $1}')"
+bal_before="$(cred_balance "${ALICE}")"
+pool_before="$(cast_u256 "${TA}" "epochCredPool(uint256)(uint256)" "${epoch}")"
 anvil_send "${ALICE}" "${TA}" "buyWithCred(uint256)" "${WAD}"
 bal_after="$(cred_balance "${ALICE}")"
 burned="$(python3 -c "print(int('${bal_before}') - int('${bal_after}'))")"
 assert_eq "${burned}" "100000000000000000000" "buyWithCred(1e18) burn"
-pool_after="$(cast call "${TA}" "epochCredPool(uint256)(uint256)" "${epoch}" --rpc-url "${RPC}" | awk '{print $1}')"
+pool_after="$(cast_u256 "${TA}" "epochCredPool(uint256)(uint256)" "${epoch}")"
 pool_delta="$(python3 -c "print(int('${pool_after}') - int('${pool_before}'))")"
 assert_eq "${pool_delta}" "35000000000000000000" "buyWithCred(1e18) epochCredPool +35 CRED"
 

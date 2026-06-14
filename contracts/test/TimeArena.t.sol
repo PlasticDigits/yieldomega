@@ -471,6 +471,7 @@ contract TimeArenaTest is Test {
     }
 
     /// INV-TIME-ARENA-CRED-BURN-BUY: `buyWithCred` burns 100 CRED per 1e18 CHARM (#268).
+    /// INV-TIME-ARENA-CRED-POOL-ACCRUE: `buyWithCred` adds 35 CRED to epoch pool per buy (#311).
     function test_buy_with_cred() public {
         uint256 ep = arena.lastBuyEpoch();
         uint256 poolBefore = arena.epochCredPool(ep);
@@ -494,7 +495,7 @@ contract TimeArenaTest is Test {
     }
 
     /// INV-TIME-ARENA-CRED-PRO-RATA-MIXED: DOUB + CRED buyers share epoch pool fairly (#311).
-    function test_cred_pro_rata_mixed_doub_and_cred_buyers() public {
+    function test_buyWithCred_mixed_pro_rata_with_doub() public {
         vm.prank(alice);
         arena.buy(1e18);
         _warpPastBuyCooldown();
@@ -521,7 +522,7 @@ contract TimeArenaTest is Test {
         assertGe(aliceShare + bobShare, 70e18 - 2);
     }
 
-    /// INV-TIME-ARENA-CRED-POOL-EPOCH-BOUNDARY: `buyWithCred` at epoch roll credits pre-roll pool (#311).
+    /// INV-TIME-ARENA-CRED-POOL-EPOCH-BOUNDARY: epoch roll then `buyWithCred` credits correct pools (#311).
     function test_buyWithCred_epoch_boundary_credits_correct_pool() public {
         vm.prank(alice);
         arena.buy(1e18);
@@ -537,8 +538,39 @@ contract TimeArenaTest is Test {
         assertEq(arena.epochCredPool(1), 35e18);
     }
 
-    /// INV-TIME-ARENA-CRED-NO-EXTRACT: CRED-only buyer cannot claim more than fair pro-rata share (#311).
-    function test_buyWithCred_only_fair_pro_rata_claim() public {
+    /// INV-TIME-ARENA-CRED-POOL-EPOCH: `buyWithCred` at hard reset credits post-reset epoch pool (#311).
+    function test_buyWithCred_at_epoch_boundary() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpNearHardReset();
+        _freezeCharmPrice();
+
+        uint256 epBefore = arena.lastBuyEpoch();
+        assertEq(arena.epochCredPool(epBefore), 35e18);
+
+        vm.prank(bob);
+        arena.buyWithCred(1e18);
+
+        uint256 epAfter = arena.lastBuyEpoch();
+        assertGt(epAfter, epBefore);
+        assertEq(arena.epochCredPool(epAfter), 35e18);
+        assertEq(arena.epochCredPool(epBefore), 35e18);
+    }
+
+    /// INV-TIME-ARENA-CRED-EPOCH-BOUNDARY: `buyWithCred` at hard reset credits post-reset epoch pool (solo) (#311).
+    function test_cred_accrue_buyWithCred_at_epoch_boundary() public {
+        _warpNearHardReset();
+        uint256 epBefore = arena.lastBuyEpoch();
+        vm.prank(alice);
+        arena.buyWithCred(1e18);
+        uint256 epAfter = arena.lastBuyEpoch();
+        assertEq(epAfter, epBefore + 1);
+        assertEq(arena.epochCredPool(epAfter), 35e18);
+        assertEq(arena.epochCredPool(epBefore), 0);
+    }
+
+    /// Attack: CRED-only buyer cannot extract more than fair pro-rata share (#311).
+    function test_cred_only_buyer_fair_share() public {
         vm.prank(alice);
         arena.buyWithCred(1e18);
         _warpPastBuyCooldown();
@@ -559,18 +591,6 @@ contract TimeArenaTest is Test {
         assertEq(aliceGot, 1000e18 - 100e18 + 35e18);
         assertEq(bobGot, 1000e18 - 100e18 + 35e18);
         assertEq(aliceGot - (1000e18 - 100e18) + bobGot - (1000e18 - 100e18), 70e18);
-    }
-
-    /// INV-TIME-ARENA-CRED-EPOCH-BOUNDARY: `buyWithCred` at hard reset credits post-reset epoch pool (#311).
-    function test_cred_accrue_buyWithCred_at_epoch_boundary() public {
-        _warpNearHardReset();
-        uint256 epBefore = arena.lastBuyEpoch();
-        vm.prank(alice);
-        arena.buyWithCred(1e18);
-        uint256 epAfter = arena.lastBuyEpoch();
-        assertEq(epAfter, epBefore + 1);
-        assertEq(arena.epochCredPool(epAfter), 35e18);
-        assertEq(arena.epochCredPool(epBefore), 0);
     }
 
     function test_buyWithCred_10charm_burns_1000_cred() public {
