@@ -11,40 +11,35 @@ PG_URL="${DATABASE_URL:-postgres://yieldomega:password@127.0.0.1:5433/yieldomega
 DEPLOY_LOG="$(mktemp)"
 REGISTRY="${ROOT}/contracts/deployments/local-anvil-registry-rpc-metrics.json"
 
-# shellcheck source=scripts/lib/anvil_deploy_dev.sh
-source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
-# shellcheck source=scripts/lib/verify_anvil_common.sh
-source "${ROOT}/scripts/lib/verify_anvil_common.sh"
+VERIFY_SCRIPT_PREFIX="verify-indexer-rpc-metrics"
+VERIFY_ANVIL_LOG="/tmp/yieldomega_verify306_anvil.log"
+VERIFY_INDEXER_LOG="/tmp/yieldomega_verify306_indexer.log"
+VERIFY_REGISTRY_COMMENT="verify-indexer-rpc-metrics.sh"
+
 # shellcheck source=scripts/lib/verify_indexer_stack.sh
 source "${ROOT}/scripts/lib/verify_indexer_stack.sh"
 
 die() {
-  echo "verify-indexer-rpc-metrics: $*" >&2
-  exit 1
+  yieldomega_verify_die "$@"
 }
 
 log() {
-  echo "verify-indexer-rpc-metrics: $*"
+  yieldomega_verify_log "$@"
 }
 
 cleanup() {
   rm -f "${DEPLOY_LOG}"
-  yieldomega_verify_kill_anvil_indexer_pids
+  yieldomega_verify_kill_pid_if_set "${INDEXER_PID:-}"
+  yieldomega_verify_kill_pid_if_set "${ANVIL_PID:-}"
 }
 trap cleanup EXIT
 
-yieldomega_verify_stop_anvil_indexer
-VERIFY_ANVIL_LOG=/tmp/yieldomega_verify306_anvil.log yieldomega_verify_start_anvil
-
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
-yieldomega_verify_deploy_dev
+export INDEXER_RPC_METRICS_LOG_SEC=15
+yieldomega_verify_boot_indexer_stack "${ROOT}"
 
 [[ -n "${TA:-}" ]] || die "TimeArena missing after deploy"
 
-yieldomega_verify_write_anvil_registry "${REGISTRY}" "verify-indexer-rpc-metrics.sh"
-yieldomega_verify_pg_reset_db
-yieldomega_verify_start_indexer /tmp/yieldomega_verify306_indexer.log INDEXER_RPC_METRICS_LOG_SEC=15
-yieldomega_verify_wait_indexer_status die /tmp/yieldomega_verify306_indexer.log
 STATUS_URL="http://127.0.0.1:${INDEXER_PORT}/v1/status"
 
 # Allow chain-timer ~1 Hz polls to accumulate metrics.

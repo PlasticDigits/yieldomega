@@ -14,24 +14,29 @@ CHARM_WAD=1000000000000000000
 # UX order → onchain category index (Last Buy · WarBow · Defended · Time Booster)
 PODIUM_CATS=(0 3 2 1)
 
-# shellcheck source=scripts/lib/anvil_deploy_dev.sh
-source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
-# shellcheck source=scripts/lib/verify_anvil_common.sh
-source "${ROOT}/scripts/lib/verify_anvil_common.sh"
+VERIFY_SCRIPT_PREFIX="verify-podium-live-anvil"
+VERIFY_ANVIL_LOG="/tmp/yieldomega_verify273_anvil.log"
+VERIFY_INDEXER_LOG="/tmp/yieldomega_verify273_indexer.log"
+VERIFY_REGISTRY_COMMENT="verify-podium-live-anvil.sh"
+
 # shellcheck source=scripts/lib/verify_indexer_stack.sh
 source "${ROOT}/scripts/lib/verify_indexer_stack.sh"
 
 die() {
-  echo "verify-podium-live-anvil: $*" >&2
-  exit 1
+  yieldomega_verify_die "$@"
 }
 
 log() {
-  echo "verify-podium-live-anvil: $*"
+  yieldomega_verify_log "$@"
 }
 
-warp_past_cooldown() { yieldomega_verify_warp_past_cooldown; }
-anvil_send() { yieldomega_verify_anvil_send "$@"; }
+warp_past_cooldown() {
+  yieldomega_verify_warp_past_cooldown "${RPC}"
+}
+
+anvil_send() {
+  yieldomega_verify_anvil_send "${RPC}" "$@"
+}
 
 wait_for_podiums_ok() {
   for _ in $(seq 1 90); do
@@ -73,23 +78,16 @@ assert_warbow_row() {
 
 cleanup() {
   rm -f "${DEPLOY_LOG}" /tmp/yieldomega_verify273_podiums.json
-  yieldomega_verify_kill_anvil_indexer_pids
+  yieldomega_verify_kill_pid_if_set "${INDEXER_PID:-}"
+  yieldomega_verify_kill_pid_if_set "${ANVIL_PID:-}"
 }
 trap cleanup EXIT
 
-yieldomega_verify_stop_anvil_indexer
-VERIFY_ANVIL_LOG=/tmp/yieldomega_verify273_anvil.log yieldomega_verify_start_anvil
-
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
-yieldomega_verify_deploy_dev
+yieldomega_verify_boot_indexer_stack "${ROOT}"
 
 [[ -n "${TA:-}" ]] || die "TimeArena address missing after deploy"
 [[ -n "${DOUB:-}" ]] || die "Doubloon address missing after deploy"
-
-yieldomega_verify_write_anvil_registry "${REGISTRY}" "verify-podium-live-anvil.sh"
-yieldomega_verify_pg_reset_db
-yieldomega_verify_start_indexer /tmp/yieldomega_verify273_indexer.log
-yieldomega_verify_wait_indexer_status die /tmp/yieldomega_verify273_indexer.log
 
 mapfile -t ANVIL_ACCOUNTS < <(cast rpc eth_accounts --rpc-url "${RPC}" | jq -r '.[]')
 DEPLOYER="${ANVIL_ACCOUNTS[0]}"
@@ -126,7 +124,7 @@ for _ in $(seq 1 90); do
   sleep 1
 done
 [[ "${synced}" -eq 1 ]] || {
-  tail -40 /tmp/yieldomega_verify273_indexer.log >&2
+  tail -40 "${VERIFY_INDEXER_LOG}" >&2
   die "indexer did not catch up to head block"
 }
 
@@ -179,8 +177,7 @@ LIVE_COUNT="$(psql "${PG_URL}" -tAc 'SELECT COUNT(*) FROM idx_arena_podium_live'
 
 log "integration_stage2 (includes arena_podiums_live_predictions_smoke)"
 export YIELDOMEGA_PG_TEST_URL="${PG_URL%/*}/yieldomega_indexer_test"
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS yieldomega_indexer_test;" >/dev/null 2>&1 || true
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE yieldomega_indexer_test OWNER yieldomega;" >/dev/null
+yieldomega_verify_pg_reset_test_db "${PG_URL}"
 cargo test --test integration_stage2 --quiet
 
 echo "=== verify-podium-live-anvil: OK (read_block=${READ_BLOCK}, live_rows=${LIVE_COUNT}) ==="

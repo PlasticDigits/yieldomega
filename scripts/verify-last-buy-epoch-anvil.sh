@@ -12,28 +12,33 @@ DEPLOY_LOG="$(mktemp)"
 REGISTRY="${ROOT}/contracts/deployments/local-anvil-registry.json"
 CHARM_WAD=1000000000000000000
 
-# shellcheck source=scripts/lib/anvil_deploy_dev.sh
-source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
-# shellcheck source=scripts/lib/verify_anvil_common.sh
-source "${ROOT}/scripts/lib/verify_anvil_common.sh"
+VERIFY_SCRIPT_PREFIX="verify-last-buy-epoch-anvil"
+VERIFY_ANVIL_LOG="/tmp/yieldomega_verify278_anvil.log"
+VERIFY_INDEXER_LOG="/tmp/yieldomega_verify278_indexer.log"
+VERIFY_REGISTRY_COMMENT="verify-last-buy-epoch-anvil.sh"
+
 # shellcheck source=scripts/lib/verify_indexer_stack.sh
 source "${ROOT}/scripts/lib/verify_indexer_stack.sh"
 
 die() {
-  echo "verify-last-buy-epoch-anvil: $*" >&2
-  exit 1
+  yieldomega_verify_die "$@"
 }
 
 log() {
-  echo "verify-last-buy-epoch-anvil: $*"
+  yieldomega_verify_log "$@"
 }
 
 cast_u256() {
   cast call "$1" "$2" --rpc-url "${RPC}" | awk '{print $1}'
 }
 
-warp_past_cooldown() { yieldomega_verify_warp_past_cooldown; }
-anvil_send() { yieldomega_verify_anvil_send "$@"; }
+warp_past_cooldown() {
+  yieldomega_verify_warp_past_cooldown "${RPC}"
+}
+
+anvil_send() {
+  yieldomega_verify_anvil_send "${RPC}" "$@"
+}
 
 wait_indexer_sync() {
   local want="$1"
@@ -45,30 +50,23 @@ wait_indexer_sync() {
     fi
     sleep 1
   done
-  tail -40 /tmp/yieldomega_verify278_indexer.log >&2
+  tail -40 "${VERIFY_INDEXER_LOG}" >&2
   die "indexer did not reach block ${want}"
 }
 
 cleanup() {
   rm -f "${DEPLOY_LOG}"
-  yieldomega_verify_kill_anvil_indexer_pids
+  yieldomega_verify_kill_pid_if_set "${INDEXER_PID:-}"
+  yieldomega_verify_kill_pid_if_set "${ANVIL_PID:-}"
 }
 trap cleanup EXIT
 
-yieldomega_verify_stop_anvil_indexer
-VERIFY_ANVIL_LOG=/tmp/yieldomega_verify278_anvil.log yieldomega_verify_start_anvil
-
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 export YIELDOMEGA_SEED_EVM_DEV_WALLETS=0
-yieldomega_verify_deploy_dev
+yieldomega_verify_boot_indexer_stack "${ROOT}"
 
 [[ -n "${TA:-}" ]] || die "TimeArena address missing after deploy"
 [[ -n "${DOUB:-}" ]] || die "Doubloon address missing after deploy"
-
-yieldomega_verify_write_anvil_registry "${REGISTRY}" "verify-last-buy-epoch-anvil.sh"
-yieldomega_verify_pg_reset_db
-yieldomega_verify_start_indexer /tmp/yieldomega_verify278_indexer.log
-yieldomega_verify_wait_indexer_status die /tmp/yieldomega_verify278_indexer.log
 
 mapfile -t ANVIL_ACCOUNTS < <(cast rpc eth_accounts --rpc-url "${RPC}" | jq -r '.[]')
 ALICE="${ANVIL_ACCOUNTS[0]}"

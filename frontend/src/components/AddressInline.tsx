@@ -85,7 +85,10 @@ export function AddressInline({
           type="button"
           className="address-inline__link address-inline__profile-btn"
           aria-label={`Open wallet profile for ${raw}`}
-          onClick={() => onOpenProfile(raw)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenProfile(raw);
+          }}
         >
           {cluster}
         </button>

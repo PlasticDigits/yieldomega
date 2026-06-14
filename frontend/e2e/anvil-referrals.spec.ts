@@ -24,6 +24,7 @@ test.describe("Anvil referrals surface", () => {
   });
 
   test("connected wallet: register code, share links, copy to clipboard", async ({ page }) => {
+    test.setTimeout(180_000);
     await page.goto("/referrals");
     await expect(page.getByTestId("referrals-surface")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("heading", { name: "Referrals", level: 1 })).toBeVisible();
@@ -38,11 +39,12 @@ test.describe("Anvil referrals surface", () => {
     }
 
     await expect(page.getByText("Connect a wallet.", { exact: false })).not.toBeVisible();
-    await expect(page.getByText(/Burn per registration/i)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("referrals-register-cost-amount")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/Claim cost/i)).toBeVisible();
 
     const code = `r${Date.now().toString(36).slice(-10)}`.toLowerCase();
     await newCodeField.fill(code);
-    await page.getByRole("button", { name: /Register & burn CL8Y/i }).click();
+    await page.getByRole("button", { name: /^Register code$/i }).click();
 
     await expect(page.getByText(/Could not register/i)).toHaveCount(0, { timeout: 180_000 });
     await expect(page.getByRole("heading", { name: "Your share links", level: 4 })).toBeVisible({

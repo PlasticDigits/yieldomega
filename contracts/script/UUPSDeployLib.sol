@@ -6,7 +6,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
@@ -29,7 +28,6 @@ library UUPSDeployLib {
     function deployTimeArena(
         IERC20 _doub,
         PodiumVaults _podiumVaults,
-        AdminSellVault _adminSellVault,
         address _referralRegistry,
         address _playCred,
         uint256 _charmPriceWad,
@@ -47,7 +45,6 @@ library UUPSDeployLib {
             (
                 _doub,
                 _podiumVaults,
-                _adminSellVault,
                 _referralRegistry,
                 _playCred,
                 _charmPriceWad,
@@ -67,7 +64,6 @@ library UUPSDeployLib {
     function deployTimeArenaProductionDefaults(
         IERC20 _doub,
         PodiumVaults _podiumVaults,
-        AdminSellVault _adminSellVault,
         address _referralRegistry,
         address _playCred,
         uint256 _charmPriceWad,
@@ -84,7 +80,6 @@ library UUPSDeployLib {
         return deployTimeArena(
             _doub,
             _podiumVaults,
-            _adminSellVault,
             _referralRegistry,
             _playCred,
             _charmPriceWad,
