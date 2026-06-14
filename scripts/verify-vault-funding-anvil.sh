@@ -10,11 +10,16 @@ RPC="http://127.0.0.1:${PORT}"
 PG_URL="${DATABASE_URL:-postgres://yieldomega:password@127.0.0.1:5433/yieldomega_indexer}"
 DEPLOY_LOG="$(mktemp)"
 REGISTRY="${ROOT}/contracts/deployments/local-anvil-registry.json"
+VERIFY_TAG=verify267
 CHARM_WAD=1000000000000000000
 BUY_DOUB=1000000000000000000000
 
 # shellcheck source=scripts/lib/anvil_deploy_dev.sh
 source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
+# shellcheck source=scripts/lib/verify_anvil_common.sh
+source "${ROOT}/scripts/lib/verify_anvil_common.sh"
+# shellcheck source=scripts/lib/verify_indexer_stack.sh
+source "${ROOT}/scripts/lib/verify_indexer_stack.sh"
 
 die() {
   echo "verify-vault-funding-anvil: $*" >&2
@@ -25,36 +30,17 @@ log() {
   echo "verify-vault-funding-anvil: $*"
 }
 
-warp_past_cooldown() {
-  cast rpc anvil_increaseTime 5 --rpc-url "${RPC}" >/dev/null
-  cast rpc anvil_mine 1 --rpc-url "${RPC}" >/dev/null
-}
-
-anvil_send() {
-  local from="$1" to="$2" sig="$3"
-  shift 3
-  cast send "${to}" "${sig}" "$@" --from "${from}" --unlocked --rpc-url "${RPC}" >/dev/null
-}
+warp_past_cooldown() { verify_anvil_warp_past_cooldown; }
+anvil_send() { verify_anvil_send "$@"; }
 
 cleanup() {
   rm -f "${DEPLOY_LOG}"
-  if [[ -n "${INDEXER_PID:-}" ]]; then kill "${INDEXER_PID}" 2>/dev/null || true; fi
-  if [[ -n "${ANVIL_PID:-}" ]]; then kill "${ANVIL_PID}" 2>/dev/null || true; fi
+  verify_anvil_kill_children
 }
 trap cleanup EXIT
 
-pkill -f "anvil.*${PORT}" 2>/dev/null || true
-pkill -f 'yieldomega-indexer' 2>/dev/null || true
-sleep 1
-
-anvil --host 127.0.0.1 --port "${PORT}" --gas-limit 60000000 --code-size-limit 524288 \
-  >/tmp/yieldomega_verify267_anvil.log 2>&1 &
-ANVIL_PID=$!
-for _ in $(seq 1 30); do
-  cast block-number --rpc-url "${RPC}" >/dev/null 2>&1 && break
-  sleep 0.5
-done
-cast block-number --rpc-url "${RPC}" >/dev/null
+verify_anvil_stop_existing
+verify_anvil_start
 
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
@@ -66,44 +52,11 @@ yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
 [[ -n "${AV:-}" ]] || die "AdminSellVault address missing after deploy"
 [[ -n "${CRED:-}" ]] || die "PlayCred address missing after deploy"
 
-DEPLOY_BLOCK="$(cast block-number --rpc-url "${RPC}")"
-jq -n \
-  --argjson chainId 31337 \
-  --arg ta "${TA}" \
-  --arg pv "${PV}" \
-  --arg av "${AV}" \
-  --arg rr "${RR}" \
-  --argjson deployBlock "${DEPLOY_BLOCK}" \
-  '{
-    _comment: "verify-vault-funding-anvil.sh",
-    chainId: $chainId,
-    contracts: { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr },
-    deployBlock: $deployBlock
-  }' >"${REGISTRY}"
-
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c \
-  "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'yieldomega_indexer' AND pid <> pg_backend_pid();" \
-  >/dev/null 2>&1 || true
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS yieldomega_indexer;" >/dev/null
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE yieldomega_indexer OWNER yieldomega;" >/dev/null
-
-export DATABASE_URL="${PG_URL}"
-export CHAIN_ID=31337
-export START_BLOCK=0
-export ADDRESS_REGISTRY_PATH="${REGISTRY}"
-export LISTEN_ADDR="127.0.0.1:${INDEXER_PORT}"
-export INGESTION_ENABLED=true
-export RPC_URL="${RPC}"
-cd "${ROOT}/indexer"
-cargo run --release >/tmp/yieldomega_verify267_indexer.log 2>&1 &
-INDEXER_PID=$!
-
-for _ in $(seq 1 90); do
-  curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/status" >/dev/null 2>&1 && break
-  sleep 1
-done
-curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/status" >/dev/null || {
-  tail -40 /tmp/yieldomega_verify267_indexer.log >&2
+verify_indexer_write_registry "verify-vault-funding-anvil.sh"
+verify_indexer_reset_db
+verify_indexer_start
+verify_indexer_wait_status || {
+  verify_indexer_log_tail
   die "indexer /v1/status unavailable"
 }
 
@@ -134,7 +87,7 @@ for _ in $(seq 1 90); do
   sleep 1
 done
 [[ "${synced}" -eq 1 ]] || {
-  tail -40 /tmp/yieldomega_verify267_indexer.log >&2
+  verify_indexer_log_tail
   die "indexer did not ingest 12 vault funding rows for buy tx"
 }
 
@@ -189,9 +142,7 @@ DONATE="$(curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/arena/podium-pool-donati
 echo "${DONATE}" | jq -e '.total_donated_doub_wad == "0" and (.recent | length) == 0' >/dev/null
 
 log "integration_stage2 (includes api_vault_funding_smoke)"
-export YIELDOMEGA_PG_TEST_URL="${PG_URL%/*}/yieldomega_indexer_test"
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS yieldomega_indexer_test;" >/dev/null 2>&1 || true
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE yieldomega_indexer_test OWNER yieldomega;" >/dev/null
+verify_indexer_create_test_db
 cargo test --test integration_stage2 --quiet
 
 echo "=== verify-vault-funding-anvil: OK (buy_tx=${BUY_TX}, cred_tx=${CRED_TX}) ==="
