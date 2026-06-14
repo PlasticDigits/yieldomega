@@ -318,6 +318,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             timer_hard_reset: false,
             paid_with_cred: false,
         }),
+        next(DecodedEvent::ArenaBuyViaKumbaya {
+            buyer: alice,
+            charm_wad: u1,
+            gross_doub: u2,
+            pay_kind: 0,
+        }),
         next(DecodedEvent::ArenaReferralCred {
             buyer: alice,
             referrer: addr_byte(0xee),
@@ -437,6 +443,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         2
     );
     assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_arena_buy_router_kumbaya", 100).await,
+        1
+    );
     let buy_epoch: i64 = sqlx::query_scalar(
         "SELECT last_buy_epoch FROM idx_arena_buy WHERE block_number = 100 LIMIT 1",
     )
@@ -1423,6 +1433,7 @@ async fn api_buys_cursor_smoke(pool: &sqlx::PgPool) {
     assert!(!cursor.is_empty());
 
     let res2 = app
+        .clone()
         .oneshot(
             Request::builder()
                 .uri(format!("/v1/arena/buys?limit=1&cursor={cursor}"))
@@ -1436,6 +1447,17 @@ async fn api_buys_cursor_smoke(pool: &sqlx::PgPool) {
     let first_tx = j["items"][0]["tx_hash"].as_str().unwrap();
     let second_tx = j2["items"][0]["tx_hash"].as_str().unwrap();
     assert_ne!(first_tx, second_tx);
+
+    let res3 = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/activity?limit=3&cursor=not-a-cursor")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res3.status(), StatusCode::BAD_REQUEST);
 }
 
 /// `BuyViaKumbaya` annotates `idx_arena_buy.pay_kind` on the same tx ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
@@ -1519,6 +1541,12 @@ async fn api_buy_via_kumbaya_pay_kind_smoke(pool: &sqlx::PgPool) {
         })
         .expect("kumbaya buy row");
     assert_eq!(row.get("pay_kind").and_then(|v| v.as_i64()), Some(0));
+    assert_eq!(row.get("entry_pay_asset").and_then(|v| v.as_str()), Some("eth"));
+    let expected_gross = DOUB_100.to_string();
+    assert_eq!(
+        row.get("router_attested_gross_doub").and_then(|v| v.as_str()),
+        Some(expected_gross.as_str())
+    );
 }
 
 #[tokio::test]

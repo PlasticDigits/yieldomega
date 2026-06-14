@@ -354,6 +354,32 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         .into_response()
 }
 
+/// Maps `TimeArenaBuyRouter` `PAY_ETH` / `PAY_STABLE` / `PAY_CL8Y` for API consumers (GitLab #67, #319).
+fn kumbaya_entry_pay_asset(pay_kind: Option<i16>) -> Option<String> {
+    match pay_kind? {
+        0 => Some("eth".to_string()),
+        1 => Some("stable".to_string()),
+        2 => Some("cl8y".to_string()),
+        _ => None,
+    }
+}
+
+const ARENA_BUYS_SELECT_SQL: &str = r#"SELECT b.buyer, b.charm_wad::text, b.doub_paid::text, b.block_number, b.tx_hash,
+                      b.timer_hard_reset, b.paid_with_cred, b.actual_seconds_added::text,
+                      b.new_deadline::text, b.buy_index::text, b.log_index, b.pay_kind,
+                      FLOOR(EXTRACT(EPOCH FROM b.block_timestamp))::bigint::text AS block_timestamp_sec,
+                      k.gross_doub::text AS router_attested_gross_doub
+               FROM idx_arena_buy b
+               LEFT JOIN LATERAL (
+                   SELECT kk.gross_doub
+                     FROM idx_arena_buy_router_kumbaya kk
+                    WHERE kk.tx_hash = b.tx_hash
+                      AND lower(kk.buyer) = lower(b.buyer)
+                      AND kk.charm_wad = b.charm_wad
+                    ORDER BY kk.log_index DESC
+                    LIMIT 1
+               ) k ON true"#;
+
 async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParams>) -> Response {
     let limit = p.limit.clamp(1, 200);
     let offset = p.offset.max(0);
@@ -368,19 +394,17 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
     let rows = if let Some(c) = cursor {
         let (null_rank, ts_epoch, block_number, log_index) = c.sort_key_binds();
         match sqlx::query(
-            r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
-                      timer_hard_reset, paid_with_cred, actual_seconds_added::text,
-                      new_deadline::text, buy_index::text, log_index, pay_kind,
-                      FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text AS block_timestamp_sec
-               FROM idx_arena_buy
+            &format!(
+                "{ARENA_BUYS_SELECT_SQL}
                WHERE (
-                   CASE WHEN block_timestamp IS NULL THEN 0 ELSE 1 END,
-                   COALESCE(EXTRACT(EPOCH FROM block_timestamp)::bigint, 0),
-                   block_number,
-                   log_index
+                   CASE WHEN b.block_timestamp IS NULL THEN 0 ELSE 1 END,
+                   COALESCE(EXTRACT(EPOCH FROM b.block_timestamp)::bigint, 0),
+                   b.block_number,
+                   b.log_index
                ) < ($1, $2, $3, $4)
-               ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
-               LIMIT $5"#,
+               ORDER BY b.block_timestamp DESC NULLS LAST, b.block_number DESC, b.log_index DESC
+               LIMIT $5"
+            ),
         )
         .bind(null_rank)
         .bind(ts_epoch)
@@ -395,13 +419,11 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
         }
     } else {
         match sqlx::query(
-            r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
-                      timer_hard_reset, paid_with_cred, actual_seconds_added::text,
-                      new_deadline::text, buy_index::text, log_index, pay_kind,
-                      FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text AS block_timestamp_sec
-               FROM idx_arena_buy
-               ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
-               LIMIT $1 OFFSET $2"#,
+            &format!(
+                "{ARENA_BUYS_SELECT_SQL}
+               ORDER BY b.block_timestamp DESC NULLS LAST, b.block_number DESC, b.log_index DESC
+               LIMIT $1 OFFSET $2"
+            ),
         )
         .bind(limit)
         .bind(offset)
@@ -473,6 +495,8 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
             Ok(v) => v,
             Err(res) => return res,
         };
+        let router_attested_gross_doub: Option<String> =
+            r.try_get("router_attested_gross_doub").ok();
         items.push(json!({
             "buyer": buyer,
             "charm_wad": charm_wad,
@@ -487,6 +511,8 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
             "log_index": log_index,
             "block_timestamp": block_timestamp,
             "pay_kind": pay_kind,
+            "entry_pay_asset": kumbaya_entry_pay_asset(pay_kind),
+            "router_attested_gross_doub": router_attested_gross_doub,
         }));
     }
 

@@ -97,7 +97,7 @@ pub struct RegistryContracts {
     /// Legacy JSON field (ignored for Arena v2 ingestion).
     #[serde(rename = "TimeCurveBuyRouter", default)]
     pub timecurve_buy_router: String,
-    /// Optional local Anvil buy router ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); not yet used for log filters.
+    /// Optional local Anvil buy router ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); ingests `BuyViaKumbaya` when set ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
     #[serde(rename = "TimeArenaBuyRouter", default)]
     pub time_arena_buy_router: String,
     #[serde(rename = "PodiumVaults", default)]
@@ -269,6 +269,10 @@ pub fn validate_address_registry_for_production(
         );
     }
 
+    if require_buy_router {
+        let _ = strict_parse("TimeArenaBuyRouter", &reg.contracts.time_arena_buy_router)?;
+    }
+
     Ok(())
 }
 
@@ -341,11 +345,16 @@ impl Config {
             Err(_) => true,
         };
 
+        let require_buy_router = match std::env::var("INDEXER_REGISTRY_REQUIRE_BUY_ROUTER") {
+            Ok(s) => matches!(s.to_lowercase().as_str(), "1" | "true" | "yes"),
+            Err(_) => false,
+        };
+
         ensure_production_address_registry(
             chain_id,
             ingestion_enabled,
             &address_registry,
-            registry_require_buy_router_from_env(),
+            require_buy_router,
         )?;
 
         if let Some(ref reg) = address_registry {

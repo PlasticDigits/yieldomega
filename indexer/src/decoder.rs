@@ -30,6 +30,12 @@ mod contracts {
     }
 
     sol! {
+        contract TimeArenaBuyRouterEvents {
+            event BuyViaKumbaya(address indexed buyer, uint256 charmWad, uint256 grossDoub, uint8 payKind);
+        }
+    }
+
+    sol! {
         contract TimeArenaEvents {
             event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
             event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
@@ -91,11 +97,6 @@ mod contracts {
             );
             event PausedSet(bool paused);
             event PodiumPoolsToppedUp(address indexed donor, uint256 amountDoubWad);
-        }
-    }
-    sol! {
-        contract TimeArenaBuyRouterEvents {
-            event BuyViaKumbaya(address indexed buyer, uint256 charmWad, uint256 grossDoub, uint8 payKind);
         }
     }
 }
