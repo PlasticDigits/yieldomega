@@ -371,7 +371,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 ### CRED buy burn + first-buy bonus ([GitLab #268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268))
 
-**Scope:** `buyWithCred` burns **100 CRED per 1e18 CHARM**; wallet’s first `_finishBuy` (DOUB or CRED) schedules **150 CRED** for **`lastBuyEpoch + 1`** (post same-tx hard-reset); `pendingCred` / `claimCred` include fixed bonus.
+**Scope:** `buyWithCred` burns **100 CRED per 1e18 CHARM**; wallet’s first `_finishBuy` (DOUB or CRED) schedules **`FIRST_BUY_CRED_BONUS = 1100e18`** for **`lastBuyEpoch + 1`** (post same-tx hard-reset); `pendingCred` / `claimCred` include fixed bonus.
 
 ### Authoritative docs
 
@@ -386,9 +386,9 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] **`bash scripts/verify-cred-buy-anvil.sh`** — fresh Anvil DeployDev: burn scaling + first-buy bonus onchain.
 - [ ] **`npm test -- --run src/lib/arenaCredBurn.test.ts`** — frontend burn helper matches `CRED_PER_CHARM_WAD`.
 - [ ] `cast call TimeArena.CRED_PER_CHARM_WAD` → **100e18**; `buyWithCred(1e18)` decreases wallet CRED by **100e18**.
-- [ ] First buy: `epochFixedCredBonus[lastBuyEpoch+1][wallet] == 150e18`; second buy from same wallet does **not** add another 150.
+- [ ] First buy: `epochFixedCredBonus[lastBuyEpoch+1][wallet] == 1100e18`; second buy from same wallet does **not** add another 1100.
 - [ ] First buy in hard-reset band: bonus targets **post-reset** `lastBuyEpoch + 1` (`test_first_buy_hard_reset_targets_post_epoch`).
-- [ ] `claimCred(epoch)` mints pro-rata + bonus; bonus-only claim (no CHARM in epoch) mints **150e18**; reverts while `epoch >= lastBuyEpoch`.
+- [ ] `claimCred(epoch)` mints pro-rata + bonus; bonus-only claim (no CHARM in epoch) mints **1100e18**; reverts while `epoch >= lastBuyEpoch`.
 - [ ] DOUB and CRED paths each add **35 CRED** to `epochCredPool` per buy ([#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311)).
 - [ ] **`buyWithCred`** has no referral CRED path ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)).
 
@@ -778,7 +778,7 @@ Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`*
 
 ### Checklist
 
-1. **`/arena` — DOUB/CL8Y path:** After signing the buy tx, a **shallow coin** plays **before** the receipt lands; **charmed** on success.
+1. **`/` — DOUB/CL8Y path:** After signing the buy tx, a **shallow coin** plays **before** the receipt lands; **charmed** on success.
 2. **ETH / USDM — single-tx router:** After signing **`buyViaKumbaya`**, the same **coin** fires once (not on wrap/approve-only steps in the two‑step fallback).
 3. **Arena — WarBow podium:** **`warbow_twang`** fires only when the indexed ladder shows **top‑3 entry** (from unranked/deep) **or** a move **among ranks ≤3** (see `warbowRankSfxPolicy` — **no** stinger on e.g. **10 → 4**); **≤1** hit per **~18 s** throttle.
 4. **Kumbaya whoosh:** Confirm **no** whoosh on mere **quote refresh** (still **unwired**).
@@ -883,14 +883,14 @@ profile behavior.
 
 ### Checklist
 
-- [ ] `/arena` desktop and mobile: live-buy rows, podium rows, amount displays,
+- [ ] `/` desktop and mobile: live-buy rows, podium rows, amount displays,
   empty/loading states, and indexer status read as dark tactical glass surfaces
   with compact copy; no raw wei/WAD or fake-zero empty states.
 - [ ] `/arena/protocol` activity feed (`arena-live-buys-activity`): ticker rows
   use blockie + last-six participant labels, glass activity panel styling, and
   wallet-profile actions where wired. Legacy hero-strip buy list/detail modals
   (`ArenaBuyModals`) were retired with the #291 command console — do not expect
-  them on `/arena`.
+  them on `/`.
 - [ ] Wallet profile: click participant blockie/last-six address from a live row
   or podium row; `WalletProfileModal` opens, sections remain readable, empty
   sections use the shared placeholder, and **View on explorer** remains a
@@ -1030,11 +1030,11 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
 ### Visual smoke (cyberminimalist glass)
 
 - [ ] Global shell: dark `--yo-*` glass tokens, compact nav (**Time Arena**, **Referrals**), **Yield Omega** brand in header/home/countdown.
-- [ ] `/arena`: single `arena-command-console`; Last Buy primary; inline CHARM buy; decision row; secondary operations rail; four podiums; recognizable low-opacity character accents.
+- [ ] `/`: single `arena-command-console`; Last Buy primary; inline CHARM buy; buy-hub metrics in panel (no decision-row strip); podium carousel (one at a time); secondary operations rail; recognizable low-opacity character accents.
 - [ ] `/arena/protocol`: compact **AUDIT** hierarchy; state/routing/activity cards; donate-pools disclosure when configured.
 - [ ] `/`, `/home`, launch countdown: **PLAY TIME ARENA** first, **AUDIT** verification, current mechanics chips only.
 - [ ] `/referrals`, `/kumbaya`, `/sir`, 404: same glass system; compact action-first copy; external venue trust boundaries on venue routes.
-- [ ] Responsive: 390×844 and desktop widths — no horizontal overflow on `/arena`, `/home`, `/referrals`.
+- [ ] Responsive: 390×844 and desktop widths — no horizontal overflow on `/`, `/home`, `/referrals`.
 
 ### Mechanics smoke (copy vs canonical TimeArena)
 
