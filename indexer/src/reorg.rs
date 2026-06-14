@@ -127,6 +127,12 @@ pub const ARENA_INDEX_TABLES: &[&str] = &[
     "idx_arena_warbow_revenge",
     "idx_warbow_epoch_score",
     "idx_arena_podium_live",
+    "idx_arena_first_buy_cred_scheduled",
+    "idx_arena_level_up",
+    "idx_arena_feature_unlocked",
+    "idx_arena_paused_set",
+    "idx_arena_warbow_podium_finalized",
+    "idx_arena_warbow_flag_claimed",
 ];
 
 pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()> {

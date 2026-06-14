@@ -19,7 +19,7 @@ def test_load_config_minimal(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cfg.rpc_url == "http://127.0.0.1:8545"
     assert cfg.chain_id == 31337
     assert cfg.send_transactions is False
-    assert cfg.timecurve_address.startswith("0x")
+    assert cfg.timearena_address.startswith("0x")
 
 
 def test_send_with_cli(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -68,4 +68,4 @@ def test_registry_file_fills_time_arena(monkeypatch: pytest.MonkeyPatch, tmp_pat
     monkeypatch.delenv("YIELDOMEGA_TIMECURVE_ADDRESS", raising=False)
     monkeypatch.setenv("YIELDOMEGA_ADDRESS_FILE", str(reg))
     cfg = load_config(send=False, allow_anvil_funding=False)
-    assert "A51c1fc2" in cfg.timecurve_address
+    assert "A51c1fc2" in cfg.timearena_address

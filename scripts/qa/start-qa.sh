@@ -59,7 +59,6 @@ mkdir -p "$DEPLOY_DIR"
 
 TA="$(jq -r '.contracts.TimeArena' "$REGISTRY")"
 PV="$(jq -r '.contracts.PodiumVaults' "$REGISTRY")"
-AV="$(jq -r '.contracts.AdminSellVault' "$REGISTRY")"
 RR="$(jq -r '.contracts.ReferralRegistry' "$REGISTRY")"
 CHAIN_ID="$(jq -r '.chainId' "$REGISTRY")"
 
@@ -75,7 +74,6 @@ VITE_RPC_URL=${RPC_URL}
 VITE_INDEXER_URL=${INDEXER_URL}
 VITE_TIME_ARENA_ADDRESS=${TA}
 VITE_PODIUM_VAULTS_ADDRESS=${PV}
-VITE_ADMIN_SELL_VAULT_ADDRESS=${AV}
 VITE_REFERRAL_REGISTRY_ADDRESS=${RR}
 EOF
 

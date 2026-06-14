@@ -135,7 +135,7 @@ Implement the TimeArena primitive per docs/product/time-arena.md, docs/product/a
 
 ## Implementation phase 3 — Retired: Rabbit Treasury (Burrow)
 
-**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
+**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Historical context: [arena-v2.md § Retired surfaces](product/arena-v2.md#retired-surfaces), [onchain/treasury-contracts.md](onchain/treasury-contracts.md). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
 
 **Goal:** Do not implement new RabbitTreasury deposit/withdraw flows. Arena v2 funds podiums via per-buy DOUB routing to **PodiumVaults** and **AdminSellVault**.
 

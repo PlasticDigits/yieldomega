@@ -11,7 +11,7 @@ from web3 import Web3
 from web3.contract.contract import Contract
 
 from timearena_bot.config import BotConfig, load_config
-from timearena_bot.contracts import arena_doub_address, mock_reserve_contract, timecurve_contract
+from timearena_bot.contracts import arena_doub_address, mock_reserve_contract, timearena_contract
 from timearena_bot.rpc import assert_chain_id, make_web3
 from timearena_bot.state import fetch_sale_snapshot, format_snapshot_human
 from timearena_bot.strategies import defender, fun, pvp, rando, seed_local, shark
@@ -54,7 +54,7 @@ def _main(
 def _connect(cfg: BotConfig) -> Tuple[Web3, Contract, Contract]:
     w3 = make_web3(cfg.rpc_url)
     assert_chain_id(w3, cfg.chain_id)
-    tc = timecurve_contract(w3, cfg.timecurve_address)
+    tc = timearena_contract(w3, cfg.timearena_address)
     doub = arena_doub_address(tc, explicit=cfg.accepted_asset_address)
     asset = mock_reserve_contract(w3, doub)
     return w3, tc, asset
@@ -70,7 +70,7 @@ def cmd_inspect(ctx: typer.Context) -> None:
         format_snapshot_human(
             snap,
             rpc_url=cfg.rpc_url,
-            time_arena=cfg.timecurve_address,
+            time_arena=cfg.timearena_address,
         )
     )
     typer.echo(f"send_transactions={cfg.send_transactions}  allow_anvil_funding={cfg.allow_anvil_funding}")

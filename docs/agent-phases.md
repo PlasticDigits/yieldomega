@@ -118,7 +118,7 @@ Read docs/product/time-arena.md, docs/product/arena-v2.md, docs/product/primitiv
 
 ## Phase 7 — Retired: Rabbit Treasury (Arena v2)
 
-**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
+**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Historical context: [arena-v2.md § Retired surfaces](product/arena-v2.md#retired-surfaces), [onchain/treasury-contracts.md](onchain/treasury-contracts.md). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
 
 **Goal:** Do not implement or route new user flows through Rabbit Treasury / Burrow deposit-withdraw. Arena v2 prize funding uses **PodiumVaults** and **AdminSellVault** per buy routing.
 
@@ -218,9 +218,11 @@ Read docs/frontend/design.md and docs/frontend/arena-views.md. Scaffold a Vite +
 
 ## Phase 14 — Testing strategy (three stages)
 
-**Docs:** [testing/strategy.md](testing/strategy.md) · [testing/ci.md](testing/ci.md) (CI vs local parity)
+**Docs:** [testing/strategy.md](testing/strategy.md) · **CI mapping:** [testing/ci.md](testing/ci.md)
 
-**Goal:** Unit → devnet integration → testnet → production gates. Use **`docs/testing/ci.md`** for what runs in GitHub Actions and local parity commands — do not propose a new workflow doc here.
+**Goal:** Unit → devnet integration → testnet → production gates.
+
+CI workflow documentation and local parity commands live in [`docs/testing/ci.md`](testing/ci.md). Use that doc with [testing/strategy.md](testing/strategy.md) for stage exit criteria — do not duplicate workflow YAML or propose new CI files from this phase.
 
 ---
 

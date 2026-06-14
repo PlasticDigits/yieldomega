@@ -14,7 +14,7 @@ from web3 import Web3
 from timearena_bot.anvil_accounts import address_at, private_key_hex
 from timearena_bot.anvil_extra_addresses import extra_funded_addresses_from_environ, merge_funded_recipients
 from timearena_bot.config import BotConfig, load_config
-from timearena_bot.contracts import arena_doub_address, mock_reserve_contract, timecurve_contract
+from timearena_bot.contracts import arena_doub_address, mock_reserve_contract, timearena_contract
 from timearena_bot.referral_bootstrap import (
     ensure_swarm_referral_registered,
     load_referral_registrar_account,
@@ -84,7 +84,7 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
 
     w3 = make_web3(cfg.rpc_url)
     assert_chain_id(w3, cfg.chain_id)
-    tc = timecurve_contract(w3, cfg.timecurve_address)
+    tc = timearena_contract(w3, cfg.timearena_address)
     doub = arena_doub_address(tc, explicit=cfg.accepted_asset_address)
     asset = mock_reserve_contract(w3, doub)
 

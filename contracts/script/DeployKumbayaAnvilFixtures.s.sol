@@ -33,7 +33,7 @@ contract DeployKumbayaAnvilFixtures is Script {
 
         TimeArena arena = TimeArena(timeArena);
         IERC20 doub = arena.doub();
-        address surplusRecipient = address(arena.adminSellVault());
+        address surplusRecipient = deployer;
 
         vm.startBroadcast(deployerKey);
 
@@ -87,7 +87,7 @@ contract DeployKumbayaAnvilFixtures is Script {
         console.log("AnvilKumbayaRouter (swap + quoter):", address(router));
         console.log("TimeArenaBuyRouter (single-tx ETH/USDM buy):", address(buyRouter));
         console.log("MockReserveCl8y (router CL8Y leg):", address(cl8y));
-        console.log("TimeArena doubSurplusRecipient (AdminSellVault):", surplusRecipient);
+        console.log("TimeArena doubSurplusRecipient (deployer):", surplusRecipient);
         console.log("charmPriceWad source: Anvil Kumbaya spot (#303)");
         console.log("doubUsdWad", doubUsdWad);
         console.log("charmPriceWad", charmPriceWad);
