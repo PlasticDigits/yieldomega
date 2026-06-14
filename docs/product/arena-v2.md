@@ -7,8 +7,8 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 ## Spend asset and buy
 
 - Participants **`buy(charmWad)`** on **`TimeArena`** (DOUB pull) or **`buyWithCred(charmWad)`** (burn **100 CRED per 1e18 CHARM** — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)).
-- DOUB payment: `doubOwed = charmWad × charmPriceWad / 1e18`.
-- **Production launch:** **`charmPriceWad`** from **Kumbaya TWAP** on **DOUB/CL8Y** + **CL8Y/WETH** (+ **WETH/USDm** USD leg; ~**$1** DOUB notional per 1 CHARM; Sir **15m** — [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)). **Anvil / DeployDev:** **`1000e18`**. Governance may **`setCharmPriceWad`** anytime.
+- DOUB payment: `doubOwed = charmWad × effectiveCharmPriceWad() / 1e18`.
+- **Production launch:** epoch-0 anchor from **Kumbaya TWAP** on **DOUB/CL8Y** + **CL8Y/WETH** (+ **WETH/USDm** USD leg; ~**$1** DOUB notional per 1 CHARM; Sir **15m** — [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)); each Last Buy hard reset re-anchors, then **+10%/day** until the next reset ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). **`effectiveCharmPriceWad()`** is the buy-time price; storage **`charmPriceWad`** is the governance / fallback anchor. **Anvil / DeployDev:** **`1000e18`** baseline. Governance may **`setCharmPriceWad`** anytime. **`buyWithCred`** uses flat **100 CRED/CHARM** — no epoch pricing ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)).
 - CHARM band: **0.99–10** CHARM (WAD). Ingress uses ERC-20 **balance-delta parity** ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
 - **`TimeArenaBuyRouter`**: CL8Y / ETH / USDm → Kumbaya **`exactOutput`** → DOUB → **`buyFor`**.
 
@@ -39,11 +39,13 @@ On **`rollPodiumEpoch(category)`** (permissionless after deadline):
 4. Increment **`podiumEpoch[cat]`**; clear live scores for that category only.
 5. Emit **`PodiumEpochRolled`**.
 
-**WarBow (cat 3):** steps 1 and 3–5 apply; step 2 (auto 4∶2∶1 pay) is **skipped** — owner **`finalizeWarbowPodium(epoch, …)`** pays that epoch’s pool ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)). Live BP resets via **`warbowBpGeneration`** on roll.
+**WarBow (cat 3):** steps 1–5 apply on **`rollPodiumEpoch`** / autoroll — on-chain top-3 from live BP leaderboard pays **4∶2∶1**; emits **`WarbowPodiumFinalized`**. Owner **`finalizeWarbowPodium`** is **superseded** (reverts) ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)). Live BP resets via **`warbowBpGeneration`** on roll.
+
+**Always-live autoroll ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** When not **`paused`**, buys and WarBow actions call **`_autorollExpiredPodiums()`** before proceeding — any category with **`block.timestamp > podiumDeadline[cat]`** rolls in one tx (no **`TimeArena: timer expired`** gate on Last Buy).
 
 ## DOUB prize routing (per buy) — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)
 
-**100%** of paid DOUB routes to **four podium prize vaults** (**0%** admin take on buys). Each category receives **25%** of the buy; within each category the share splits **70% / 20% / 10%** to **`podiumEpoch[cat]`**, **`+1`**, **`+2`** pools (active / seed / future). Remainder wei: category split residue → **Time Booster (cat 1)**; within-category residue → **+2 tranche**.
+**100%** of paid DOUB routes to **four podium prize vaults** (**0%** admin take on buys). Each category receives **25%** of the buy; within each category the share splits **70% / 20% / 10%** to **`podiumEpoch[cat]`**, **`+1`**, **`+2`** pools (active / seed / future). Remainder wei: category split residue → **Last Buy (cat 0)** ([#313](https://gitlab.com/PlasticDigits/yieldomega/-/issues/313)); within-category residue → **+2 tranche** ([`ArenaBuyRouting.splitBuyAmount`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol)).
 
 | Tranche | Pool | Share of category |
 |---------|------|-------------------|
@@ -64,10 +66,10 @@ Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`Podiu
 ## Play CRED + epoch CHARM
 
 - **`PlayCred`**: non-transferable; **`MINTER_ROLE`** for TimeArena (+ optional **`CredGrantor`**).
-- Each DOUB buy mints **35 CRED** (18 decimals) into the epoch accrual pool; holders claim **pro-rata** by **`charmWad[epoch][user]`** after that Last Buy epoch ends.
+- Each DOUB or CRED buy mints **35 CRED** (18 decimals) into the epoch accrual pool; holders claim **pro-rata** by **`charmWad[epoch][user]`** after that Last Buy epoch ends.
 - **`claimCred(epoch)`** zeros epoch CHARM weight and transfers accrued CRED (pro-rata plus any **`epochFixedCredBonus`** for that epoch).
-- **`buyWithCred`**: burns `charmWad × 100e18 / 1e18` CRED (no DOUB routing, no epoch pool accrual) — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
-- **First buy ever** (DOUB or CRED, per wallet, not reset on timer hard-reset): schedules **150 CRED** claimable in **`lastBuyEpoch + 1`** after that buy completes (including same-tx hard-reset). Emits **`FirstBuyCredScheduled`**. **`buyCount`** tracks buys for podiums only; first-buy consumption is **`buyCount == 0`** before increment — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
+- **`buyWithCred`**: burns `charmWad × 100e18 / 1e18` CRED (no DOUB routing); also adds **35 CRED** to epoch pool — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268), [#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311).
+- **First buy ever** (DOUB or CRED, per wallet, not reset on timer hard-reset): schedules **`FIRST_BUY_CRED_BONUS = 1100e18`** claimable in **`lastBuyEpoch + 1`** after that buy completes (including same-tx hard-reset). Emits **`FirstBuyCredScheduled`**. **`buyCount`** tracks buys for podiums only; first-buy consumption is **`buyCount == 0`** before increment — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268), [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299).
 - Referred **DOUB** buy: **5 CRED** flat to referrer and buyer (`REFERRAL_CRED_FLAT_WAD`; independent of epoch pool) — [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272). **`buyWithCred`** has no referral path.
 
 <a id="xp"></a>
@@ -92,7 +94,13 @@ Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`Podiu
 | Revenge | 1000e18 |
 | Flag claim | 0 |
 
-BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses, steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity.
+BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses including **streak-break** and **ambush** on qualifying buys ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)), steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity, then **100%** podium routing and **`totalDoubRaised`** increment — same split as **`buy`** ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). **`claimWarBowFlag`** uses **`_requireLive()`** — blocked when **`paused`** (same as other WarBow writes).
+
+## Routes (frontend)
+
+- Primary play: **`/`** · AUDIT: **`/arena/protocol`** · referral capture: **`/arena/:code`** · legacy **`/arena`** / **`/timecurve`** → **`/`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)). See [arena-views.md](../frontend/arena-views.md).
+
+**On-chain podium ranking ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** WarBow top-3 is maintained incrementally via a global top-3 plus an off-podium top-3 buffer (≤6 addresses merged per BP update). Tie-break: equal BP ranks lower address higher. See [WarBow ranking benchmark § tradeoff](../testing/warbow-ranking-benchmark-312.md#6-address-tracking-tradeoff-gas-vs-accuracy) for gas/accuracy limits.
 
 ## Retired surfaces
 

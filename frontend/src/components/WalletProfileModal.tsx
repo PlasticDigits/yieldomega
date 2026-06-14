@@ -20,6 +20,7 @@ type Props = {
 
 export function WalletProfileModal({ address, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const indexerUnset = !indexerBaseUrl();
   const { data, isLoading, isError } = useWalletStats(indexerUnset ? undefined : (address ?? undefined));
@@ -29,9 +30,12 @@ export function WalletProfileModal({ address, onClose }: Props) {
     const el = dialogRef.current;
     if (!el) return;
     if (address) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
       if (!el.open) el.showModal();
     } else if (el.open) {
       el.close();
+      returnFocusRef.current?.focus?.();
+      returnFocusRef.current = null;
     }
   }, [address]);
 

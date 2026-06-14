@@ -39,12 +39,12 @@ describe("arenaActivityApiPath", () => {
 });
 
 describe("arenaPlatformUsageApiPath", () => {
-  it("points at arena platform-usage with velocity window (#319)", () => {
+  it("targets arena platform-usage with paging and velocity (#319)", () => {
     expect(arenaPlatformUsageApiPath(20, 0)).toBe(
       "/v1/arena/platform-usage?limit=20&offset=0&velocity_window=1h",
     );
-    expect(arenaPlatformUsageApiPath(10, 5, "sale")).toBe(
-      "/v1/arena/platform-usage?limit=10&offset=5&velocity_window=sale",
+    expect(arenaPlatformUsageApiPath(10, 40, "sale")).toBe(
+      "/v1/arena/platform-usage?limit=10&offset=40&velocity_window=sale",
     );
   });
 });

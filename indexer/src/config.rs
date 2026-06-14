@@ -108,6 +108,17 @@ pub struct RegistryContracts {
     pub referral_registry: String,
 }
 
+impl RegistryContracts {
+    /// Non-zero buy-router proxy from registry JSON (`TimeArenaBuyRouter` preferred, legacy `TimeCurveBuyRouter` fallback).
+    pub fn buy_router_address(&self) -> &str {
+        let arena = self.time_arena_buy_router.trim();
+        if !arena.is_empty() {
+            return arena;
+        }
+        self.timecurve_buy_router.trim()
+    }
+}
+
 impl AddressRegistry {
     /// Non-empty configured contract addresses for `eth_getLogs` filtering.
     pub fn index_addresses(&self) -> Vec<Address> {
@@ -117,7 +128,7 @@ impl AddressRegistry {
             self.contracts.podium_vaults.trim(),
             self.contracts.admin_sell_vault.trim(),
             self.contracts.referral_registry.trim(),
-            self.contracts.time_arena_buy_router.trim(),
+            self.contracts.buy_router_address(),
         ] {
             if s.is_empty() {
                 continue;
@@ -146,6 +157,12 @@ fn load_address_registry_from_path(path: &PathBuf) -> Result<AddressRegistry> {
         .wrap_err_with(|| format!("read address registry: {}", path.display()))?;
     serde_json::from_str(&raw)
         .wrap_err_with(|| format!("parse address registry JSON: {}", path.display()))
+}
+
+pub fn registry_require_buy_router_from_env() -> bool {
+    std::env::var("INDEXER_REGISTRY_REQUIRE_BUY_ROUTER")
+        .ok()
+        .is_some_and(|s| matches!(s.trim().to_lowercase().as_str(), "1" | "true" | "yes"))
 }
 
 /// When **`INDEXER_PRODUCTION`** is enabled, validate registry vs **`CHAIN_ID`** and (when
@@ -179,6 +196,7 @@ pub fn ensure_production_address_registry(
 ///
 /// - **`ingestion_enabled`:** mandatory protocol fields must be non-empty, parseable **ERC-20
 ///   sized** addresses, and **non-zero**; resolved log filter set must be non-empty; optional
+///   **`TimeArenaBuyRouter`** when **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
 /// - **Always (when this is called for a `Some` registry):** `registry.chain_id` must match
 ///   **`CHAIN_ID`**; any **non-empty** contract string must parse (no silent skip).
 pub fn validate_address_registry_for_production(
@@ -213,7 +231,6 @@ pub fn validate_address_registry_for_production(
     for (field, raw) in [
         ("TimeArena", reg.contracts.time_arena.as_str()),
         ("PodiumVaults", reg.contracts.podium_vaults.as_str()),
-        ("AdminSellVault", reg.contracts.admin_sell_vault.as_str()),
         ("ReferralRegistry", reg.contracts.referral_registry.as_str()),
     ] {
         let s = raw.trim();
@@ -231,8 +248,12 @@ pub fn validate_address_registry_for_production(
 
     let _ = strict_parse("TimeArena", &reg.contracts.time_arena)?;
     let _ = strict_parse("PodiumVaults", &reg.contracts.podium_vaults)?;
-    let _ = strict_parse("AdminSellVault", &reg.contracts.admin_sell_vault)?;
     let _ = strict_parse("ReferralRegistry", &reg.contracts.referral_registry)?;
+
+    if require_buy_router {
+        let router = reg.contracts.buy_router_address();
+        let _ = strict_parse("TimeArenaBuyRouter", router)?;
+    }
 
     if !PRODUCTION_OPTIONAL_DEPLOY_BLOCK_CHAIN_IDS.contains(&chain_id) && reg.deploy_block == 0 {
         bail!(
@@ -588,5 +609,22 @@ mod production_registry_validation_tests {
         c.time_arena = "bogus".into();
         let r = reg(5, 0, c);
         assert!(validate_address_registry_for_production(&r, 5, false, false).is_err());
+    }
+
+    #[test]
+    fn requires_buy_router_when_flag_set() {
+        let r = reg(1, 100, filled_contracts(""));
+        let e = validate_address_registry_for_production(&r, 1, true, true).unwrap_err();
+        assert!(
+            e.to_string().contains("TimeArenaBuyRouter"),
+            "{e:?}"
+        );
+    }
+
+    #[test]
+    fn index_addresses_includes_nonzero_buy_router() {
+        let r = reg(1, 1, filled_contracts(ADDR_A));
+        let addrs = r.index_addresses();
+        assert_eq!(addrs.len(), 5);
     }
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! `GET /v1/arena/platform-usage` — network-wide sale + WarBow aggregates (GitLab #231, #319).
+//! `GET /v1/arena/platform-usage` — network-wide sale + WarBow aggregates ([#231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231), [#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
 
 use axum::{
     extract::{Query, State},
@@ -11,7 +11,7 @@ use axum::{
 use serde_json::json;
 use sqlx::{PgPool, Row};
 
-use crate::api::{internal_db_error_response, with_schema_version, AppState};
+use crate::api::{default_limit, internal_db_error_response, with_schema_version, AppState};
 
 #[derive(Debug, serde::Deserialize)]
 pub struct PlatformUsageParams {
@@ -19,20 +19,13 @@ pub struct PlatformUsageParams {
     pub limit: i64,
     #[serde(default)]
     pub offset: i64,
+    pub cursor: Option<String>,
     #[serde(default = "default_velocity_window")]
     pub velocity_window: String,
 }
 
-fn default_limit() -> i64 {
-    20
-}
-
 fn default_velocity_window() -> String {
     "1h".to_string()
-}
-
-fn clamp_limit(l: i64) -> i64 {
-    l.clamp(1, 200)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -147,10 +140,10 @@ async fn fetch_warbow_action_totals(
     Ok((count, doub))
 }
 
-fn warbow_action_json(count: String, cl8y_spent_wei: String) -> serde_json::Value {
+fn warbow_action_json(count: String, doub_spent_wad: String) -> serde_json::Value {
     json!({
         "count": count,
-        "cl8y_spent_wei": cl8y_spent_wei,
+        "cl8y_spent_wei": doub_spent_wad,
     })
 }
 
@@ -181,10 +174,10 @@ pub async fn arena_platform_usage(
         }
     };
 
-    let lim = clamp_limit(p.limit);
+    let lim = p.limit.clamp(1, 200);
     let off = p.offset.max(0);
 
-    let summary = sqlx::query(
+    let summary = match sqlx::query(
         r#"SELECT
               (SELECT COUNT(*)::bigint FROM (
                  SELECT buyer AS addr FROM idx_arena_buy
@@ -212,9 +205,8 @@ pub async fn arena_platform_usage(
                )::text) AS median_buys_per_wallet"#,
     )
     .fetch_one(&state.pool)
-    .await;
-
-    let summary = match summary {
+    .await
+    {
         Ok(r) => r,
         Err(e) => return internal_db_error_response("GET /v1/arena/platform-usage summary", e),
     };
@@ -258,13 +250,18 @@ pub async fn arena_platform_usage(
         match fetch_warbow_action_totals(&state.pool, "idx_arena_warbow_revenge", None).await {
             Ok(v) => v,
             Err(e) => {
-                return internal_db_error_response("GET /v1/arena/platform-usage warbow revenges", e);
+                return internal_db_error_response(
+                    "GET /v1/arena/platform-usage warbow revenges",
+                    e,
+                );
             }
         };
     let guards = match fetch_warbow_action_totals(&state.pool, "idx_arena_warbow_guard", None).await
     {
         Ok(v) => v,
-        Err(e) => return internal_db_error_response("GET /v1/arena/platform-usage warbow guards", e),
+        Err(e) => {
+            return internal_db_error_response("GET /v1/arena/platform-usage warbow guards", e);
+        }
     };
 
     let (anchor, sale_start) = platform_usage_timer_secs(&state).await;
@@ -285,32 +282,24 @@ pub async fn arena_platform_usage(
         }
     };
 
-    let velocity_row = sqlx::query(
+    let velocity_row = match sqlx::query(
         r#"SELECT COUNT(*)::bigint AS buy_count
            FROM idx_arena_buy
           WHERE block_timestamp IS NOT NULL
-            AND block_timestamp >= to_timestamp($1)"#,
+            AND EXTRACT(EPOCH FROM block_timestamp)::bigint >= $1"#,
     )
     .bind(window_start)
     .fetch_one(&state.pool)
-    .await;
-
-    let velocity_row = match velocity_row {
+    .await
+    {
         Ok(r) => r,
-        Err(e) => return internal_db_error_response("GET /v1/arena/platform-usage velocity", e),
+        Err(e) => {
+            return internal_db_error_response("GET /v1/arena/platform-usage velocity", e);
+        }
     };
     let velocity_buy_count: i64 = velocity_row.try_get("buy_count").unwrap_or(0);
 
-    let wallet_total: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*)::bigint FROM (
-               SELECT buyer FROM idx_arena_buy GROUP BY buyer
-           ) w"#,
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
-
-    let wallet_rows = sqlx::query(
+    let wallet_rows = match sqlx::query(
         r#"SELECT buyer AS wallet,
                   COUNT(*)::text AS buy_count,
                   COALESCE(SUM(doub_paid), 0)::text AS cl8y_spent_wei
@@ -322,19 +311,28 @@ pub async fn arena_platform_usage(
     .bind(lim)
     .bind(off)
     .fetch_all(&state.pool)
-    .await;
-
-    let wallet_rows = match wallet_rows {
+    .await
+    {
         Ok(r) => r,
-        Err(e) => return internal_db_error_response("GET /v1/arena/platform-usage wallets", e),
+        Err(e) => {
+            return internal_db_error_response("GET /v1/arena/platform-usage wallets", e);
+        }
     };
 
     let mut wallet_items = Vec::with_capacity(wallet_rows.len());
     for r in wallet_rows {
+        let wallet: String = match r.try_get("wallet") {
+            Ok(v) => v,
+            Err(e) => {
+                return internal_db_error_response("GET /v1/arena/platform-usage wallets", e);
+            }
+        };
+        let buy_count: String = r.try_get("buy_count").unwrap_or_else(|_| "0".into());
+        let cl8y_spent_wei: String = r.try_get("cl8y_spent_wei").unwrap_or_else(|_| "0".into());
         wallet_items.push(json!({
-            "wallet": r.try_get::<String, _>("wallet").unwrap_or_default(),
-            "buy_count": r.try_get::<String, _>("buy_count").unwrap_or_else(|_| "0".into()),
-            "cl8y_spent_wei": r.try_get::<String, _>("cl8y_spent_wei").unwrap_or_else(|_| "0".into()),
+            "wallet": wallet,
+            "buy_count": buy_count,
+            "cl8y_spent_wei": cl8y_spent_wei,
         }));
     }
 
@@ -363,7 +361,7 @@ pub async fn arena_platform_usage(
             "avg_buys_per_hour": format_avg_buys_per_hour(velocity_buy_count, window_hours),
         },
         "wallets": {
-            "total": wallet_total.to_string(),
+            "total": unique_buyers.to_string(),
             "items": wallet_items,
             "limit": lim,
             "offset": off,

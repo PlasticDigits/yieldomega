@@ -84,7 +84,7 @@ export type PaginatedItems<T> = {
   limit: number;
   offset: number;
   next_offset: number | null;
-  /** `(block_number, log_index)` watermark when the indexer supports cursor pagination (#319). */
+  /** `(block_number, log_index)` watermark when the indexer supports cursor paging ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)). */
   next_cursor?: string | null;
 };
 
@@ -761,6 +761,8 @@ export type ArenaBuyItem = {
   tx_hash: string;
   timer_hard_reset: boolean;
   paid_with_cred: boolean;
+  /** Kumbaya pay asset when routed via `TimeArenaBuyRouter` (0 ETH, 1 stable, 2 CL8Y); null for direct DOUB/CRED. */
+  pay_kind?: number | null;
   /** Effective seconds added to the Last Buy deadline this tx (post cap); from `idx_arena_buy`. */
   actual_seconds_added?: string;
   /** Last Buy deadline after this buy (unix sec string from onchain `Buy` log). */
@@ -771,11 +773,6 @@ export type ArenaBuyItem = {
   log_index: number;
   /** RPC block time at ingest (unix sec string); null when unavailable. */
   block_timestamp?: string | null;
-  /** Kumbaya router pay kind when `BuyViaKumbaya` ingested (#319). */
-  pay_kind?: number | null;
-  /** `eth` | `stable` | `cl8y` when router-attested (#67, #319). */
-  entry_pay_asset?: string | null;
-  router_attested_gross_doub?: string | null;
 };
 
 export type ArenaTimersResponse = {
@@ -820,7 +817,9 @@ export type ArenaWalletStats = {
   epoch_charm_wad?: string;
   /** Global CHARM total in `last_buy_epoch` (schema ≥ 2.10.0). */
   epoch_charm_total_wad?: string;
-  /** DOUB buy count in `last_buy_epoch` (schema ≥ 2.10.0). */
+  /** Buy count in `last_buy_epoch` (DOUB + CRED; schema ≥ 2.10.0). */
+  epoch_buy_count?: string;
+  /** @deprecated Use `epoch_buy_count` — same value, kept for older clients. */
   epoch_doub_buy_count?: string;
   /** Active-epoch CRED preview — mirrors `pendingCred(wallet, lastBuyEpoch)` (schema ≥ 2.10.0). */
   pending_cred_accrual?: string;
@@ -860,7 +859,7 @@ export type ArenaWalletHighestScore = {
   rank: number | null;
 };
 
-export async function fetchArenaBuys(limit = 20, offset = 0, cursor?: string) {
+export async function fetchArenaBuys(limit = 20, offset = 0, cursor?: string | null) {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
@@ -871,7 +870,11 @@ export async function fetchArenaBuys(limit = 20, offset = 0, cursor?: string) {
   return getJson<PaginatedItems<ArenaBuyItem>>(`/v1/arena/buys?${params.toString()}`);
 }
 
-export function arenaActivityApiPath(limit = 25, offset = 0, cursor?: string): string {
+export function arenaActivityApiPath(
+  limit = 25,
+  offset = 0,
+  cursor?: string | null,
+): string {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
@@ -882,7 +885,7 @@ export function arenaActivityApiPath(limit = 25, offset = 0, cursor?: string): s
   return `/v1/arena/activity?${params.toString()}`;
 }
 
-export async function fetchArenaActivity(limit = 25, offset = 0, cursor?: string) {
+export async function fetchArenaActivity(limit = 25, offset = 0, cursor?: string | null) {
   return getJson<PaginatedItems<ArenaActivityItem>>(arenaActivityApiPath(limit, offset, cursor));
 }
 

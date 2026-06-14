@@ -12,7 +12,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 - **TimeArena** — Onchain arena where participants buy with **DOUB** (or burn **Play CRED**), extend a **Last Buy** countdown, and compete for four podium prizes. Each DOUB buy splits proceeds **40%** active podium · **30%** seed podium · **30%** admin sell vault. Canonical rules: [time-arena.md](product/time-arena.md) · [arena-v2.md](product/arena-v2.md). **No** launchpad sale-end, CHARM redemption, or linear bonding price ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
 
-- **Play CRED** — Non-transferable reward/burn token for free buys (**100 CRED per 1e18 CHARM** on `buyWithCred`); DOUB buys accrue **35 CRED** per buy into the current Last Buy epoch pool.
+- **Play CRED** — Non-transferable reward/burn token for free buys (**100 CRED per 1e18 CHARM** on `buyWithCred`); DOUB and CRED buys accrue **35 CRED** per buy into the current Last Buy epoch pool.
 
 - **PodiumVaults** — Holds active and seed podium balances funded per buy.
 

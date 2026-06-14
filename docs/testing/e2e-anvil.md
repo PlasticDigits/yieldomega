@@ -15,14 +15,17 @@ This document describes **Playwright E2E tests that exercise the frontend agains
 
 <a id="indexer-first-vs-minimal-e2e-gitlab-301"></a>
 
-### Indexer-first vs minimal E2E ([GitLab #301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301))
+### Indexer-first vs minimal E2E ([GitLab #301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301), [#322](https://gitlab.com/PlasticDigits/yieldomega/-/issues/322))
 
-| Mode | Indexer | Arena display | Typical script |
-|------|---------|---------------|----------------|
-| **Minimal** | Omitted (`VITE_INDEXER_URL` unset) | Degraded banner; podiums/timers/sale head empty — **no** hidden browser RPC polling | `bash scripts/e2e-anvil.sh` (mock wallet + contract writes still PASS) |
-| **Full stack** | Running + URL in `frontend/.env.local` | Live podiums, timers, buy hub from `GET /v1/arena/*` | `bash scripts/start-qa-local-full-stack.sh` · `bash scripts/verify-podium-live-anvil.sh` |
+| Mode | Indexer | Arena display | Command |
+|------|---------|---------------|---------|
+| **Minimal** (default) | Omitted (`VITE_INDEXER_URL` empty) | Degraded banner; podiums/timers/sale head empty — **no** hidden browser RPC polling | `bash scripts/e2e-anvil.sh` |
+| **Indexer-first E2E** | Spawned by script; URL inlined at build | Live podiums + timer epoch from `GET /v1/arena/*` | `YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh` |
+| **Full stack (manual QA)** | Running + URL in `frontend/.env.local` | Same as production display path | `bash scripts/start-qa-local-full-stack.sh` · `bash scripts/verify-podium-live-anvil.sh` |
 
-Production requires **`VITE_INDEXER_URL`**. E2E minimal mode documents the degraded path; it is not a substitute for full-stack Arena display QA. Policy: [arena-views §301](../frontend/arena-views.md#indexer-first-display-gitlab-301).
+**Default Playwright specs** (`scripts/e2e-anvil.sh`): `e2e/anvil-arena-*.spec.ts` and **`e2e/anvil-referrals.spec.ts`** ([#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)). With **`YIELDOMEGA_E2E_INDEXER=1`**, also runs **`e2e/anvil-indexer-first.spec.ts`** (indexer status bar + protocol podiums + timer epoch).
+
+Production requires **`VITE_INDEXER_URL`**. Minimal E2E documents the degraded path; indexer-first E2E is optional and needs Postgres (native `:5433` or Docker `yieldomega-pg`). Policy: [arena-views §301](../frontend/arena-views.md#indexer-first-display-gitlab-301) · CI split: [ci.md §322](ci.md#gitlab-github-ci-split-gitlab-322).
 
 ## What this is **not** for
 
@@ -47,7 +50,7 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 **Wrong-network / Rabby (required for full PASS):** The mock connector cannot change `chainId`. For [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) and issue paths such as [#277](https://gitlab.com/PlasticDigits/yieldomega/-/issues/277) **#7**, use Rabby — [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md) · `bash scripts/verify-rabby-chain-mismatch.sh` · [`.cursor/skills/rabby-cloud-verification/SKILL.md`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
 
-**Collection** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts placeholder **under construction** routes (not NFT reads).
+**Collection** — removed; placeholder routes are covered by [`frontend/e2e/surface-shells.spec.ts`](../../frontend/e2e/surface-shells.spec.ts) (non-Anvil UI smoke).
 
 **Referrals `/referrals` (issue #64)** — [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts): mock wallet registers a code and asserts share-link copy UX. See [`referrals.md`](../product/referrals.md) and [manual QA — #64](manual-qa-checklists.md#manual-qa-issue-64).
 
@@ -235,6 +238,21 @@ The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../
 **Hermetic regressions (no Anvil):** `bash scripts/verify-e2e-anvil-trap.sh` · `bash scripts/test-anvil-deploy-cl8y-extract.sh` · `bash scripts/test-anvil-deploy-caller-scope.sh` (CI **`scripts-smoke`**).
 
 **Invariant map:** [`INV-ANVIL-E2E-279-TRAP`](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279) · [`INV-ANVIL-E2E-279-CL8Y-EXTRACT`](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279).
+
+<a id="verify-anvil-script-helpers-gitlab-324"></a>
+
+### Indexer-backed verify script helpers ([GitLab #324](https://gitlab.com/PlasticDigits/yieldomega/-/issues/324))
+
+Indexer smoke scripts (`verify-podium-live-anvil.sh`, `verify-wallet-profile-anvil.sh`, …) share bootstrap via:
+
+| Module | Role |
+|--------|------|
+| [`verify_anvil_common.sh`](../../scripts/lib/verify_anvil_common.sh) | Port-scoped `pkill`, Anvil spawn/wait, `anvil_send`, cooldown warp, guarded PID cleanup |
+| [`verify_indexer_stack.sh`](../../scripts/lib/verify_indexer_stack.sh) | DeployDev export, local registry JSON, Postgres app DB reset, indexer spawn, `/v1/status` wait |
+
+Callers set **`VERIFY_SCRIPT_PREFIX`** so log lines keep script-specific prefixes for MR checklists. **`yieldomega_verify_boot_indexer_stack`** composes the full Anvil → deploy → PG → indexer path; scripts add scenario-specific buys/assertions afterward.
+
+**Not in CI** (local/manual only — rejected [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309)). Hermetic lib smoke: `bash scripts/test-verify-anvil-lib.sh`. Legacy v1 **`verify-timecurve-post-end-gates-anvil.sh`** removed (Arena v2 incompatible).
 
 ## Related
 
