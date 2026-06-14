@@ -65,18 +65,6 @@ contract ArenaPrizeRoutingTest is Test {
         assertEq(sum, amount);
     }
 
-    function testFuzz_remainder_lands_on_cat0(uint256 amount) public pure {
-        amount = bound(amount, 1, type(uint128).max);
-        (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) =
-            ArenaBuyRouting.splitBuyAmount(amount);
-        uint256 baseShare = amount / 4;
-        uint256 catRem = amount % 4;
-        assertEq(cur[0] + nxt[0] + nxt2[0], baseShare + catRem);
-        for (uint8 i = 1; i < 4; ++i) {
-            assertEq(cur[i] + nxt[i] + nxt2[i], baseShare);
-        }
-    }
-
     function testFuzz_epoch_split_per_category_bps(uint256 amount) public pure {
         amount = bound(amount, 4, type(uint128).max);
         (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) =
@@ -89,6 +77,22 @@ contract ArenaPrizeRoutingTest is Test {
             assertLe(nxt[i], share);
             assertLe(nxt2[i], share);
             assertEq(cur[i] + nxt[i] + nxt2[i], share);
+        }
+        if (catRem > 0) {
+            assertEq(cur[0] + nxt[0] + nxt2[0], baseShare + catRem, "remainder to Last Buy cat 0");
+        }
+    }
+
+    /// GitLab #313: cross-category remainder wei always lands on Last Buy (cat 0).
+    function testFuzz_split_remainder_on_cat0(uint256 amount) public pure {
+        amount = bound(amount, 1, type(uint128).max);
+        (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) =
+            ArenaBuyRouting.splitBuyAmount(amount);
+        uint256 baseShare = amount / 4;
+        uint256 catRem = amount % 4;
+        assertEq(cur[0] + nxt[0] + nxt2[0], baseShare + catRem);
+        for (uint8 i = 1; i < 4; ++i) {
+            assertEq(cur[i] + nxt[i] + nxt2[i], baseShare);
         }
     }
 }
