@@ -8,8 +8,7 @@ Authoritative onchain gate for user-facing arena value movement: **`TimeArena.pa
 
 | System | User-facing action | Onchain control | Default after deploy |
 |--------|-------------------|-----------------|----------------------|
-| **TimeArena** | `buy`, `buyWithCred`, WarBow DOUB spends (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`, `warbowStealLimitOverride`) | `setPaused(bool)` (`onlyOwner`) | `paused == false` after `startArena()` (DeployDev starts live; production may defer `startArena`) |
-| **TimeArena** | `claimWarBowFlag` | **Not** gated by `paused` — BP / silence rules only ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)) | n/a |
+| **TimeArena** | `buy`, `buyWithCred`, WarBow DOUB spends (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`, `warbowStealLimitOverride`), **`claimWarBowFlag`** | `setPaused(bool)` (`onlyOwner`) | `paused == false` after `startArena()` (DeployDev starts live; production may defer `startArena`) |
 | **TimeArenaBuyRouter** | `buyViaKumbaya` (ETH / USDm → DOUB → `buyFor`) | Inherits **`TimeArena.paused`** via `buyFor` | Router optional; not in `DeployProduction` ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)) |
 | **ReferralRegistry** | `registerCode` (CL8Y burn) | Always live when registry deployed | n/a |
 | **Podium settlement** | `rollPodiumEpoch`, `finalizeWarbowPodium` | Permissionless liveness; **no** owner enable gate | n/a |
@@ -21,7 +20,7 @@ DOUB from each **`buy`** routes immediately to **`PodiumVaults`** (**100%** podi
 1. Deploy with **`DeployProduction`** or **`DeployDev`**; confirm registry JSON and ABI hashes ([`export_abi_hashes.sh`](../../contracts/script/export_abi_hashes.sh)).
 2. Wire indexer + frontend from registry (`TimeArena`, `PodiumVaults`, `AdminSellVault`, `PlayCred`, `ReferralRegistry`, `Doubloon`).
 3. Owner calls **`startArena()`** when ready (or set **`START_ARENA=1`** in deploy env).
-4. **Emergency halt:** owner **`setPaused(true)`** — blocks DOUB buys and WarBow DOUB spends; frontend gates pay CTAs on **`paused`** only.
+4. **Emergency halt:** owner **`setPaused(true)`** — blocks DOUB buys, CRED buys, WarBow DOUB spends, and **`claimWarBowFlag`**; frontend gates pay CTAs on **`paused`** only.
 
 ## Upgrade notes (UUPS)
 
