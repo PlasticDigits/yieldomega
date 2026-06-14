@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+/* eslint-disable react-refresh/only-export-components -- podium ranking helpers export hooks and layout constants */
 
 import { useEffect, useState, type ReactNode } from "react";
 import { isAddress, zeroAddress } from "viem";

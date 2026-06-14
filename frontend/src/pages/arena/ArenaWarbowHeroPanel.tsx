@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PlayerIdentity } from "@/components/arena";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -86,6 +86,8 @@ export function ArenaWarbowHeroPanel({
     playerLevel !== undefined && isFeatureUnlocked(playerLevel, "warbow_flag");
   const [targetFilter, setTargetFilter] = useState<TargetFilter>("eligible");
   const [targetSort, setTargetSort] = useState<TargetSort>("bp-desc");
+  const [focusedTargetIndex, setFocusedTargetIndex] = useState(0);
+  const listboxRef = useRef<HTMLDivElement>(null);
   const selectedTarget = w.stealVictimInput.trim();
   const visibleTargets = useMemo(() => {
     const filtered = warbowTargets.filter((target) => {
@@ -110,6 +112,50 @@ export function ArenaWarbowHeroPanel({
       return targetSort === "bp-asc" ? (aBp < bBp ? -1 : 1) : (aBp > bBp ? -1 : 1);
     });
   }, [targetFilter, targetSort, warbowTargets, w.stealVictimInput, w.viewerBattlePoints]);
+
+  useEffect(() => {
+    const selectedIdx = visibleTargets.findIndex((target) =>
+      sameAddress(target.address, selectedTarget),
+    );
+    setFocusedTargetIndex(selectedIdx >= 0 ? selectedIdx : 0);
+  }, [visibleTargets, selectedTarget]);
+
+  const focusTargetAt = useCallback(
+    (index: number) => {
+      if (visibleTargets.length === 0) return;
+      const wrapped =
+        ((index % visibleTargets.length) + visibleTargets.length) % visibleTargets.length;
+      setFocusedTargetIndex(wrapped);
+      const target = visibleTargets[wrapped];
+      if (target) w.setStealVictimInput(target.address);
+      requestAnimationFrame(() => {
+        listboxRef.current
+          ?.querySelector<HTMLElement>(`[data-warbow-target-index="${wrapped}"]`)
+          ?.focus();
+      });
+    },
+    [visibleTargets, w],
+  );
+
+  const onTargetListKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (visibleTargets.length === 0) return;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        focusTargetAt(focusedTargetIndex + 1);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        focusTargetAt(focusedTargetIndex - 1);
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        focusTargetAt(0);
+      } else if (event.key === "End") {
+        event.preventDefault();
+        focusTargetAt(visibleTargets.length - 1);
+      }
+    },
+    [focusTargetAt, focusedTargetIndex, visibleTargets.length],
+  );
 
   if (!w.ready) return null;
 
@@ -202,8 +248,15 @@ export function ArenaWarbowHeroPanel({
             </label>
           </div>
           {visibleTargets.length > 0 ? (
-            <div className="warbow-target-list" role="listbox" aria-label="WarBow steal targets">
-              {visibleTargets.map((target) => {
+            <div
+              ref={listboxRef}
+              className="warbow-target-list"
+              role="listbox"
+              aria-label="WarBow steal targets"
+              tabIndex={0}
+              onKeyDown={onTargetListKeyDown}
+            >
+              {visibleTargets.map((target, index) => {
                 const selected = sameAddress(selectedTarget, target.address);
                 const eligible = isEligibleTarget(target, w.viewerBattlePoints);
                 const targetBp = parseBp(target.battlePoints);
@@ -213,11 +266,16 @@ export function ArenaWarbowHeroPanel({
                     type="button"
                     role="option"
                     aria-selected={selected}
+                    tabIndex={index === focusedTargetIndex ? 0 : -1}
+                    data-warbow-target-index={index}
                     className={[
                       "warbow-target-row",
                       selected ? "warbow-target-row--selected" : "",
                     ].filter(Boolean).join(" ")}
-                    onClick={() => w.setStealVictimInput(target.address)}
+                    onClick={() => {
+                      setFocusedTargetIndex(index);
+                      w.setStealVictimInput(target.address);
+                    }}
                     data-testid={`warbow-target-${target.address.toLowerCase()}`}
                   >
                     <span className="warbow-target-row__main">

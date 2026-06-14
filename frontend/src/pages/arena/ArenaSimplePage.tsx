@@ -804,6 +804,13 @@ export function ArenaSimplePage({
         .join(" ")}
       disabled={buyDisabled}
       title={buyOnCooldown ? "Wallet buy cooldown (matches onchain pacing)" : undefined}
+      aria-label={
+        session.buySubmitBusy || session.isWriting
+          ? "Processing CHARM buy transaction"
+          : buyOnCooldown
+            ? `Buy CHARM on cooldown (${formatMmSsCountdown(session.walletCooldownRemainingSec)} remaining)`
+            : `Buy CHARM with ${paySpendSuffix}`
+      }
       onClick={() => void session.submitBuy()}
       {...buyButtonMotion}
     >

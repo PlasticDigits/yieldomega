@@ -691,11 +691,6 @@ export function useArenaSaleSession(
       ? isNonZeroHexAddress(referralRegistryR.result)
       : (referralMetaLatchRef.current.referralRegistryOn ?? false);
 
-  const referralRegistryAddr =
-    referralRegistryR?.status === "success"
-      ? hexAddressFromRead(referralRegistryR.result)
-      : undefined;
-
   const referralFlatCredWadOnchain =
     referralFlatCredWadR?.status === "success"
       ? (referralFlatCredWadR.result as bigint)
@@ -1250,6 +1245,7 @@ export function useArenaSaleSession(
     payTokenDecimals,
     payWalletBalance.raw,
     payWith,
+    payUsesKumbaya,
     quotedPayInWei,
     spendInputStr,
     spendWei,
@@ -1610,10 +1606,8 @@ export function useArenaSaleSession(
     charmWadSelected,
     charmBoundsR,
     spendWei,
-    walletBalanceWei,
     useReferral,
     referralRegistryOn,
-    referralRegistryAddr,
     pendingReferralCode,
     plantWarBowFlag,
     writeContractAsync,
@@ -1626,10 +1620,6 @@ export function useArenaSaleSession(
     buyCooldownSecResolved,
     isArenaV2,
     pricePerCharmR,
-    plantWarBowFlag,
-    referralRegistryOn,
-    pendingReferralCode,
-    useReferral,
     playCredAddress,
     playCredConfigured,
     credPerCharmWad,
