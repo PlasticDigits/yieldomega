@@ -126,7 +126,7 @@ if [[ "${ANVIL_RICH_END_SALE_ONLY:-}" == "1" ]]; then
   echo "=== SimulateAnvilRichState Part2 (end sale ONLY — for #55/#79 post-end gate QA) ==="
   forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart2EndSaleOnly \
     --rpc-url "$RPC" --broadcast --slow --code-size-limit 524288 -vv
-  echo "ANVIL_RICH_END_SALE_ONLY: skipping Part2 full simulation + finalizeEpoch — re-deploy or re-run without this flag for full indexer events (legacy TimeCurve post-end gates removed in #324)."
+  echo "ANVIL_RICH_END_SALE_ONLY: skipping Part2 full simulation + finalizeEpoch — re-deploy or re-run without this flag for full indexer events (legacy TimeCurve post-end gates removed — GitLab #324)."
   echo "Done."
   exit 0
 fi

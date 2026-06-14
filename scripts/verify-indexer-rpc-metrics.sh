@@ -10,51 +10,39 @@ RPC="http://127.0.0.1:${PORT}"
 PG_URL="${DATABASE_URL:-postgres://yieldomega:password@127.0.0.1:5433/yieldomega_indexer}"
 DEPLOY_LOG="$(mktemp)"
 REGISTRY="${ROOT}/contracts/deployments/local-anvil-registry-rpc-metrics.json"
-VERIFY_TAG=verify306
 
-# shellcheck source=scripts/lib/anvil_deploy_dev.sh
-source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
-# shellcheck source=scripts/lib/verify_anvil_common.sh
-source "${ROOT}/scripts/lib/verify_anvil_common.sh"
+VERIFY_SCRIPT_PREFIX="verify-indexer-rpc-metrics"
+VERIFY_ANVIL_LOG="/tmp/yieldomega_verify306_anvil.log"
+VERIFY_INDEXER_LOG="/tmp/yieldomega_verify306_indexer.log"
+VERIFY_REGISTRY_COMMENT="verify-indexer-rpc-metrics.sh"
+
 # shellcheck source=scripts/lib/verify_indexer_stack.sh
 source "${ROOT}/scripts/lib/verify_indexer_stack.sh"
 
 die() {
-  echo "verify-indexer-rpc-metrics: $*" >&2
-  exit 1
+  yieldomega_verify_die "$@"
 }
 
 log() {
-  echo "verify-indexer-rpc-metrics: $*"
+  yieldomega_verify_log "$@"
 }
 
 cleanup() {
   rm -f "${DEPLOY_LOG}"
-  verify_anvil_kill_children
+  yieldomega_verify_kill_pid_if_set "${INDEXER_PID:-}"
+  yieldomega_verify_kill_pid_if_set "${ANVIL_PID:-}"
 }
 trap cleanup EXIT
 
-verify_anvil_stop_existing
-verify_anvil_start
-
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
-ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
-yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
+export INDEXER_RPC_METRICS_LOG_SEC=15
+yieldomega_verify_boot_indexer_stack "${ROOT}"
 
 [[ -n "${TA:-}" ]] || die "TimeArena missing after deploy"
 
-verify_indexer_write_registry "verify-indexer-rpc-metrics.sh"
-verify_indexer_reset_db
-
-export INDEXER_RPC_METRICS_LOG_SEC=15
-verify_indexer_start
-verify_indexer_wait_status || {
-  verify_indexer_log_tail
-  die "/v1/status unavailable"
-}
+STATUS_URL="http://127.0.0.1:${INDEXER_PORT}/v1/status"
 
 # Allow chain-timer ~1 Hz polls to accumulate metrics.
-STATUS_URL="http://127.0.0.1:${INDEXER_PORT}/v1/status"
 sleep 35
 
 RESP="$(curl -sf "${STATUS_URL}")"

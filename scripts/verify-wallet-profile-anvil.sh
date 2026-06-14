@@ -10,56 +10,49 @@ RPC="http://127.0.0.1:${PORT}"
 PG_URL="${DATABASE_URL:-postgres://yieldomega:password@127.0.0.1:5433/yieldomega_indexer}"
 DEPLOY_LOG="$(mktemp)"
 REGISTRY="${ROOT}/contracts/deployments/local-anvil-registry.json"
-VERIFY_TAG=verify282
 CHARM_WAD=1000000000000000000
 TOPUP_DOUB=700000000000000000000
 
-# shellcheck source=scripts/lib/anvil_deploy_dev.sh
-source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
-# shellcheck source=scripts/lib/verify_anvil_common.sh
-source "${ROOT}/scripts/lib/verify_anvil_common.sh"
+VERIFY_SCRIPT_PREFIX="verify-wallet-profile-anvil"
+VERIFY_ANVIL_LOG="/tmp/yieldomega_verify282_anvil.log"
+VERIFY_INDEXER_LOG="/tmp/yieldomega_verify282_indexer.log"
+VERIFY_REGISTRY_COMMENT="verify-wallet-profile-anvil.sh"
+
 # shellcheck source=scripts/lib/verify_indexer_stack.sh
 source "${ROOT}/scripts/lib/verify_indexer_stack.sh"
 
 die() {
-  echo "verify-wallet-profile-anvil: $*" >&2
-  exit 1
+  yieldomega_verify_die "$@"
 }
 
 log() {
-  echo "verify-wallet-profile-anvil: $*"
+  yieldomega_verify_log "$@"
 }
 
-warp_past_cooldown() { verify_anvil_warp_past_cooldown; }
-anvil_send() { verify_anvil_send "$@"; }
+warp_past_cooldown() {
+  yieldomega_verify_warp_past_cooldown "${RPC}"
+}
+
+anvil_send() {
+  yieldomega_verify_anvil_send "${RPC}" "$@"
+}
 
 cleanup() {
   rm -f "${DEPLOY_LOG}"
-  verify_anvil_kill_children
+  yieldomega_verify_kill_pid_if_set "${INDEXER_PID:-}"
+  yieldomega_verify_kill_pid_if_set "${ANVIL_PID:-}"
 }
 trap cleanup EXIT
 
-verify_anvil_stop_existing
-verify_anvil_start
+export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
+export YIELDOMEGA_SEED_EVM_DEV_WALLETS=0
+yieldomega_verify_boot_indexer_stack "${ROOT}"
 
 chain_id="$(cast chain-id --rpc-url "${RPC}")"
 [[ "${chain_id}" == "31337" ]] || die "expected chainId 31337, got ${chain_id}"
 
-export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
-export YIELDOMEGA_SEED_EVM_DEV_WALLETS=0
-ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
-yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
-
 [[ -n "${TA:-}" ]] || die "TimeArena address missing after deploy"
 [[ -n "${DOUB:-}" ]] || die "Doubloon address missing after deploy"
-
-verify_indexer_write_registry "verify-wallet-profile-anvil.sh"
-verify_indexer_reset_db
-verify_indexer_start
-verify_indexer_wait_status || {
-  verify_indexer_log_tail
-  die "indexer /v1/status unavailable"
-}
 
 mapfile -t ANVIL_ACCOUNTS < <(cast rpc eth_accounts --rpc-url "${RPC}" | jq -r '.[]')
 DEPLOYER="${ANVIL_ACCOUNTS[0]}"
@@ -86,7 +79,7 @@ for _ in $(seq 1 90); do
   sleep 1
 done
 [[ "${synced}" -eq 1 ]] || {
-  verify_indexer_log_tail
+  tail -40 "${VERIFY_INDEXER_LOG}" >&2
   die "indexer did not ingest buy row"
 }
 
@@ -164,7 +157,7 @@ log "  confirm data-testid=arena-simple-last-extension after an extending buy;"
 log "  click buyer on extension chip or live-buy row → WalletProfileModal (seven sections)."
 
 export YIELDOMEGA_PG_TEST_URL="${PG_URL%/*}/yieldomega_indexer_test"
-verify_indexer_create_test_db
+yieldomega_verify_pg_reset_test_db "${PG_URL}"
 log "integration_stage2 (includes api_arena_buys parity smoke #282/#283)"
 cargo test --test integration_stage2 --quiet
 

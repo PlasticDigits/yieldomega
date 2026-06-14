@@ -111,7 +111,7 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
 export const LAUNCH_COUNTDOWN_SIGNALS: LaunchCountdownSignal[] = [
   {
     label: "PLAY",
-    tooltip: "The primary handoff is /arena: buy CHARM and compete on TimeArena.",
+    tooltip: "The primary handoff is /: buy CHARM and compete on TimeArena.",
   },
   {
     label: "CRED",
