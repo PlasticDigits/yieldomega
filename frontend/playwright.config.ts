@@ -5,7 +5,6 @@ const isAnvilE2E = process.env.ANVIL_E2E === "1";
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: /arena-live-buys-modals\.spec\.ts/,
   // Anvil: one chain + shared mock account — cross-file Playwright workers race
   // nonces / sale / referral state (gitlab #87). CI UI smoke: parallel OK.
   fullyParallel: !isAnvilE2E,

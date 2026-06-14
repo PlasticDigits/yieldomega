@@ -12,12 +12,12 @@ import {TimeMath} from "../libraries/TimeMath.sol";
 import {ArenaBuyRouting} from "./libraries/ArenaBuyRouting.sol";
 import {ArenaPodiumSettlement} from "./libraries/ArenaPodiumSettlement.sol";
 import {ArenaPodiumTimerConfig} from "./libraries/ArenaPodiumTimerConfig.sol";
+import {ArenaCharmBounds} from "./libraries/ArenaCharmBounds.sol";
 import {ArenaXp} from "./libraries/ArenaXp.sol";
 import {AnvilKumbayaRouter} from "../fixtures/AnvilKumbayaFixture.sol";
 import {AnvilKumbayaPools} from "../fixtures/AnvilKumbayaPools.sol";
 import {ArenaCharmPriceTwap} from "../oracle/ArenaCharmPriceTwap.sol";
 import {PodiumVaults} from "./PodiumVaults.sol";
-import {AdminSellVault} from "./AdminSellVault.sol";
 import {IReferralRegistry} from "../interfaces/IReferralRegistry.sol";
 import {IPlayCred} from "../interfaces/IPlayCred.sol";
 
@@ -64,12 +64,11 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 public constant WARBOW_REVENGE_WINDOW_SEC = 24 hours;
 
     uint256 internal constant WAD = 1e18;
-    uint256 internal constant CHARM_MIN_WAD = 99e16;
-    uint256 internal constant CHARM_MAX_WAD = 10e18;
 
     IERC20 public doub;
     PodiumVaults public podiumVaults;
-    AdminSellVault public adminSellVault;
+    /// @dev Reserved storage — former `AdminSellVault` slot (GitLab #314). Do not repurpose.
+    address private __reservedAdminSellVault;
     IReferralRegistry public referralRegistry;
     IPlayCred public playCred;
 
@@ -146,6 +145,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @dev Cached progression (#265); 0 means level 1. Append-only for UUPS upgrades.
     mapping(address => uint256) internal _cachedLevel;
     mapping(address => uint256) public xpTowardNext;
+    /// @dev Best three WarBow players not on the global podium; merged O(1) on BP changes (#312).
+    Podium internal _warbowOffPodium;
 
     event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
     event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
@@ -205,7 +206,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function initialize(
         IERC20 _doub,
         PodiumVaults _podiumVaults,
-        AdminSellVault _adminSellVault,
         address _referralRegistry,
         address _playCred,
         uint256 _charmPriceWad,
@@ -220,7 +220,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         __Ownable_init(upgradeAdmin);
         require(address(_doub) != address(0), "TimeArena: zero doub");
         require(address(_podiumVaults) != address(0), "TimeArena: zero vaults");
-        require(address(_adminSellVault) != address(0), "TimeArena: zero admin vault");
         require(_charmPriceWad > 0, "TimeArena: zero price");
         require(_buyCooldownSec > 0, "TimeArena: zero cooldown");
 
@@ -234,7 +233,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         doub = _doub;
         podiumVaults = _podiumVaults;
-        adminSellVault = _adminSellVault;
         if (_referralRegistry != address(0)) {
             referralRegistry = IReferralRegistry(_referralRegistry);
         }
@@ -308,8 +306,16 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return TimeMath.growWad(anchor, CHARM_GROWTH_RATE_WAD, elapsed);
     }
 
-    /// @dev DOUB wei owed for a buy at the current block — previews hard-reset re-anchor (#305).
-    function doubOwedForBuy(uint256 charmWad) external returns (uint256) {
+    /// @notice Gross DOUB wei for `buy` / `buyFor` at the current block — `eth_call` / `staticcall` safe (#315).
+    /// @dev When Last Buy is in the hard-reset band (`remaining < podiumResetBelowRemainingSec[0]`),
+    ///      samples the same anchor as `_reanchorEpochCharmPrice` **before** the buy writes state:
+    ///      Anvil spot via `setCharmAnchorOracle`, MegaETH **4326** Kumbaya V3 TWAP (`ArenaCharmPriceTwap`),
+    ///      or falls back to stored `epochCharmAnchorWad` / `charmPriceWad`. Otherwise uses
+    ///      `effectiveCharmPriceWad()` (epoch anchor + 10%/day growth). External pool/oracle reads
+    ///      are view-only — no state writes on this path. Integrators: prefer this over
+    ///      `effectiveCharmPriceWad` for swap sizing at the reset boundary. TWAP re-anchor is sampled
+    ///      at tx time, so same-block sandwich cannot underpay vs the executed buy (#315).
+    function doubOwedForBuy(uint256 charmWad) external view returns (uint256) {
         if (_willLastBuyHardReset()) {
             (uint256 anchorWad,) = _sampleCharmAnchor();
             return Math.mulDiv(charmWad, anchorWad, WAD);
@@ -366,7 +372,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function rollPodiumEpoch(uint8 category) external nonReentrant {
         require(category < NUM_PODIUM_CATEGORIES, "TimeArena: bad cat");
         require(block.timestamp > podiumDeadline[category], "TimeArena: timer live");
+        _rollPodiumEpoch(category);
+    }
 
+    /// @dev Owner-trusted finalize superseded by on-chain autoroll payout (#312).
+    function finalizeWarbowPodium(uint256, address, address, address) external pure {
+        revert("TimeArena: superseded");
+    }
+
+    function _rollPodiumEpoch(uint8 category) internal {
         address[3] memory winners;
         uint256[3] memory values;
         if (category == CAT_LAST_BUYERS) {
@@ -377,16 +391,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             values = p.values;
         }
 
-        address poolAddr = podiumVaults.activePools(category);
-        uint256 poolBal = doub.balanceOf(poolAddr);
-        // WarBow: admin `finalizeWarbowPodium(epoch, …)` pays; roll only clears scores (#252).
-        if (category != CAT_WARBOW && poolBal > 0) {
+        uint256 epochBefore = podiumEpoch[category];
+        uint256 poolBal = podiumVaults.activePoolBalance(category);
+        if (poolBal > 0) {
             (uint256 a, uint256 b, uint256 c) = ArenaPodiumSettlement.payoutShares(poolBal);
             podiumVaults.payPodiumWinners(category, winners[0], winners[1], winners[2], a, b, c);
         }
         podiumVaults.rollEpochTranches(category);
 
-        podiumEpoch[category] += 1;
+        podiumEpoch[category] = epochBefore + 1;
         podiumDeadline[category] = block.timestamp + podiumInitialTimerSec[category];
         if (category == CAT_LAST_BUYERS) {
             deadline = podiumDeadline[category];
@@ -395,30 +408,16 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _clearPodium(category);
 
         if (category == CAT_WARBOW) {
+            warbowEpochFinalized[epochBefore] = true;
+            emit WarbowPodiumFinalized(epochBefore, winners[0], winners[1], winners[2]);
             _clearAllBattlePoints();
         }
 
         emit PodiumEpochRolled(category, podiumEpoch[category], winners[0], winners[1], winners[2], poolBal);
     }
 
-    function finalizeWarbowPodium(uint256 epoch, address first, address second, address third)
-        external
-        onlyOwner
-    {
-        require(!warbowEpochFinalized[epoch], "TimeArena: finalized");
-        require(epoch < podiumEpoch[CAT_WARBOW], "TimeArena: bad epoch");
-        warbowEpochFinalized[epoch] = true;
-        address poolAddr = podiumVaults.activePools(CAT_WARBOW);
-        uint256 poolBal = doub.balanceOf(poolAddr);
-        if (poolBal > 0) {
-            (uint256 a, uint256 b, uint256 c) = ArenaPodiumSettlement.payoutShares(poolBal);
-            podiumVaults.payPodiumWinners(CAT_WARBOW, first, second, third, a, b, c);
-        }
-        emit WarbowPodiumFinalized(epoch, first, second, third);
-    }
-
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
-        _requireLive();
+        _requireLiveAndAutoroll();
         _requireWarbowLevel(msg.sender);
         require(victim != address(0) && victim != msg.sender, "TimeArena: bad victim");
         uint256 day = block.timestamp / SECONDS_PER_DAY;
@@ -431,6 +430,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             require(payBypassBurn, "TimeArena: steal limit");
             spent += _pullDoubExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_DOUB);
         }
+        _routeWarbowDoubSpend(spent);
 
         uint256 vbp = _effectiveBattlePoints(victim);
         uint256 abp = _effectiveBattlePoints(msg.sender);
@@ -441,7 +441,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(take > 0, "TimeArena: steal zero");
         _subBattlePoints(victim, take);
         _addBattlePoints(msg.sender, take);
-        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
+        _updateWarbowRanking(victim, _effectiveBattlePoints(victim));
+        _updateWarbowRanking(msg.sender, _effectiveBattlePoints(msg.sender));
 
         if (victimSteals < type(uint8).max) stealsReceivedOnDay[victim][day] = victimSteals + 1;
         if (attackerSteals < type(uint8).max) stealsCommittedByAttackerOnDay[msg.sender][day] = attackerSteals + 1;
@@ -453,37 +454,40 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function warbowRevenge(address stealer) external nonReentrant {
-        _requireLive();
+        _requireLiveAndAutoroll();
         _requireWarbowLevel(msg.sender);
         uint256 exp = warbowPendingRevengeExpiryExclusive[msg.sender][stealer];
         require(exp != 0 && block.timestamp < exp, "TimeArena: revenge");
 
         uint256 spent = _pullDoubExact(msg.sender, WARBOW_REVENGE_DOUB);
+        _routeWarbowDoubSpend(spent);
         uint256 take = Math.mulDiv(_effectiveBattlePoints(stealer), WARBOW_STEAL_DRAIN_BPS, 10_000);
         require(take > 0, "TimeArena: revenge zero");
         _subBattlePoints(stealer, take);
         _addBattlePoints(msg.sender, take);
-        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
+        _updateWarbowRanking(stealer, _effectiveBattlePoints(stealer));
+        _updateWarbowRanking(msg.sender, _effectiveBattlePoints(msg.sender));
         warbowPendingRevengeExpiryExclusive[msg.sender][stealer] = 0;
         emit WarBowRevenge(msg.sender, stealer, take, spent);
     }
 
     function warbowActivateGuard() external nonReentrant {
-        _requireLive();
+        _requireLiveAndAutoroll();
         _requireWarbowLevel(msg.sender);
         uint256 spent = _pullDoubExact(msg.sender, WARBOW_GUARD_DOUB);
+        _routeWarbowDoubSpend(spent);
         warbowGuardUntil[msg.sender] = block.timestamp + WARBOW_GUARD_DURATION_SEC;
         emit WarBowGuard(msg.sender, spent, warbowGuardUntil[msg.sender]);
     }
 
     function claimWarBowFlag() external nonReentrant {
-        _requireLive();
+        _requireLiveAndAutoroll();
         require(warbowPendingFlagOwner == msg.sender, "TimeArena: not flag holder");
         require(block.timestamp >= warbowPendingFlagPlantAt + WARBOW_FLAG_SILENCE_SEC, "TimeArena: flag silence");
         warbowPendingFlagOwner = address(0);
         warbowPendingFlagPlantAt = 0;
         _addBattlePoints(msg.sender, WARBOW_FLAG_CLAIM_BP);
-        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
+        _updateWarbowRanking(msg.sender, _effectiveBattlePoints(msg.sender));
         emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP);
     }
 
@@ -533,7 +537,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _buyDoub(address buyer, uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) internal {
-        _requireLive();
+        _requireLiveAndAutoroll();
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
 
@@ -551,7 +555,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _buyCred(address buyer, uint256 charmWad) internal {
-        _requireLive();
+        _requireLiveAndAutoroll();
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
         _prepareBuyBeforeTimer();
@@ -559,7 +563,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         uint256 credBurn = Math.mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD);
         require(credBurn > 0, "TimeArena: zero cred burn");
         playCred.burn(buyer, credBurn);
-        _accrueCharmOnly(buyer, charmWad);
+        _accrueCharmAndCred(buyer, charmWad, bytes32(0));
         _finishBuy(buyer, charmWad, 0, true, false);
     }
 
@@ -624,13 +628,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
                 _updateTopThree(CAT_TIME_BOOSTER, buyer, totalEffectiveTimerSecAdded[buyer]);
             }
         }
+        address prevDsBuyer = _dsLastUnderWindowBuyer;
+        uint256 prevDsStreak = prevDsBuyer != address(0) ? activeDefendedStreak[prevDsBuyer] : 0;
         if (gateLevel >= 3) {
             _extendPodiumTimer(CAT_DEFENDED_STREAK);
             _processDefendedStreak(buyer, remainingBefore, actualSecondsAdded);
         }
         if (gateLevel >= 4) {
             _extendPodiumTimer(CAT_WARBOW);
-            _applyBuyWarBowBp(buyer, remainingBefore, hardReset);
+            _applyBuyWarBowBp(buyer, remainingBefore, hardReset, prevDsBuyer, prevDsStreak);
         }
         if (gateLevel >= 5) {
             _applyWarBowFlagOnBuy(buyer, plantWarBowFlag);
@@ -708,47 +714,82 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         }
     }
 
-    function _accrueCharmOnly(address buyer, uint256 charmWad) internal {
-        uint256 ep = lastBuyEpoch;
-        epochCharmWad[ep][buyer] += charmWad;
-        epochCharmTotal[ep] += charmWad;
-        charmWeight[buyer] += charmWad;
-        totalCharmWeight += charmWad;
-    }
-
-    function _applyBuyWarBowBp(address buyer, uint256 remainingBefore, bool hardReset) internal {
+    function _applyBuyWarBowBp(
+        address buyer,
+        uint256 remainingBefore,
+        bool hardReset,
+        address prevDsBuyer,
+        uint256 prevDsStreak
+    ) internal {
         uint256 bp = WARBOW_BASE_BUY_BP;
         if (hardReset) bp += WARBOW_TIMER_RESET_BONUS_BP;
         if (remainingBefore < 30) bp += WARBOW_CLUTCH_BONUS_BP;
+        if (
+            remainingBefore < DEFENDED_STREAK_WINDOW_SEC && prevDsBuyer != address(0) && prevDsBuyer != buyer
+                && prevDsStreak > 0
+        ) {
+            bp += prevDsStreak * WARBOW_STREAK_BREAK_MULT_BP;
+            if (hardReset) bp += WARBOW_AMBUSH_BONUS_BP;
+        }
         _addBattlePoints(buyer, bp);
-        _updateTopThree(CAT_WARBOW, buyer, _effectiveBattlePoints(buyer));
+        _updateWarbowRanking(buyer, _effectiveBattlePoints(buyer));
+    }
+
+    function _routeWarbowDoubSpend(uint256 amount) private {
+        _routeDoubPrizeSplit(amount);
+        totalDoubRaised += amount;
     }
 
     function battlePoints(address user) external view returns (uint256) {
         return _effectiveBattlePoints(user);
     }
 
+    /// @dev Default PodiumVaults maps every pool slot to `address(podiumVaults)` — one ERC-20 xfer
+    /// instead of twelve per buy (#316). Per-tranche events unchanged; economics unchanged (#300).
     function _routeDoubPrizeSplit(uint256 amount) private returns (uint256 routed) {
         (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) = ArenaBuyRouting.splitBuyAmount(amount);
+        address vaultAddr = address(podiumVaults);
+        bool batchToVault = amount > 0;
+        for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS && batchToVault; ++i) {
+            if (
+                podiumVaults.activePools(i) != vaultAddr || podiumVaults.seedPools(i) != vaultAddr
+                    || podiumVaults.futurePools(i) != vaultAddr
+            ) {
+                batchToVault = false;
+            }
+        }
+        if (batchToVault) {
+            doub.safeTransfer(vaultAddr, amount);
+            routed = amount;
+        }
         for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS; ++i) {
             uint256 ep = podiumEpoch[i];
             if (cur[i] > 0) {
                 address pool = podiumVaults.activePools(i);
-                doub.safeTransfer(pool, cur[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, cur[i]);
+                    routed += cur[i];
+                }
+                podiumVaults.creditTranche(i, 0, cur[i]);
                 podiumVaults.notifyPodiumEpochFunded(i, ep, cur[i], pool);
-                routed += cur[i];
             }
             if (nxt[i] > 0) {
                 address pool = podiumVaults.seedPools(i);
-                doub.safeTransfer(pool, nxt[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, nxt[i]);
+                    routed += nxt[i];
+                }
+                podiumVaults.creditTranche(i, 1, nxt[i]);
                 podiumVaults.notifyPodiumEpochFunded(i, ep + 1, nxt[i], pool);
-                routed += nxt[i];
             }
             if (nxt2[i] > 0) {
                 address pool = podiumVaults.futurePools(i);
-                doub.safeTransfer(pool, nxt2[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, nxt2[i]);
+                    routed += nxt2[i];
+                }
+                podiumVaults.creditTranche(i, 2, nxt2[i]);
                 podiumVaults.notifyPodiumEpochFunded(i, ep + 2, nxt2[i], pool);
-                routed += nxt2[i];
             }
         }
     }
@@ -762,18 +803,37 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         private
         returns (uint256 routed)
     {
+        address vaultAddr = address(podiumVaults);
+        uint256 batchAmount;
+        bool batchToVault = true;
+        for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS; ++i) {
+            batchAmount += act[i] + sed[i];
+            if (podiumVaults.activePools(i) != vaultAddr || podiumVaults.seedPools(i) != vaultAddr) {
+                batchToVault = false;
+            }
+        }
+        if (batchToVault && batchAmount > 0) {
+            doub.safeTransfer(vaultAddr, batchAmount);
+            routed = batchAmount;
+        }
         for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS; ++i) {
             if (act[i] > 0) {
                 address pool = podiumVaults.activePools(i);
-                doub.safeTransfer(pool, act[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, act[i]);
+                    routed += act[i];
+                }
+                podiumVaults.creditTranche(i, 0, act[i]);
                 podiumVaults.notifyPodiumFunded(i, act[i], pool);
-                routed += act[i];
             }
             if (sed[i] > 0) {
                 address pool = podiumVaults.seedPools(i);
-                doub.safeTransfer(pool, sed[i]);
+                if (!batchToVault) {
+                    doub.safeTransfer(pool, sed[i]);
+                    routed += sed[i];
+                }
+                podiumVaults.creditTranche(i, 1, sed[i]);
                 podiumVaults.notifySeedFunded(i, sed[i], pool);
-                routed += sed[i];
             }
         }
     }
@@ -810,7 +870,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         charmPriceWad = wad;
     }
 
-    function _sampleCharmAnchor() internal returns (uint256 anchorWad, uint256 doubUsdWad) {
+    /// @dev Read-only anchor sample for hard-reset re-anchor and `doubOwedForBuy` preview (#315).
+    function _sampleCharmAnchor() internal view returns (uint256 anchorWad, uint256 doubUsdWad) {
         if (charmAnchorKumbayaRouter != address(0) && charmAnchorCl8y != address(0)) {
             return AnvilKumbayaPools.charmPriceWadFromSpot(
                 AnvilKumbayaRouter(charmAnchorKumbayaRouter),
@@ -831,11 +892,24 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function _requireLive() internal view {
         require(arenaStart > 0, "TimeArena: not started");
         require(!paused, "TimeArena: paused");
-        require(block.timestamp <= deadline, "TimeArena: timer expired");
+    }
+
+    /// @dev Always-live: roll any expired podium timers before buys/WarBow (#312).
+    function _requireLiveAndAutoroll() internal {
+        _requireLive();
+        _autorollExpiredPodiums();
+    }
+
+    function _autorollExpiredPodiums() internal {
+        for (uint8 cat = 0; cat < NUM_PODIUM_CATEGORIES; ++cat) {
+            if (block.timestamp > podiumDeadline[cat]) {
+                _rollPodiumEpoch(cat);
+            }
+        }
     }
 
     function _validateCharm(uint256 charmWad) internal pure {
-        require(charmWad >= CHARM_MIN_WAD && charmWad <= CHARM_MAX_WAD, "TimeArena: charm bounds");
+        ArenaCharmBounds.validate(charmWad);
     }
 
     function _trackLastBuyer(address buyer) private {
@@ -866,34 +940,195 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             }
             _updateTopThree(CAT_DEFENDED_STREAK, buyer, bestDefendedStreak[buyer]);
         } else if (remainingBefore >= DEFENDED_STREAK_WINDOW_SEC) {
+            if (_dsLastUnderWindowBuyer != address(0)) {
+                activeDefendedStreak[_dsLastUnderWindowBuyer] = 0;
+                _dsLastUnderWindowBuyer = address(0);
+            }
             activeDefendedStreak[buyer] = 0;
         }
+    }
+
+    function _updateWarbowRanking(address entrant, uint256 value) private {
+        if (value == 0) {
+            _removeWarbowCandidate(entrant);
+        } else {
+            Podium storage g = _podiums[CAT_WARBOW];
+            uint8 onSlot = 3;
+            for (uint8 r; r < 3; ++r) {
+                if (g.winners[r] == entrant) {
+                    onSlot = r;
+                    break;
+                }
+            }
+            if (onSlot < 3) {
+                g.values[onSlot] = value;
+                _sortPodium(CAT_WARBOW);
+            } else {
+                _updateOffWarbowPodium(entrant, value);
+            }
+        }
+        _mergeWarbowGlobalPodium();
+    }
+
+    function _removeWarbowCandidate(address entrant) private {
+        Podium storage g = _podiums[CAT_WARBOW];
+        for (uint8 r; r < 3; ++r) {
+            if (g.winners[r] == entrant) {
+                g.winners[r] = address(0);
+                g.values[r] = 0;
+                _sortPodium(CAT_WARBOW);
+                return;
+            }
+        }
+        Podium storage o = _warbowOffPodium;
+        for (uint8 r; r < 3; ++r) {
+            if (o.winners[r] == entrant) {
+                o.winners[r] = address(0);
+                o.values[r] = 0;
+                _sortOffWarbowPodium();
+                return;
+            }
+        }
+    }
+
+    function _updateOffWarbowPodium(address entrant, uint256 value) private {
+        Podium storage o = _warbowOffPodium;
+        for (uint8 r; r < 3; ++r) {
+            if (o.winners[r] == entrant) {
+                o.values[r] = value;
+                _sortOffWarbowPodium();
+                return;
+            }
+        }
+        for (uint8 r; r < 3; ++r) {
+            bool beats = value > o.values[r];
+            bool tieLowerAddr = value == o.values[r] && uint160(entrant) < uint160(o.winners[r]);
+            if (o.winners[r] == address(0) || beats || tieLowerAddr) {
+                o.winners[r] = entrant;
+                o.values[r] = value;
+                _sortOffWarbowPodium();
+                return;
+            }
+        }
+    }
+
+    function _sortOffWarbowPodium() private {
+        _sortPodiumStorage(_warbowOffPodium);
+    }
+
+    /// @dev Merge global + off-podium candidates (≤6) into authoritative WarBow top-3.
+    function _mergeWarbowGlobalPodium() private {
+        Podium storage g = _podiums[CAT_WARBOW];
+        Podium storage o = _warbowOffPodium;
+
+        address[6] memory addrs;
+        uint256[6] memory vals;
+        uint8 n;
+        for (uint8 i; i < 3; ++i) {
+            if (g.winners[i] != address(0)) {
+                addrs[n] = g.winners[i];
+                vals[n] = g.values[i];
+                unchecked {
+                    ++n;
+                }
+            }
+            if (o.winners[i] != address(0)) {
+                address a = o.winners[i];
+                uint256 v = o.values[i];
+                bool dup;
+                for (uint8 j; j < n; ++j) {
+                    if (addrs[j] == a) {
+                        if (v > vals[j]) vals[j] = v;
+                        dup = true;
+                        break;
+                    }
+                }
+                if (!dup) {
+                    addrs[n] = a;
+                    vals[n] = v;
+                    unchecked {
+                        ++n;
+                    }
+                }
+            }
+        }
+
+        for (uint8 i; i < n; ++i) {
+            for (uint8 j = i + 1; j < n; ++j) {
+                bool higher = vals[j] > vals[i];
+                bool tieLowerAddr = vals[j] == vals[i] && uint160(addrs[j]) < uint160(addrs[i]);
+                if (higher || tieLowerAddr) {
+                    (addrs[i], addrs[j]) = (addrs[j], addrs[i]);
+                    (vals[i], vals[j]) = (vals[j], vals[i]);
+                }
+            }
+        }
+
+        for (uint8 r; r < 3; ++r) {
+            if (r < n) {
+                g.winners[r] = addrs[r];
+                g.values[r] = vals[r];
+            } else {
+                g.winners[r] = address(0);
+                g.values[r] = 0;
+            }
+        }
+
+        for (uint8 r; r < 3; ++r) {
+            o.winners[r] = address(0);
+            o.values[r] = 0;
+        }
+        for (uint8 i = 3; i < n; ++i) {
+            uint8 offIdx = i - 3;
+            o.winners[offIdx] = addrs[i];
+            o.values[offIdx] = vals[i];
+        }
+        _sortOffWarbowPodium();
     }
 
     function _updateTopThree(uint8 cat, address entrant, uint256 value) private {
         Podium storage p = _podiums[cat];
         for (uint8 r; r < 3; ++r) {
             if (p.winners[r] == entrant) {
-                if (value > p.values[r]) p.values[r] = value;
+                p.values[r] = value;
                 _sortPodium(cat);
                 return;
             }
         }
         for (uint8 r; r < 3; ++r) {
             if (p.winners[r] == address(0) || value > p.values[r]) {
+                address displaced = p.winners[r];
                 p.winners[r] = entrant;
                 p.values[r] = value;
                 _sortPodium(cat);
+                if (displaced != address(0) && displaced != entrant) {
+                    uint256 displacedVal = _podiumMetric(cat, displaced);
+                    if (displacedVal > 0) _updateTopThree(cat, displaced, displacedVal);
+                }
                 return;
             }
         }
     }
 
+    function _podiumMetric(uint8 cat, address entrant) private view returns (uint256) {
+        if (cat == CAT_WARBOW) return _effectiveBattlePoints(entrant);
+        if (cat == CAT_TIME_BOOSTER) return totalEffectiveTimerSecAdded[entrant];
+        if (cat == CAT_DEFENDED_STREAK) return bestDefendedStreak[entrant];
+        if (cat == CAT_LAST_BUYERS) return buyCount[entrant];
+        return 0;
+    }
+
     function _sortPodium(uint8 cat) private {
-        Podium storage p = _podiums[cat];
+        _sortPodiumStorage(_podiums[cat]);
+    }
+
+    function _sortPodiumStorage(Podium storage p) private {
+        // Bubble-sort on three slots is O(1) and cheaper than heap setup (#316).
         for (uint8 i; i < 2; ++i) {
             for (uint8 j = i + 1; j < 3; ++j) {
-                if (p.values[j] > p.values[i]) {
+                bool higher = p.values[j] > p.values[i];
+                bool tieLowerAddr = p.values[j] == p.values[i] && uint160(p.winners[j]) < uint160(p.winners[i]);
+                if (higher || tieLowerAddr) {
                     (p.winners[i], p.winners[j]) = (p.winners[j], p.winners[i]);
                     (p.values[i], p.values[j]) = (p.values[j], p.values[i]);
                 }
@@ -919,6 +1154,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function _clearAllBattlePoints() private {
         warbowBpGeneration += 1;
         _clearPodium(CAT_WARBOW);
+        _clearOffWarbowPodium();
+    }
+
+    function _clearOffWarbowPodium() private {
+        Podium storage o = _warbowOffPodium;
+        for (uint8 r; r < 3; ++r) {
+            o.winners[r] = address(0);
+            o.values[r] = 0;
+        }
     }
 
     function _effectiveBattlePoints(address user) private view returns (uint256) {

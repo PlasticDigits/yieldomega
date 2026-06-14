@@ -2,7 +2,7 @@
 
 import pytest
 
-from timecurve_bot.referral_code import hash_referral_code_normalized, normalize_referral_code
+from timearena_bot.referral_code import hash_referral_code_normalized, normalize_referral_code
 
 
 def test_normalize_referral_code_lowercase() -> None:

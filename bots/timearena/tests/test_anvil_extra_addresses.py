@@ -2,7 +2,7 @@
 
 from web3 import Web3
 
-from timecurve_bot.anvil_extra_addresses import (
+from timearena_bot.anvil_extra_addresses import (
     merge_funded_recipients,
     parse_extra_funded_addresses,
 )
