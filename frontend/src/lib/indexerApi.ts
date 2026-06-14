@@ -807,7 +807,9 @@ export type ArenaWalletStats = {
   epoch_charm_wad?: string;
   /** Global CHARM total in `last_buy_epoch` (schema ≥ 2.10.0). */
   epoch_charm_total_wad?: string;
-  /** DOUB buy count in `last_buy_epoch` (schema ≥ 2.10.0). */
+  /** Buy count in `last_buy_epoch` (DOUB + CRED; schema ≥ 2.10.0). */
+  epoch_buy_count?: string;
+  /** @deprecated Use `epoch_buy_count` — same value, kept for older clients. */
   epoch_doub_buy_count?: string;
   /** Active-epoch CRED preview — mirrors `pendingCred(wallet, lastBuyEpoch)` (schema ≥ 2.10.0). */
   pending_cred_accrual?: string;
