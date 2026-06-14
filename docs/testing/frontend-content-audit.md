@@ -55,12 +55,12 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
-| Layout | Single **`arena-command-console`** at index **`/`**; no `.arena-final-concept` mock | [arena-views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) |
-| Header nav | **AUDIT** → `/arena/protocol` and **Referrals** only (no BUY/AUDIT sub-nav) | `RootLayout.tsx` |
+| Layout | Single **`arena-command-console`** at index **`/`**; no `.arena-final-concept` mock above live stack | [arena-views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) |
+| Header nav | **AUDIT** → `/arena/protocol` and **Referrals** only; **no** `ArenaSubnav` BUY/AUDIT row ([#320](../product/time-arena.md#doc-decision-points-gitlab-320)) | `RootLayout.tsx` |
 | Last Buy | Largest primary countdown in main column | `ArenaTimerHero.tsx` |
+| Podium UX | `ArenaTimerPodiumCarousel` — one podium at a time; **no** four-card `arena-simple-podiums` grid (AUDIT only) | `ArenaTimerPodiumCarousel.tsx`, `ArenaSimplePage.tsx`, `e2e/arena.spec.ts` |
 | Inline buy | Text field, slider, min/max, pay picker, **Buy CHARM** without modal-first flow | `ArenaSimplePage.tsx` |
-| Buy hub metrics | CHARM price, 0.99–10 CHARM range, and CRED yield surfaced in the buy panel / projected-effects pills (no separate decision-row strip) | `ArenaSimplePage.tsx` · `arenaCommandConsoleStatic.test.ts` |
-| Podium UX | **Carousel** + timer chips on play; **no** four-card `arena-simple-podiums` grid | `ArenaTimerPodiumCarousel.tsx`, `e2e/arena.spec.ts` |
+| Buy hub metrics | CHARM price, 0.99–10 CHARM range, and CRED yield in buy panel / projected-effects pills (no separate decision-row strip) | `ArenaSimplePage.tsx` · `arenaCommandConsoleStatic.test.ts` |
 | Secondary rail | CHARM/CRED card, secondary timer chips (Time Booster · Defended Streak · WarBow), WarBow PvP panel | [arena-views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) |
 | Removed chrome | **No** `ArenaSubnav`; **no** `arena-command-console__decision-row` tiles | `arenaCommandConsoleStatic.test.ts` |
 | Branding | Visible **Yield Omega** in console chrome; low-opacity bunny/shark accents | `ArenaSimplePage.tsx` |

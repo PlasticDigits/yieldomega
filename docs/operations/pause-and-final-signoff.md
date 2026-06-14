@@ -37,8 +37,8 @@ Template for operators; exact multisig steps belong in [`deployment-checklist.md
 1. **Bytecode + registry** — Deployed addresses and ABI hashes match audited artifacts.
 2. **Indexer + frontend** — Registry keys wired; **`VITE_TIME_ARENA_ADDRESS`** and peers match onchain proxies.
 3. **`startArena()`** — Owner starts timers (or **`START_ARENA=1`** at deploy).
-4. **Go live** — **`paused == false`**; users can buy and spend DOUB on WarBow actions.
-5. **Emergency halt** — Owner **`setPaused(true)`**; frontend disables pay CTAs (**`INV-FRONTEND-264-ARENA-PAY-PAUSE`**).
+4. **Go live** — **`paused == false`**; users can buy, spend DOUB on WarBow actions, and claim WarBow flags.
+5. **Emergency halt** — Owner **`setPaused(true)`**; frontend disables pay CTAs and WarBow write gates (**`INV-FRONTEND-264-ARENA-PAY-PAUSE`**).
 
 ---
 

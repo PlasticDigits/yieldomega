@@ -21,7 +21,7 @@ DOUB from each **`buy`** routes immediately to **`PodiumVaults`** (**100%** podi
 1. Deploy with **`DeployProduction`** or **`DeployDev`**; confirm registry JSON and ABI hashes ([`export_abi_hashes.sh`](../../contracts/script/export_abi_hashes.sh)).
 2. Wire indexer + frontend from registry (`TimeArena`, `PodiumVaults`, `AdminSellVault`, `PlayCred`, `ReferralRegistry`, `Doubloon`).
 3. Owner calls **`startArena()`** when ready (or set **`START_ARENA=1`** in deploy env).
-4. **Emergency halt:** owner **`setPaused(true)`** — blocks DOUB buys, CRED buys, WarBow DOUB spends, and **`claimWarBowFlag`**; frontend gates pay CTAs on **`paused`** only.
+4. **Emergency halt:** owner **`setPaused(true)`** — blocks DOUB buys, CRED buys, WarBow DOUB spends, and **`claimWarBowFlag`**; frontend gates pay CTAs and WarBow writes on **`paused`**.
 
 ## Upgrade notes (UUPS)
 
