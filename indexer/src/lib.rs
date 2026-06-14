@@ -14,6 +14,7 @@ pub mod db;
 pub mod decoder;
 pub mod ingestion;
 pub mod last_buy_epoch_head;
+pub mod multicall;
 pub mod persist;
 pub mod reorg;
 pub mod rpc_http;

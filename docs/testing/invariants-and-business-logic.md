@@ -687,6 +687,18 @@ Cross-links: [`docs/indexer/design.md` §237](../indexer/design.md#megaeth-wss-r
 
 Cross-links: [`docs/indexer/design.md` §306](../indexer/design.md#indexer-json-rpc-load-benchmark-gitlab-306) · play skill [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md).
 
+<a id="indexer-chain-timer-multicall-gitlab-307"></a>
+
+### Chain-timer Multicall3 batching (GitLab [#307](https://gitlab.com/PlasticDigits/yieldomega/-/issues/307))
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-307-MULTICALL-BATCH`** | `chain_timer::poll_once` batches head `eth_call`s via Multicall3 `aggregate3` (`allowFailure: false`); one aggregate = one logical `eth_call` in **`rpc_metrics`**; sequential fallback when Multicall3 bytecode absent | [`multicall.rs`](../../indexer/src/multicall.rs) · [`chain_timer.rs`](../../indexer/src/chain_timer.rs) · `cd indexer && cargo test multicall` |
+| **`INV-INDEXER-307-ANVIL-MULTICALL3`** | Local verify/benchmark Anvil scripts install Multicall3 at **`0xcA11…`** via `anvil_setCode` | `bash scripts/lib/anvil_multicall3.sh` · `scripts/verify-indexer-rpc-metrics.sh` |
+| **`INV-INDEXER-307-RPC-BURST`** | Idle localnet **`peak_calls_10s` ≤ 50** after warm-up (parent [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306) target) | `BENCHMARK_SCENARIO_SEC=120 bash scripts/benchmark-indexer-rpc-anvil.sh` · [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) |
+
+Cross-links: [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) · parent [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306).
+
 <a id="indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168"></a>
 
 ### Indexer ingestion liveness + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))

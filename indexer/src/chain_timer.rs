@@ -12,6 +12,7 @@ use eyre::{Result, WrapErr};
 use tokio::sync::RwLock;
 use tokio::time::Duration;
 
+use crate::multicall::{self, MulticallRequest};
 use crate::rpc_http::{
     build_reqwest_providers, error_chain_transport_http_status, parse_http_rpc_urls,
     rpc_first_ok_instrumented,
@@ -41,6 +42,8 @@ pub const SEL_TIME_ARENA_BUY_ROUTER: [u8; 4] = [0x57, 0xcd, 0x7c, 0x88];
 pub const SEL_REFERRAL_CRED_FLAT_WAD: [u8; 4] = [0x1f, 0x5e, 0x9f, 0x48];
 /// `PodiumVaults.activePoolBalance(uint8)` ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)).
 pub const SEL_ACTIVE_POOL_BALANCE: [u8; 4] = [0x2f, 0xd2, 0xac, 0xfb];
+pub const SEL_TOTAL_DOUB_RAISED: [u8; 4] = [0x6d, 0xc8, 0x4f, 0xb3];
+pub const SEL_PAUSED: [u8; 4] = [0x5c, 0x97, 0x5a, 0xbb];
 
 /// Head sale fields for Arena v2 buy hub — batched at `read_block_number` ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
 #[derive(Debug, Clone, serde::Serialize)]
@@ -306,6 +309,230 @@ async fn poll_once(
     podium_vaults: Option<Address>,
     metrics: &RpcMetrics,
 ) -> Result<TimecurveHeadSnapshot> {
+    if multicall::multicall_batching_enabled() && multicall::probe_multicall3(providers).await {
+        match poll_once_multicall(providers, arena, podium_vaults, metrics).await {
+            Ok(snap) => return Ok(snap),
+            Err(e) => {
+                tracing::warn!(
+                    ?e,
+                    "chain_timer: Multicall3 batch failed; falling back to sequential eth_call"
+                );
+            }
+        }
+    }
+    poll_once_sequential(providers, arena, podium_vaults, metrics).await
+}
+
+async fn poll_once_multicall(
+    providers: &[ReqwestProvider],
+    arena: Address,
+    podium_vaults: Option<Address>,
+    metrics: &RpcMetrics,
+) -> Result<TimecurveHeadSnapshot> {
+    let (bn, block_ts, block_id) = fetch_head_block(providers, metrics).await?;
+
+    let pv = podium_vaults.filter(|a| *a != Address::ZERO);
+
+    let mut scalar_reqs = vec![
+        scalar_req(arena, Bytes::copy_from_slice(&SEL_ARENA_START)),
+        scalar_req(arena, Bytes::copy_from_slice(&SEL_DEADLINE)),
+        scalar_req(arena, Bytes::copy_from_slice(&SEL_TIMER_CAP)),
+    ];
+    for cat in 0u8..=3 {
+        scalar_reqs.push(scalar_req(
+            arena,
+            encode_u8_call(SEL_PODIUM_DEADLINE, cat),
+        ));
+    }
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_LAST_BUY_EPOCH),
+    ));
+    for cat in 0u8..=3 {
+        scalar_reqs.push(scalar_req(arena, encode_u8_call(SEL_PODIUM_EPOCH, cat)));
+    }
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_TOTAL_DOUB_RAISED),
+    ));
+    scalar_reqs.push(scalar_req(arena, Bytes::copy_from_slice(&SEL_PAUSED)));
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_EFFECTIVE_CHARM_PRICE_WAD),
+    ));
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_EPOCH_CHARM_ANCHOR_WAD),
+    ));
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_EPOCH_ANCHOR_TIMESTAMP),
+    ));
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_BUY_COOLDOWN_SEC),
+    ));
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_TIMER_EXTENSION_SEC),
+    ));
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_REFERRAL_CRED_FLAT_WAD),
+    ));
+    scalar_reqs.push(scalar_req(arena, Bytes::copy_from_slice(&SEL_DOUB)));
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_REFERRAL_REGISTRY),
+    ));
+    scalar_reqs.push(scalar_req(
+        arena,
+        Bytes::copy_from_slice(&SEL_TIME_ARENA_BUY_ROUTER),
+    ));
+    if let Some(pv_addr) = pv {
+        for cat in 0u8..=3 {
+            scalar_reqs.push(scalar_req(
+                pv_addr,
+                encode_u8_call(SEL_ACTIVE_POOL_BALANCE, cat),
+            ));
+        }
+    }
+
+    let mut all_reqs = scalar_reqs;
+    for cat in 0u8..=3 {
+        all_reqs.push(scalar_req(arena, encode_u8_call(SEL_PODIUM, cat)));
+    }
+
+    let all_returns = multicall::aggregate3_batched(
+        providers,
+        block_id,
+        all_reqs,
+        metrics,
+        "chain_timer_head",
+        true,
+    )
+    .await?;
+
+    let scalar_count = all_returns.len() - 4;
+    let scalar_returns = &all_returns[..scalar_count];
+    let podium_returns = &all_returns[scalar_count..];
+
+    let mut i = 0usize;
+    let arena_start = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let deadline = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let cap = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+
+    let mut podium_deadlines = std::array::from_fn(|_| String::new());
+    for slot in &mut podium_deadlines {
+        *slot = u256_to_decimal_string(multicall::decode_return_u256(&scalar_returns[i])?);
+        i += 1;
+    }
+
+    let last_buy_epoch = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+
+    let mut podium_epochs = std::array::from_fn(|_| String::new());
+    for slot in &mut podium_epochs {
+        *slot = u256_to_decimal_string(multicall::decode_return_u256(&scalar_returns[i])?);
+        i += 1;
+    }
+
+    let total_doub_raised = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let paused = multicall::decode_return_bool(&scalar_returns[i])?;
+    i += 1;
+    let charm_price_wad = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let epoch_charm_anchor_wad = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let epoch_anchor_timestamp = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let buy_cooldown_sec = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let timer_extension_sec = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let referral_cred_flat_wad = multicall::decode_return_u256(&scalar_returns[i])?;
+    i += 1;
+    let doub = multicall::decode_return_address(&scalar_returns[i])?;
+    i += 1;
+    let referral_registry = multicall::decode_return_address(&scalar_returns[i])?;
+    i += 1;
+    let time_arena_buy_router = multicall::decode_return_address(&scalar_returns[i])?;
+    i += 1;
+
+    let mut active_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
+    if pv.is_some() {
+        for slot in &mut active_pool_balance_doub_wad {
+            *slot = u256_to_decimal_string(multicall::decode_return_u256(&scalar_returns[i])?);
+            i += 1;
+        }
+    }
+
+    let mut podium_rows = std::array::from_fn(|_| empty_podium_row());
+    for (cat, ret) in podium_returns.iter().enumerate() {
+        podium_rows[cat] =
+            decode_podium_return(ret).wrap_err_with(|| format!("decode podium({cat})"))?;
+    }
+
+    let polled_at_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
+    let timer = ChainTimerSnapshot {
+        sale_start_sec: u256_to_decimal_string(arena_start),
+        deadline_sec: u256_to_decimal_string(deadline),
+        block_timestamp_sec: block_ts.to_string(),
+        timer_cap_sec: u256_to_decimal_string(cap),
+        read_block_number: bn.to_string(),
+        polled_at_ms,
+        last_buy_epoch: u256_to_decimal_string(last_buy_epoch),
+        podium_epochs,
+        podium_deadlines_sec: podium_deadlines,
+    };
+
+    let sale_state = crate::sale_state::sale_state_from_fields(
+        deadline,
+        total_doub_raised,
+        paused,
+        block_ts,
+        bn,
+        polled_at_ms,
+    );
+
+    let sale_head = ArenaSaleHeadFields {
+        charm_price_wad: u256_to_decimal_string(charm_price_wad),
+        epoch_charm_anchor_wad: u256_to_decimal_string(epoch_charm_anchor_wad),
+        epoch_anchor_timestamp_sec: u256_to_decimal_string(epoch_anchor_timestamp),
+        doub: addr_word_hex(doub),
+        referral_registry: addr_word_hex(referral_registry),
+        buy_cooldown_sec: u256_to_decimal_string(buy_cooldown_sec),
+        timer_extension_sec: u256_to_decimal_string(timer_extension_sec),
+        time_arena_buy_router: addr_word_hex(time_arena_buy_router),
+        referral_cred_flat_wad: u256_to_decimal_string(referral_cred_flat_wad),
+    };
+
+    Ok(TimecurveHeadSnapshot {
+        timer,
+        sale_ended: false,
+        podium_contract: podium_rows,
+        active_pool_balance_doub_wad,
+        sale_state,
+        sale_head,
+    })
+}
+
+fn scalar_req(target: Address, call_data: Bytes) -> MulticallRequest {
+    MulticallRequest { target, call_data }
+}
+
+async fn fetch_head_block(
+    providers: &[ReqwestProvider],
+    metrics: &RpcMetrics,
+) -> Result<(u64, u64, BlockId)> {
     let bn = rpc_first_ok_instrumented(
         providers,
         Some(metrics),
@@ -323,9 +550,18 @@ async fn poll_once(
     )
     .await?
     .ok_or_else(|| eyre::eyre!("chain_timer: missing block {bn}"))?;
-
     let block_ts = block.header.timestamp;
     let block_id = BlockId::Number(bn.into());
+    Ok((bn, block_ts, block_id))
+}
+
+async fn poll_once_sequential(
+    providers: &[ReqwestProvider],
+    arena: Address,
+    podium_vaults: Option<Address>,
+    metrics: &RpcMetrics,
+) -> Result<TimecurveHeadSnapshot> {
+    let (bn, block_ts, block_id) = fetch_head_block(providers, metrics).await?;
 
     let arena_start = eth_call_u256(
         providers,

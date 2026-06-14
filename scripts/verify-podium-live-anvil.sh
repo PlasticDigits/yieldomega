@@ -95,6 +95,10 @@ for _ in $(seq 1 30); do
 done
 cast block-number --rpc-url "${RPC}" >/dev/null
 
+# shellcheck source=scripts/lib/anvil_multicall3.sh
+source "${ROOT}/scripts/lib/anvil_multicall3.sh"
+yieldomega_anvil_install_multicall3 "${RPC}"
+
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
 yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"

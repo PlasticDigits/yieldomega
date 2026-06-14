@@ -42,7 +42,7 @@ Env knobs documented in the issue: `RPC_URL`, `INGESTION_ENABLED`, `INDEXER_RPC_
 
 ## Baseline findings (Anvil, schema 2.11.0)
 
-Sample run (`docs/indexer/benchmarks/rpc-benchmark-20260610T111415Z.json`, 30s scenarios):
+Pre-#307 sample (`docs/indexer/benchmarks/rpc-benchmark-20260610T111415Z.json`, 30s scenarios):
 
 | Scenario | calls/min (1m) | peak / 10s | Dominant caller | Dominant method |
 |----------|----------------|------------|-----------------|-----------------|
@@ -50,21 +50,46 @@ Sample run (`docs/indexer/benchmarks/rpc-benchmark-20260610T111415Z.json`, 30s s
 | catch-up | **820** | **434** | `chain_timer` | `eth_call` |
 | active arena | **1999** | **434** | `chain_timer` | `eth_call` |
 
-**chain-timer** dominates steady-state RPC: ~**1 Hz** `poll_once` → **2** head reads plus **~30** `eth_call`s per cycle. **Ingestion** adds **2** calls per indexed block while caught up; **catch-up** and **active arena** raise `eth_getBlockByNumber` / `eth_getLogs` and ingest-side `podium_live` / `warbow_score` `eth_call`s.
+**Pre-#307:** **chain-timer** dominated steady-state RPC: ~**1 Hz** `poll_once` → **2** head reads plus **~30** sequential `eth_call`s per cycle.
+
+### Mitigation status ([#307](https://gitlab.com/PlasticDigits/yieldomega/-/issues/307))
+
+| Strategy | Status | Notes |
+|----------|--------|-------|
+| **Batch/multicall** (`multicall.rs` + `aggregate3`) | **Shipped** | One aggregate per poll (scalars + podiums); coalesced duplicate selectors; sequential fallback without Multicall3 bytecode |
+| **Adaptive poll interval** | Proposed | Sibling issue from #306 triage |
+| **Coalesce duplicate `eth_call`** | **Shipped** (in multicall path) | `coalesce_requests` before aggregate |
+| **Derive live podium from logs** | Partial | `INV-INDEXER-PODIUM-PREDICT-LIVE` |
+| **Separate read RPC URL** | Operator config | No per-process reduction |
+| **WSS/SSE [#237](https://gitlab.com/PlasticDigits/yieldomega/-/issues/237)** | Deferred | Frontend hints only |
+| **Indexer-first display [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)** | Shipped | Cuts browser RPC |
+
+**Operator requirement:** Multicall3 at **`0xcA11bde05977b3631167028862bE2a173976CA11`** (standard on mainnet/L2s). Fresh Anvil: `bash scripts/lib/anvil_multicall3.sh` (called from verify/benchmark scripts).
+
+Post-#307 idle target: **`peak_calls_10s` ≤ 50** (≈1 `eth_call` aggregate + 2 head reads per ~1 Hz poll). Re-benchmark with `BENCHMARK_SCENARIO_SEC=120 bash scripts/benchmark-indexer-rpc-anvil.sh` and commit artifacts under `docs/indexer/benchmarks/`.
+
+Post-#307 sample (`docs/indexer/benchmarks/rpc-benchmark-20260614T053127Z.json`, 120s scenarios):
+
+| Scenario | calls/min (1m) | peak / 10s | `eth_call:chain_timer` (final sample total) | vs pre-#307 idle peak |
+|----------|----------------|------------|---------------------------------------------|------------------------|
+| idle | **244** | **44** | 111 (≈11 / 10s burst) | **−88%** peak burst (354→44); **−97%** chain_timer `eth_call` / 10s (352→11) |
+| catch-up | 244 | 124 | 111 | catch-up ingest dominates |
+| active arena | 441 | 124 | 233 | arena ingest + `podium_live` / `warbow_score` |
+
+**Ingestion** adds **2** calls per indexed block while caught up; **catch-up** and **active arena** raise `eth_getBlockByNumber` / `eth_getLogs` and ingest-side `podium_live` / `warbow_score` `eth_call`s.
 
 Refresh baselines with `bash scripts/benchmark-indexer-rpc-anvil.sh` (use `BENCHMARK_SCENARIO_SEC=600` for production-style runs).
 
 ## Prioritized mitigation strategies
 
+See **Mitigation status** table above ([#307](https://gitlab.com/PlasticDigits/yieldomega/-/issues/307)). Remaining estimates for unshipped items:
+
 | Strategy | Est. RPC reduction | Reactivity impact |
 |----------|-------------------|-------------------|
-| **Batch/multicall** for chain-timer `eth_call` fan-out | **40–60%** fewer round-trips per poll | Low if batched at same block tag; decode complexity |
 | **Adaptive poll interval** when head unchanged and timer epochs stable | **30–50%** steady-state | Must not miss timer UX thresholds near deadline |
-| **Coalesce duplicate `eth_call`** at same block tag within one `poll_once` | **10–20%** | None |
 | **Derive live podium snapshots from logs** where `INV-INDEXER-PODIUM-PREDICT-LIVE` allows | Hot-path reduction on arena traffic | Verify parity with block-tagged `podium()` |
 | **Separate read RPC URL** for head poller vs ingestion (operator config) | Isolates bursts | Ops complexity; no per-process reduction |
 | **Ship [#237](https://gitlab.com/PlasticDigits/yieldomega/-/issues/237) WSS/SSE** for head hints | Frontend-only relief | Best-effort mini-block; RPC remains authority |
-| **Enforce indexer-first display ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301))** | Cuts **browser** RPC, not indexer RPC | Already shipped |
 
 ## Proposed operator SLOs (single indexer instance)
 

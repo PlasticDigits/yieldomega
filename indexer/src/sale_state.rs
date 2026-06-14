@@ -7,6 +7,7 @@ use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockId, TransactionRequest};
 use eyre::{Result, WrapErr};
 
+use crate::multicall::{decode_return_bool, decode_return_u256};
 use crate::rpc_http::rpc_first_ok_instrumented;
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 
@@ -25,19 +26,23 @@ fn u256_to_decimal_string(v: U256) -> String {
     v.to_string()
 }
 
-fn decode_return_u256(data: &[u8]) -> Result<U256> {
-    if data.len() < 32 {
-        return Err(eyre::eyre!(
-            "eth_call return too short: {} bytes",
-            data.len()
-        ));
+/// Build sale-state snapshot from values already read at `read_block_number` (Multicall3 batch path).
+pub fn sale_state_from_fields(
+    deadline: U256,
+    total_doub_raised: U256,
+    paused: bool,
+    block_ts: u64,
+    read_block_number: u64,
+    polled_at_ms: u64,
+) -> TimecurveSaleStateSnapshot {
+    TimecurveSaleStateSnapshot {
+        read_block_number: read_block_number.to_string(),
+        block_timestamp_sec: block_ts.to_string(),
+        polled_at_ms,
+        deadline_sec: u256_to_decimal_string(deadline),
+        total_doub_raised: u256_to_decimal_string(total_doub_raised),
+        paused,
     }
-    let slice = &data[data.len() - 32..];
-    Ok(U256::from_be_slice(slice))
-}
-
-fn decode_return_bool(data: &[u8]) -> Result<bool> {
-    Ok(!decode_return_u256(data)?.is_zero())
 }
 
 async fn eth_call_u256(
@@ -90,7 +95,7 @@ async fn eth_call_bool(
     decode_return_bool(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
-/// Poll arena timer basics at `block_id` (shared head with chain-timer).
+/// Poll arena timer basics at `block_id` (sequential fallback when Multicall3 unavailable).
 pub async fn poll_sale_state_at_block(
     providers: &[ReqwestProvider],
     arena: Address,
@@ -117,12 +122,12 @@ pub async fn poll_sale_state_at_block(
         eth_call_bool(providers, arena, block_id, SEL_PAUSED, "paused", metrics),
     )?;
 
-    Ok(TimecurveSaleStateSnapshot {
-        read_block_number: read_block_number.to_string(),
-        block_timestamp_sec: block_ts.to_string(),
-        polled_at_ms,
-        deadline_sec: u256_to_decimal_string(deadline),
-        total_doub_raised: u256_to_decimal_string(total_doub_raised),
+    Ok(sale_state_from_fields(
+        deadline,
+        total_doub_raised,
         paused,
-    })
+        block_ts,
+        read_block_number,
+        polled_at_ms,
+    ))
 }

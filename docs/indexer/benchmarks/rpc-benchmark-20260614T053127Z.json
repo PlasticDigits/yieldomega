@@ -1,0 +1,1010 @@
+{
+  "issue": 306,
+  "generated_at": "20260614T053127Z",
+  "rpc_url": "http://127.0.0.1:8548",
+  "scenario_sec": 120,
+  "sample_sec": 10,
+  "scenarios": [
+    {
+      "scenario": "idle",
+      "duration_sec": 120,
+      "sample_interval_sec": 10,
+      "samples": [
+        {
+          "by_caller": {
+            "chain_timer": 3,
+            "ingestion": 5
+          },
+          "by_method": {
+            "eth_blockNumber": 2,
+            "eth_call": 1,
+            "eth_getBlockByNumber": 4,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 1,
+            "eth_blockNumber:ingestion": 1,
+            "eth_call:chain_timer": 1,
+            "eth_getBlockByNumber:chain_timer": 1,
+            "eth_getBlockByNumber:ingestion": 3,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 8,
+          "calls_last_5m": 8,
+          "calls_per_min_1m": 8.0,
+          "calls_per_min_5m": 1.6,
+          "peak_calls_10s": 8,
+          "total_calls": 8
+        },
+        {
+          "by_caller": {
+            "chain_timer": 33,
+            "ingestion": 15
+          },
+          "by_method": {
+            "eth_blockNumber": 12,
+            "eth_call": 11,
+            "eth_getBlockByNumber": 24,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 11,
+            "eth_blockNumber:ingestion": 1,
+            "eth_call:chain_timer": 11,
+            "eth_getBlockByNumber:chain_timer": 11,
+            "eth_getBlockByNumber:ingestion": 13,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 48,
+          "calls_last_5m": 48,
+          "calls_per_min_1m": 48.0,
+          "calls_per_min_5m": 9.6,
+          "peak_calls_10s": 44,
+          "total_calls": 48
+        },
+        {
+          "by_caller": {
+            "chain_timer": 63,
+            "ingestion": 26
+          },
+          "by_method": {
+            "eth_blockNumber": 23,
+            "eth_call": 21,
+            "eth_getBlockByNumber": 44,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 21,
+            "eth_blockNumber:ingestion": 2,
+            "eth_call:chain_timer": 21,
+            "eth_getBlockByNumber:chain_timer": 21,
+            "eth_getBlockByNumber:ingestion": 23,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 89,
+          "calls_last_5m": 89,
+          "calls_per_min_1m": 89.0,
+          "calls_per_min_5m": 17.8,
+          "peak_calls_10s": 44,
+          "total_calls": 89
+        },
+        {
+          "by_caller": {
+            "chain_timer": 93,
+            "ingestion": 37
+          },
+          "by_method": {
+            "eth_blockNumber": 34,
+            "eth_call": 31,
+            "eth_getBlockByNumber": 64,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 31,
+            "eth_blockNumber:ingestion": 3,
+            "eth_call:chain_timer": 31,
+            "eth_getBlockByNumber:chain_timer": 31,
+            "eth_getBlockByNumber:ingestion": 33,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 130,
+          "calls_last_5m": 130,
+          "calls_per_min_1m": 130.0,
+          "calls_per_min_5m": 26.0,
+          "peak_calls_10s": 44,
+          "total_calls": 130
+        },
+        {
+          "by_caller": {
+            "chain_timer": 123,
+            "ingestion": 47
+          },
+          "by_method": {
+            "eth_blockNumber": 44,
+            "eth_call": 41,
+            "eth_getBlockByNumber": 84,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 41,
+            "eth_blockNumber:ingestion": 3,
+            "eth_call:chain_timer": 41,
+            "eth_getBlockByNumber:chain_timer": 41,
+            "eth_getBlockByNumber:ingestion": 43,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 170,
+          "calls_last_5m": 170,
+          "calls_per_min_1m": 170.0,
+          "calls_per_min_5m": 34.0,
+          "peak_calls_10s": 44,
+          "total_calls": 170
+        },
+        {
+          "by_caller": {
+            "chain_timer": 153,
+            "ingestion": 58
+          },
+          "by_method": {
+            "eth_blockNumber": 55,
+            "eth_call": 51,
+            "eth_getBlockByNumber": 104,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 51,
+            "eth_blockNumber:ingestion": 4,
+            "eth_call:chain_timer": 51,
+            "eth_getBlockByNumber:chain_timer": 51,
+            "eth_getBlockByNumber:ingestion": 53,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 211,
+          "calls_last_5m": 211,
+          "calls_per_min_1m": 211.0,
+          "calls_per_min_5m": 42.2,
+          "peak_calls_10s": 44,
+          "total_calls": 211
+        },
+        {
+          "by_caller": {
+            "chain_timer": 183,
+            "ingestion": 69
+          },
+          "by_method": {
+            "eth_blockNumber": 66,
+            "eth_call": 61,
+            "eth_getBlockByNumber": 124,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 61,
+            "eth_blockNumber:ingestion": 5,
+            "eth_call:chain_timer": 61,
+            "eth_getBlockByNumber:chain_timer": 61,
+            "eth_getBlockByNumber:ingestion": 63,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 252,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 50.4,
+          "peak_calls_10s": 44,
+          "total_calls": 252
+        },
+        {
+          "by_caller": {
+            "chain_timer": 213,
+            "ingestion": 79
+          },
+          "by_method": {
+            "eth_blockNumber": 76,
+            "eth_call": 71,
+            "eth_getBlockByNumber": 144,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 71,
+            "eth_blockNumber:ingestion": 5,
+            "eth_call:chain_timer": 71,
+            "eth_getBlockByNumber:chain_timer": 71,
+            "eth_getBlockByNumber:ingestion": 73,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 292,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 58.4,
+          "peak_calls_10s": 44,
+          "total_calls": 292
+        },
+        {
+          "by_caller": {
+            "chain_timer": 243,
+            "ingestion": 90
+          },
+          "by_method": {
+            "eth_blockNumber": 87,
+            "eth_call": 81,
+            "eth_getBlockByNumber": 164,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 81,
+            "eth_blockNumber:ingestion": 6,
+            "eth_call:chain_timer": 81,
+            "eth_getBlockByNumber:chain_timer": 81,
+            "eth_getBlockByNumber:ingestion": 83,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 333,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 66.6,
+          "peak_calls_10s": 44,
+          "total_calls": 333
+        },
+        {
+          "by_caller": {
+            "chain_timer": 273,
+            "ingestion": 101
+          },
+          "by_method": {
+            "eth_blockNumber": 98,
+            "eth_call": 91,
+            "eth_getBlockByNumber": 184,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 91,
+            "eth_blockNumber:ingestion": 7,
+            "eth_call:chain_timer": 91,
+            "eth_getBlockByNumber:chain_timer": 91,
+            "eth_getBlockByNumber:ingestion": 93,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 374,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 74.8,
+          "peak_calls_10s": 44,
+          "total_calls": 374
+        },
+        {
+          "by_caller": {
+            "chain_timer": 303,
+            "ingestion": 111
+          },
+          "by_method": {
+            "eth_blockNumber": 108,
+            "eth_call": 101,
+            "eth_getBlockByNumber": 204,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 101,
+            "eth_blockNumber:ingestion": 7,
+            "eth_call:chain_timer": 101,
+            "eth_getBlockByNumber:chain_timer": 101,
+            "eth_getBlockByNumber:ingestion": 103,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 414,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 82.8,
+          "peak_calls_10s": 44,
+          "total_calls": 414
+        },
+        {
+          "by_caller": {
+            "chain_timer": 333,
+            "ingestion": 122
+          },
+          "by_method": {
+            "eth_blockNumber": 119,
+            "eth_call": 111,
+            "eth_getBlockByNumber": 224,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 111,
+            "eth_blockNumber:ingestion": 8,
+            "eth_call:chain_timer": 111,
+            "eth_getBlockByNumber:chain_timer": 111,
+            "eth_getBlockByNumber:ingestion": 113,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 455,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 91.0,
+          "peak_calls_10s": 44,
+          "total_calls": 455
+        }
+      ]
+    },
+    {
+      "scenario": "catch_up",
+      "duration_sec": 120,
+      "sample_interval_sec": 10,
+      "samples": [
+        {
+          "by_caller": {
+            "chain_timer": 3,
+            "ingestion": 85
+          },
+          "by_method": {
+            "eth_blockNumber": 2,
+            "eth_call": 1,
+            "eth_getBlockByNumber": 44,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 1,
+            "eth_blockNumber:ingestion": 1,
+            "eth_call:chain_timer": 1,
+            "eth_getBlockByNumber:chain_timer": 1,
+            "eth_getBlockByNumber:ingestion": 43,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 88,
+          "calls_last_5m": 88,
+          "calls_per_min_1m": 88.0,
+          "calls_per_min_5m": 17.6,
+          "peak_calls_10s": 88,
+          "total_calls": 88
+        },
+        {
+          "by_caller": {
+            "chain_timer": 33,
+            "ingestion": 95
+          },
+          "by_method": {
+            "eth_blockNumber": 12,
+            "eth_call": 11,
+            "eth_getBlockByNumber": 64,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 11,
+            "eth_blockNumber:ingestion": 1,
+            "eth_call:chain_timer": 11,
+            "eth_getBlockByNumber:chain_timer": 11,
+            "eth_getBlockByNumber:ingestion": 53,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 128,
+          "calls_last_5m": 128,
+          "calls_per_min_1m": 128.0,
+          "calls_per_min_5m": 25.6,
+          "peak_calls_10s": 124,
+          "total_calls": 128
+        },
+        {
+          "by_caller": {
+            "chain_timer": 63,
+            "ingestion": 106
+          },
+          "by_method": {
+            "eth_blockNumber": 23,
+            "eth_call": 21,
+            "eth_getBlockByNumber": 84,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 21,
+            "eth_blockNumber:ingestion": 2,
+            "eth_call:chain_timer": 21,
+            "eth_getBlockByNumber:chain_timer": 21,
+            "eth_getBlockByNumber:ingestion": 63,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 169,
+          "calls_last_5m": 169,
+          "calls_per_min_1m": 169.0,
+          "calls_per_min_5m": 33.8,
+          "peak_calls_10s": 124,
+          "total_calls": 169
+        },
+        {
+          "by_caller": {
+            "chain_timer": 93,
+            "ingestion": 117
+          },
+          "by_method": {
+            "eth_blockNumber": 34,
+            "eth_call": 31,
+            "eth_getBlockByNumber": 104,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 31,
+            "eth_blockNumber:ingestion": 3,
+            "eth_call:chain_timer": 31,
+            "eth_getBlockByNumber:chain_timer": 31,
+            "eth_getBlockByNumber:ingestion": 73,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 210,
+          "calls_last_5m": 210,
+          "calls_per_min_1m": 210.0,
+          "calls_per_min_5m": 42.0,
+          "peak_calls_10s": 124,
+          "total_calls": 210
+        },
+        {
+          "by_caller": {
+            "chain_timer": 123,
+            "ingestion": 127
+          },
+          "by_method": {
+            "eth_blockNumber": 44,
+            "eth_call": 41,
+            "eth_getBlockByNumber": 124,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 41,
+            "eth_blockNumber:ingestion": 3,
+            "eth_call:chain_timer": 41,
+            "eth_getBlockByNumber:chain_timer": 41,
+            "eth_getBlockByNumber:ingestion": 83,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 250,
+          "calls_last_5m": 250,
+          "calls_per_min_1m": 250.0,
+          "calls_per_min_5m": 50.0,
+          "peak_calls_10s": 124,
+          "total_calls": 250
+        },
+        {
+          "by_caller": {
+            "chain_timer": 153,
+            "ingestion": 138
+          },
+          "by_method": {
+            "eth_blockNumber": 55,
+            "eth_call": 51,
+            "eth_getBlockByNumber": 144,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 51,
+            "eth_blockNumber:ingestion": 4,
+            "eth_call:chain_timer": 51,
+            "eth_getBlockByNumber:chain_timer": 51,
+            "eth_getBlockByNumber:ingestion": 93,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 291,
+          "calls_last_5m": 291,
+          "calls_per_min_1m": 291.0,
+          "calls_per_min_5m": 58.2,
+          "peak_calls_10s": 124,
+          "total_calls": 291
+        },
+        {
+          "by_caller": {
+            "chain_timer": 183,
+            "ingestion": 149
+          },
+          "by_method": {
+            "eth_blockNumber": 66,
+            "eth_call": 61,
+            "eth_getBlockByNumber": 164,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 61,
+            "eth_blockNumber:ingestion": 5,
+            "eth_call:chain_timer": 61,
+            "eth_getBlockByNumber:chain_timer": 61,
+            "eth_getBlockByNumber:ingestion": 103,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 332,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 66.4,
+          "peak_calls_10s": 124,
+          "total_calls": 332
+        },
+        {
+          "by_caller": {
+            "chain_timer": 213,
+            "ingestion": 159
+          },
+          "by_method": {
+            "eth_blockNumber": 76,
+            "eth_call": 71,
+            "eth_getBlockByNumber": 184,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 71,
+            "eth_blockNumber:ingestion": 5,
+            "eth_call:chain_timer": 71,
+            "eth_getBlockByNumber:chain_timer": 71,
+            "eth_getBlockByNumber:ingestion": 113,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 372,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 74.4,
+          "peak_calls_10s": 124,
+          "total_calls": 372
+        },
+        {
+          "by_caller": {
+            "chain_timer": 243,
+            "ingestion": 170
+          },
+          "by_method": {
+            "eth_blockNumber": 87,
+            "eth_call": 81,
+            "eth_getBlockByNumber": 204,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 81,
+            "eth_blockNumber:ingestion": 6,
+            "eth_call:chain_timer": 81,
+            "eth_getBlockByNumber:chain_timer": 81,
+            "eth_getBlockByNumber:ingestion": 123,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 413,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 82.6,
+          "peak_calls_10s": 124,
+          "total_calls": 413
+        },
+        {
+          "by_caller": {
+            "chain_timer": 273,
+            "ingestion": 181
+          },
+          "by_method": {
+            "eth_blockNumber": 98,
+            "eth_call": 91,
+            "eth_getBlockByNumber": 224,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 91,
+            "eth_blockNumber:ingestion": 7,
+            "eth_call:chain_timer": 91,
+            "eth_getBlockByNumber:chain_timer": 91,
+            "eth_getBlockByNumber:ingestion": 133,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 454,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 90.8,
+          "peak_calls_10s": 124,
+          "total_calls": 454
+        },
+        {
+          "by_caller": {
+            "chain_timer": 303,
+            "ingestion": 191
+          },
+          "by_method": {
+            "eth_blockNumber": 108,
+            "eth_call": 101,
+            "eth_getBlockByNumber": 244,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 101,
+            "eth_blockNumber:ingestion": 7,
+            "eth_call:chain_timer": 101,
+            "eth_getBlockByNumber:chain_timer": 101,
+            "eth_getBlockByNumber:ingestion": 143,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 494,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 98.8,
+          "peak_calls_10s": 124,
+          "total_calls": 494
+        },
+        {
+          "by_caller": {
+            "chain_timer": 333,
+            "ingestion": 202
+          },
+          "by_method": {
+            "eth_blockNumber": 119,
+            "eth_call": 111,
+            "eth_getBlockByNumber": 264,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 111,
+            "eth_blockNumber:ingestion": 8,
+            "eth_call:chain_timer": 111,
+            "eth_getBlockByNumber:chain_timer": 111,
+            "eth_getBlockByNumber:ingestion": 153,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 244,
+          "calls_last_5m": 535,
+          "calls_per_min_1m": 244.0,
+          "calls_per_min_5m": 107.0,
+          "peak_calls_10s": 124,
+          "total_calls": 535
+        }
+      ]
+    },
+    {
+      "scenario": "active_arena",
+      "duration_sec": 120,
+      "sample_interval_sec": 10,
+      "samples": [
+        {
+          "by_caller": {
+            "chain_timer": 363,
+            "ingestion": 227
+          },
+          "by_method": {
+            "eth_blockNumber": 130,
+            "eth_call": 121,
+            "eth_getBlockByNumber": 291,
+            "eth_getLogs": 48
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 121,
+            "eth_blockNumber:ingestion": 9,
+            "eth_call:chain_timer": 121,
+            "eth_getBlockByNumber:chain_timer": 121,
+            "eth_getBlockByNumber:ingestion": 170,
+            "eth_getLogs:ingestion": 48
+          },
+          "calls_last_1m": 254,
+          "calls_last_5m": 590,
+          "calls_per_min_1m": 254.0,
+          "calls_per_min_5m": 118.0,
+          "peak_calls_10s": 124,
+          "total_calls": 590
+        },
+        {
+          "by_caller": {
+            "chain_timer": 396,
+            "ingestion": 254,
+            "podium_live": 12,
+            "warbow_score": 24
+          },
+          "by_method": {
+            "eth_blockNumber": 143,
+            "eth_call": 168,
+            "eth_getBlockByNumber": 320,
+            "eth_getLogs": 55
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 132,
+            "eth_blockNumber:ingestion": 11,
+            "eth_call:chain_timer": 132,
+            "eth_call:podium_live": 12,
+            "eth_call:warbow_score": 24,
+            "eth_getBlockByNumber:chain_timer": 132,
+            "eth_getBlockByNumber:ingestion": 188,
+            "eth_getLogs:ingestion": 55
+          },
+          "calls_last_1m": 310,
+          "calls_last_5m": 686,
+          "calls_per_min_1m": 310.0,
+          "calls_per_min_5m": 137.2,
+          "peak_calls_10s": 124,
+          "total_calls": 686
+        },
+        {
+          "by_caller": {
+            "chain_timer": 426,
+            "ingestion": 273,
+            "podium_live": 18,
+            "warbow_score": 36
+          },
+          "by_method": {
+            "eth_blockNumber": 154,
+            "eth_call": 196,
+            "eth_getBlockByNumber": 344,
+            "eth_getLogs": 59
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 142,
+            "eth_blockNumber:ingestion": 12,
+            "eth_call:chain_timer": 142,
+            "eth_call:podium_live": 18,
+            "eth_call:warbow_score": 36,
+            "eth_getBlockByNumber:chain_timer": 142,
+            "eth_getBlockByNumber:ingestion": 202,
+            "eth_getLogs:ingestion": 59
+          },
+          "calls_last_1m": 336,
+          "calls_last_5m": 753,
+          "calls_per_min_1m": 336.0,
+          "calls_per_min_5m": 150.6,
+          "peak_calls_10s": 124,
+          "total_calls": 753
+        },
+        {
+          "by_caller": {
+            "chain_timer": 456,
+            "ingestion": 296,
+            "podium_live": 27,
+            "warbow_score": 54
+          },
+          "by_method": {
+            "eth_blockNumber": 165,
+            "eth_call": 233,
+            "eth_getBlockByNumber": 370,
+            "eth_getLogs": 65
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 152,
+            "eth_blockNumber:ingestion": 13,
+            "eth_call:chain_timer": 152,
+            "eth_call:podium_live": 27,
+            "eth_call:warbow_score": 54,
+            "eth_getBlockByNumber:chain_timer": 152,
+            "eth_getBlockByNumber:ingestion": 218,
+            "eth_getLogs:ingestion": 65
+          },
+          "calls_last_1m": 375,
+          "calls_last_5m": 833,
+          "calls_per_min_1m": 375.0,
+          "calls_per_min_5m": 166.6,
+          "peak_calls_10s": 124,
+          "total_calls": 833
+        },
+        {
+          "by_caller": {
+            "chain_timer": 486,
+            "ingestion": 319,
+            "podium_live": 36,
+            "warbow_score": 72
+          },
+          "by_method": {
+            "eth_blockNumber": 176,
+            "eth_call": 270,
+            "eth_getBlockByNumber": 396,
+            "eth_getLogs": 71
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 162,
+            "eth_blockNumber:ingestion": 14,
+            "eth_call:chain_timer": 162,
+            "eth_call:podium_live": 36,
+            "eth_call:warbow_score": 72,
+            "eth_getBlockByNumber:chain_timer": 162,
+            "eth_getBlockByNumber:ingestion": 234,
+            "eth_getLogs:ingestion": 71
+          },
+          "calls_last_1m": 415,
+          "calls_last_5m": 913,
+          "calls_per_min_1m": 415.0,
+          "calls_per_min_5m": 182.6,
+          "peak_calls_10s": 124,
+          "total_calls": 913
+        },
+        {
+          "by_caller": {
+            "chain_timer": 516,
+            "ingestion": 342,
+            "podium_live": 45,
+            "warbow_score": 90
+          },
+          "by_method": {
+            "eth_blockNumber": 187,
+            "eth_call": 307,
+            "eth_getBlockByNumber": 422,
+            "eth_getLogs": 77
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 172,
+            "eth_blockNumber:ingestion": 15,
+            "eth_call:chain_timer": 172,
+            "eth_call:podium_live": 45,
+            "eth_call:warbow_score": 90,
+            "eth_getBlockByNumber:chain_timer": 172,
+            "eth_getBlockByNumber:ingestion": 250,
+            "eth_getLogs:ingestion": 77
+          },
+          "calls_last_1m": 453,
+          "calls_last_5m": 993,
+          "calls_per_min_1m": 453.0,
+          "calls_per_min_5m": 198.6,
+          "peak_calls_10s": 124,
+          "total_calls": 993
+        },
+        {
+          "by_caller": {
+            "chain_timer": 546,
+            "ingestion": 365,
+            "podium_live": 54,
+            "warbow_score": 108
+          },
+          "by_method": {
+            "eth_blockNumber": 198,
+            "eth_call": 344,
+            "eth_getBlockByNumber": 448,
+            "eth_getLogs": 83
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 182,
+            "eth_blockNumber:ingestion": 16,
+            "eth_call:chain_timer": 182,
+            "eth_call:podium_live": 54,
+            "eth_call:warbow_score": 108,
+            "eth_getBlockByNumber:chain_timer": 182,
+            "eth_getBlockByNumber:ingestion": 266,
+            "eth_getLogs:ingestion": 83
+          },
+          "calls_last_1m": 437,
+          "calls_last_5m": 1073,
+          "calls_per_min_1m": 437.0,
+          "calls_per_min_5m": 214.6,
+          "peak_calls_10s": 124,
+          "total_calls": 1073
+        },
+        {
+          "by_caller": {
+            "chain_timer": 579,
+            "ingestion": 388,
+            "podium_live": 63,
+            "warbow_score": 126
+          },
+          "by_method": {
+            "eth_blockNumber": 210,
+            "eth_call": 382,
+            "eth_getBlockByNumber": 475,
+            "eth_getLogs": 89
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 193,
+            "eth_blockNumber:ingestion": 17,
+            "eth_call:chain_timer": 193,
+            "eth_call:podium_live": 63,
+            "eth_call:warbow_score": 126,
+            "eth_getBlockByNumber:chain_timer": 193,
+            "eth_getBlockByNumber:ingestion": 282,
+            "eth_getLogs:ingestion": 89
+          },
+          "calls_last_1m": 439,
+          "calls_last_5m": 1156,
+          "calls_per_min_1m": 439.0,
+          "calls_per_min_5m": 231.2,
+          "peak_calls_10s": 124,
+          "total_calls": 1156
+        },
+        {
+          "by_caller": {
+            "chain_timer": 609,
+            "ingestion": 419,
+            "podium_live": 78,
+            "warbow_score": 156
+          },
+          "by_method": {
+            "eth_blockNumber": 222,
+            "eth_call": 437,
+            "eth_getBlockByNumber": 505,
+            "eth_getLogs": 98
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 203,
+            "eth_blockNumber:ingestion": 19,
+            "eth_call:chain_timer": 203,
+            "eth_call:podium_live": 78,
+            "eth_call:warbow_score": 156,
+            "eth_getBlockByNumber:chain_timer": 203,
+            "eth_getBlockByNumber:ingestion": 302,
+            "eth_getLogs:ingestion": 98
+          },
+          "calls_last_1m": 465,
+          "calls_last_5m": 1262,
+          "calls_per_min_1m": 465.0,
+          "calls_per_min_5m": 252.4,
+          "peak_calls_10s": 124,
+          "total_calls": 1262
+        },
+        {
+          "by_caller": {
+            "chain_timer": 639,
+            "ingestion": 436,
+            "podium_live": 81,
+            "warbow_score": 162
+          },
+          "by_method": {
+            "eth_blockNumber": 233,
+            "eth_call": 456,
+            "eth_getBlockByNumber": 528,
+            "eth_getLogs": 101
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 213,
+            "eth_blockNumber:ingestion": 20,
+            "eth_call:chain_timer": 213,
+            "eth_call:podium_live": 81,
+            "eth_call:warbow_score": 162,
+            "eth_getBlockByNumber:chain_timer": 213,
+            "eth_getBlockByNumber:ingestion": 315,
+            "eth_getLogs:ingestion": 101
+          },
+          "calls_last_1m": 441,
+          "calls_last_5m": 1318,
+          "calls_per_min_1m": 441.0,
+          "calls_per_min_5m": 263.6,
+          "peak_calls_10s": 124,
+          "total_calls": 1318
+        },
+        {
+          "by_caller": {
+            "chain_timer": 669,
+            "ingestion": 459,
+            "podium_live": 90,
+            "warbow_score": 180
+          },
+          "by_method": {
+            "eth_blockNumber": 244,
+            "eth_call": 493,
+            "eth_getBlockByNumber": 554,
+            "eth_getLogs": 107
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 223,
+            "eth_blockNumber:ingestion": 21,
+            "eth_call:chain_timer": 223,
+            "eth_call:podium_live": 90,
+            "eth_call:warbow_score": 180,
+            "eth_getBlockByNumber:chain_timer": 223,
+            "eth_getBlockByNumber:ingestion": 331,
+            "eth_getLogs:ingestion": 107
+          },
+          "calls_last_1m": 441,
+          "calls_last_5m": 1398,
+          "calls_per_min_1m": 441.0,
+          "calls_per_min_5m": 279.6,
+          "peak_calls_10s": 124,
+          "total_calls": 1398
+        },
+        {
+          "by_caller": {
+            "chain_timer": 699,
+            "ingestion": 482,
+            "podium_live": 99,
+            "warbow_score": 198
+          },
+          "by_method": {
+            "eth_blockNumber": 255,
+            "eth_call": 530,
+            "eth_getBlockByNumber": 580,
+            "eth_getLogs": 113
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 233,
+            "eth_blockNumber:ingestion": 22,
+            "eth_call:chain_timer": 233,
+            "eth_call:podium_live": 99,
+            "eth_call:warbow_score": 198,
+            "eth_getBlockByNumber:chain_timer": 233,
+            "eth_getBlockByNumber:ingestion": 347,
+            "eth_getLogs:ingestion": 113
+          },
+          "calls_last_1m": 441,
+          "calls_last_5m": 1478,
+          "calls_per_min_1m": 441.0,
+          "calls_per_min_5m": 295.6,
+          "peak_calls_10s": 124,
+          "total_calls": 1478
+        }
+      ]
+    }
+  ]
+}
