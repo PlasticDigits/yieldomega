@@ -93,4 +93,43 @@ contract TimeArenaWarbowBenchmarkTest is Test {
         assertLt(updateGas, 500_000, "incremental top-3 update should stay cheap");
         assertLt(rollGas, 2_000_000, "WarBow roll gas should stay under 2M on Anvil");
     }
+
+    function test_benchmark_warbow_steal_10k_player_ranking() public {
+        uint256 gen = arena.warbowBpGeneration();
+
+        vm.pauseGasMetering();
+        for (uint256 i; i < PLAYER_COUNT; ++i) {
+            address player = address(uint160(0x10000 + i));
+            _writeMapping(SLOT_BATTLE_POINTS, player, PLAYER_COUNT - i);
+            _writeMapping(SLOT_BP_GENERATION, player, gen);
+        }
+        address victim = address(uint160(0x10002));
+        address stealer = address(uint160(0x10000 + 5000));
+        address[3] memory top = [
+            address(uint160(0x10000)),
+            address(uint160(0x10001)),
+            victim
+        ];
+        for (uint256 i; i < 3; ++i) {
+            _fundPlayer(top[i]);
+            if (i > 0) vm.warp(block.timestamp + 1);
+            vm.prank(top[i]);
+            arena.buy(CHARM_MIN);
+        }
+        _fundPlayer(stealer);
+        vm.prank(stealer);
+        arena.buy(CHARM_MIN);
+        _writeMapping(SLOT_BATTLE_POINTS, stealer, 2000);
+        _writeMapping(SLOT_BATTLE_POINTS, victim, 5000);
+        vm.resumeGasMetering();
+
+        uint256 stealGas;
+        vm.startSnapshotGas("warbow_steal_10k");
+        vm.prank(stealer);
+        arena.warbowSteal(victim, false);
+        stealGas = vm.stopSnapshotGas();
+
+        emit log_named_uint("warbow_steal_gas_10k_players", stealGas);
+        assertLt(stealGas, 500_000, "WarBow steal ranking update should stay O(1) at 10k players");
+    }
 }

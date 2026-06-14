@@ -8,7 +8,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {TimeMath} from "../libraries/TimeMath.sol";
 import {ArenaBuyRouting} from "./libraries/ArenaBuyRouting.sol";
 import {ArenaPodiumSettlement} from "./libraries/ArenaPodiumSettlement.sol";
@@ -25,7 +24,6 @@ import {IPlayCred} from "../interfaces/IPlayCred.sol";
 /// @title TimeArena — persistent PvP timer arena (Arena v2)
 contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     uint8 public constant CAT_LAST_BUYERS = 0;
     uint8 public constant CAT_TIME_BOOSTER = 1;
@@ -147,8 +145,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @dev Cached progression (#265); 0 means level 1. Append-only for UUPS upgrades.
     mapping(address => uint256) internal _cachedLevel;
     mapping(address => uint256) public xpTowardNext;
-    /// @dev WarBow BP holders in the current generation; used to promote challengers after BP drains (#312).
-    EnumerableSet.AddressSet private _warbowBpHolders;
+    /// @dev Best three WarBow players not on the global podium; merged O(1) on BP changes (#312).
+    Podium internal _warbowOffPodium;
 
     event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
     event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
@@ -439,8 +437,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(take > 0, "TimeArena: steal zero");
         _subBattlePoints(victim, take);
         _addBattlePoints(msg.sender, take);
-        _updateTopThree(CAT_WARBOW, victim, _effectiveBattlePoints(victim));
-        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
+        _updateWarbowRanking(victim, _effectiveBattlePoints(victim));
+        _updateWarbowRanking(msg.sender, _effectiveBattlePoints(msg.sender));
 
         if (victimSteals < type(uint8).max) stealsReceivedOnDay[victim][day] = victimSteals + 1;
         if (attackerSteals < type(uint8).max) stealsCommittedByAttackerOnDay[msg.sender][day] = attackerSteals + 1;
@@ -462,8 +460,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(take > 0, "TimeArena: revenge zero");
         _subBattlePoints(stealer, take);
         _addBattlePoints(msg.sender, take);
-        _updateTopThree(CAT_WARBOW, stealer, _effectiveBattlePoints(stealer));
-        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
+        _updateWarbowRanking(stealer, _effectiveBattlePoints(stealer));
+        _updateWarbowRanking(msg.sender, _effectiveBattlePoints(msg.sender));
         warbowPendingRevengeExpiryExclusive[msg.sender][stealer] = 0;
         emit WarBowRevenge(msg.sender, stealer, take, spent);
     }
@@ -483,7 +481,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         warbowPendingFlagOwner = address(0);
         warbowPendingFlagPlantAt = 0;
         _addBattlePoints(msg.sender, WARBOW_FLAG_CLAIM_BP);
-        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
+        _updateWarbowRanking(msg.sender, _effectiveBattlePoints(msg.sender));
         emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP);
     }
 
@@ -713,7 +711,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         if (hardReset) bp += WARBOW_TIMER_RESET_BONUS_BP;
         if (remainingBefore < 30) bp += WARBOW_CLUTCH_BONUS_BP;
         _addBattlePoints(buyer, bp);
-        _updateTopThree(CAT_WARBOW, buyer, _effectiveBattlePoints(buyer));
+        _updateWarbowRanking(buyer, _effectiveBattlePoints(buyer));
     }
 
     function battlePoints(address user) external view returns (uint256) {
@@ -919,17 +917,148 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         }
     }
 
+    function _updateWarbowRanking(address entrant, uint256 value) private {
+        if (value == 0) {
+            _removeWarbowCandidate(entrant);
+        } else {
+            Podium storage g = _podiums[CAT_WARBOW];
+            uint8 onSlot = 3;
+            for (uint8 r; r < 3; ++r) {
+                if (g.winners[r] == entrant) {
+                    onSlot = r;
+                    break;
+                }
+            }
+            if (onSlot < 3) {
+                g.values[onSlot] = value;
+                _sortPodium(CAT_WARBOW);
+            } else {
+                _updateOffWarbowPodium(entrant, value);
+            }
+        }
+        _mergeWarbowGlobalPodium();
+    }
+
+    function _removeWarbowCandidate(address entrant) private {
+        Podium storage g = _podiums[CAT_WARBOW];
+        for (uint8 r; r < 3; ++r) {
+            if (g.winners[r] == entrant) {
+                g.winners[r] = address(0);
+                g.values[r] = 0;
+                _sortPodium(CAT_WARBOW);
+                return;
+            }
+        }
+        Podium storage o = _warbowOffPodium;
+        for (uint8 r; r < 3; ++r) {
+            if (o.winners[r] == entrant) {
+                o.winners[r] = address(0);
+                o.values[r] = 0;
+                _sortOffWarbowPodium();
+                return;
+            }
+        }
+    }
+
+    function _updateOffWarbowPodium(address entrant, uint256 value) private {
+        Podium storage o = _warbowOffPodium;
+        for (uint8 r; r < 3; ++r) {
+            if (o.winners[r] == entrant) {
+                o.values[r] = value;
+                _sortOffWarbowPodium();
+                return;
+            }
+        }
+        for (uint8 r; r < 3; ++r) {
+            if (o.winners[r] == address(0) || value > o.values[r]) {
+                o.winners[r] = entrant;
+                o.values[r] = value;
+                _sortOffWarbowPodium();
+                return;
+            }
+        }
+    }
+
+    function _sortOffWarbowPodium() private {
+        _sortPodiumStorage(_warbowOffPodium);
+    }
+
+    /// @dev Merge global + off-podium candidates (≤6) into authoritative WarBow top-3.
+    function _mergeWarbowGlobalPodium() private {
+        Podium storage g = _podiums[CAT_WARBOW];
+        Podium storage o = _warbowOffPodium;
+
+        address[6] memory addrs;
+        uint256[6] memory vals;
+        uint8 n;
+        for (uint8 i; i < 3; ++i) {
+            if (g.winners[i] != address(0)) {
+                addrs[n] = g.winners[i];
+                vals[n] = g.values[i];
+                unchecked {
+                    ++n;
+                }
+            }
+            if (o.winners[i] != address(0)) {
+                address a = o.winners[i];
+                uint256 v = o.values[i];
+                bool dup;
+                for (uint8 j; j < n; ++j) {
+                    if (addrs[j] == a) {
+                        if (v > vals[j]) vals[j] = v;
+                        dup = true;
+                        break;
+                    }
+                }
+                if (!dup) {
+                    addrs[n] = a;
+                    vals[n] = v;
+                    unchecked {
+                        ++n;
+                    }
+                }
+            }
+        }
+
+        for (uint8 i; i < n; ++i) {
+            for (uint8 j = i + 1; j < n; ++j) {
+                bool higher = vals[j] > vals[i];
+                bool tieLowerAddr = vals[j] == vals[i] && uint160(addrs[j]) < uint160(addrs[i]);
+                if (higher || tieLowerAddr) {
+                    (addrs[i], addrs[j]) = (addrs[j], addrs[i]);
+                    (vals[i], vals[j]) = (vals[j], vals[i]);
+                }
+            }
+        }
+
+        for (uint8 r; r < 3; ++r) {
+            if (r < n) {
+                g.winners[r] = addrs[r];
+                g.values[r] = vals[r];
+            } else {
+                g.winners[r] = address(0);
+                g.values[r] = 0;
+            }
+        }
+
+        for (uint8 r; r < 3; ++r) {
+            o.winners[r] = address(0);
+            o.values[r] = 0;
+        }
+        for (uint8 i = 3; i < n; ++i) {
+            uint8 offIdx = i - 3;
+            o.winners[offIdx] = addrs[i];
+            o.values[offIdx] = vals[i];
+        }
+        _sortOffWarbowPodium();
+    }
+
     function _updateTopThree(uint8 cat, address entrant, uint256 value) private {
         Podium storage p = _podiums[cat];
         for (uint8 r; r < 3; ++r) {
             if (p.winners[r] == entrant) {
-                uint256 oldVal = p.values[r];
                 p.values[r] = value;
-                if (cat == CAT_WARBOW && value < oldVal) {
-                    _recomputeWarbowPodium();
-                } else {
-                    _sortPodium(cat);
-                }
+                _sortPodium(cat);
                 return;
             }
         }
@@ -957,8 +1086,11 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _sortPodium(uint8 cat) private {
+        _sortPodiumStorage(_podiums[cat]);
+    }
+
+    function _sortPodiumStorage(Podium storage p) private {
         // Bubble-sort on three slots is O(1) and cheaper than heap setup (#316).
-        Podium storage p = _podiums[cat];
         for (uint8 i; i < 2; ++i) {
             for (uint8 j = i + 1; j < 3; ++j) {
                 bool higher = p.values[j] > p.values[i];
@@ -989,46 +1121,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function _clearAllBattlePoints() private {
         warbowBpGeneration += 1;
         _clearPodium(CAT_WARBOW);
-        _warbowBpHolders.clear();
+        _clearOffWarbowPodium();
     }
 
-    /// @dev Full top-3 recompute after BP drain; incremental insert cannot promote off-podium challengers.
-    function _recomputeWarbowPodium() private {
-        address best1;
-        address best2;
-        address best3;
-        uint256 v1;
-        uint256 v2;
-        uint256 v3;
-        uint256 len = _warbowBpHolders.length();
-        for (uint256 i; i < len; ++i) {
-            address candidate = _warbowBpHolders.at(i);
-            uint256 v = _effectiveBattlePoints(candidate);
-            if (v == 0) continue;
-            if (v > v1 || (v == v1 && uint160(candidate) < uint160(best1))) {
-                best3 = best2;
-                v3 = v2;
-                best2 = best1;
-                v2 = v1;
-                best1 = candidate;
-                v1 = v;
-            } else if (v > v2 || (v == v2 && uint160(candidate) < uint160(best2))) {
-                best3 = best2;
-                v3 = v2;
-                best2 = candidate;
-                v2 = v;
-            } else if (v > v3 || (v == v3 && uint160(candidate) < uint160(best3))) {
-                best3 = candidate;
-                v3 = v;
-            }
+    function _clearOffWarbowPodium() private {
+        Podium storage o = _warbowOffPodium;
+        for (uint8 r; r < 3; ++r) {
+            o.winners[r] = address(0);
+            o.values[r] = 0;
         }
-        Podium storage p = _podiums[CAT_WARBOW];
-        p.winners[0] = best1;
-        p.winners[1] = best2;
-        p.winners[2] = best3;
-        p.values[0] = v1;
-        p.values[1] = v2;
-        p.values[2] = v3;
     }
 
     function _effectiveBattlePoints(address user) private view returns (uint256) {
@@ -1042,7 +1143,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             battlePointsGeneration[user] = warbowBpGeneration;
         }
         _battlePoints[user] += amt;
-        if (amt > 0) _warbowBpHolders.add(user);
     }
 
     function _subBattlePoints(address user, uint256 amt) private {
