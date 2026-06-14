@@ -128,7 +128,7 @@ Read docs/product/time-arena.md, docs/product/arena-v2.md, docs/product/primitiv
 
 ## Phase 8 — Retired: collectible NFT metadata (Arena v2)
 
-**Status:** Removed in Arena v2 ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)). Historical schema notes: [`schemas/archive/`](../../schemas/archive/), [`schemas/CHANGELOG.md`](../../schemas/CHANGELOG.md).
+**Status:** Removed in Arena v2 ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)). Historical schema notes: [`schemas/archive/`](../schemas/archive/), [`schemas/CHANGELOG.md`](../schemas/CHANGELOG.md).
 
 **Goal:** Do not implement new NFT metadata surfaces without an approved Arena v2 spec.
 
