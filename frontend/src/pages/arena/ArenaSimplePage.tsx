@@ -30,7 +30,7 @@ import { CHARM_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { formatUnits, isAddress, zeroAddress } from "viem";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
-import { phaseNarrative } from "@/pages/arena/arenaSimplePhase";
+import { phaseNarrative, preLaunchBuyGateMessage } from "@/pages/arena/arenaSimplePhase";
 import { FeatureMechanicModal } from "@/components/FeatureMechanicModal";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import {
@@ -290,7 +290,7 @@ function ArenaSimpleAmountPayTokenSelect({
 }
 
 /**
- * Default `/arena` view — Arena v2 **always-on DOUB** sale. Surfaces time remaining,
+ * Default `/arena` view — Arena v2 **always-on DOUB** round. Surfaces time remaining,
  * the primary buy action, live per-CHARM DOUB price, and checkout preview (XP gain,
  * timer, and podium effects). Contract state comes from {@link useArenaSaleSession}
  * (`TimeArena` reads/writes; see `docs/frontend/arena-views.md`).
@@ -796,6 +796,15 @@ export function ArenaSimplePage({
     <motion.button
       type="button"
       data-testid="arena-simple-buy-charm"
+      aria-label={
+        buyOnCooldown
+          ? `Buy CHARM — wallet cooldown ${formatMmSsCountdown(session.walletCooldownRemainingSec)} remaining`
+          : session.buySubmitBusy || session.isWriting
+            ? "Buy CHARM — processing transaction"
+            : payUsesKumbaya && session.swapQuoteLoading
+              ? "Buy CHARM — refreshing pay token quote"
+              : `Buy CHARM with ${paySpendSuffix}`
+      }
       className={[
         "btn-primary btn-primary--priority arena-simple__cta arena-simple__cta--arcade",
         buyOnCooldown ? "arena-simple__cta--cooldown" : "",
@@ -1127,10 +1136,7 @@ export function ArenaSimplePage({
           )}
 
           {session.phase === "saleStartPending" && (
-            <StatusMessage variant="muted">
-              The sale has not opened yet. The Buy CHARM action will unlock automatically when the
-              countdown above reaches zero.
-            </StatusMessage>
+            <StatusMessage variant="muted">{preLaunchBuyGateMessage()}</StatusMessage>
           )}
 
           </ChainMismatchWriteBarrier>
@@ -1179,6 +1185,7 @@ export function ArenaSimplePage({
             phase={session.phase}
             playerLevel={playerLevelRaw}
             onFeatureHelp={openFeatureHelp}
+            onOpenWalletProfile={onOpenWalletProfile}
             warbowTargets={warbowTargets}
             indexerViewerBattlePoints={indexerViewerWarbowBattlePoints}
             indexerWarbowHead={indexerWarbowHead}

@@ -24,6 +24,8 @@ MD_OUT="${OUT_DIR}/rpc-benchmark-${STAMP}.md"
 
 # shellcheck source=scripts/lib/anvil_deploy_dev.sh
 source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
+# shellcheck source=scripts/lib/anvil_multicall3.sh
+source "${ROOT}/scripts/lib/anvil_multicall3.sh"
 
 die() {
   echo "benchmark-indexer-rpc-anvil: $*" >&2
@@ -89,9 +91,7 @@ start_anvil_and_deploy() {
     sleep 0.5
   done
 
-  # shellcheck source=scripts/lib/anvil_multicall3.sh
-  source "${ROOT}/scripts/lib/anvil_multicall3.sh"
-  yieldomega_anvil_install_multicall3 "${RPC}"
+  yieldomega_ensure_anvil_multicall3 "${RPC}" || die "Multicall3 deploy failed (chain-timer batching #307)"
 
   export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
   ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
@@ -103,13 +103,13 @@ start_anvil_and_deploy() {
     --argjson chainId 31337 \
     --arg ta "${TA}" \
     --arg pv "${PV}" \
-    --arg av "${AV}" \
+   \
     --arg rr "${RR}" \
     --argjson deployBlock "${DEPLOY_BLOCK}" \
     '{
       _comment: "benchmark-indexer-rpc-anvil.sh",
       chainId: $chainId,
-      contracts: { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr },
+      contracts: { TimeArena: $ta, PodiumVaults: $pv, ReferralRegistry: $rr },
       deployBlock: $deployBlock
     }' >"${REGISTRY}"
 }

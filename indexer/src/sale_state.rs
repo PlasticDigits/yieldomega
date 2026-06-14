@@ -7,7 +7,6 @@ use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockId, TransactionRequest};
 use eyre::{Result, WrapErr};
 
-use crate::multicall::{decode_return_bool, decode_return_u256};
 use crate::rpc_http::rpc_first_ok_instrumented;
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 
@@ -22,27 +21,27 @@ pub struct TimecurveSaleStateSnapshot {
     pub paused: bool,
 }
 
+pub const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
+pub const SEL_TOTAL_DOUB_RAISED: [u8; 4] = [0x6d, 0xc8, 0x4f, 0xb3];
+pub const SEL_PAUSED: [u8; 4] = [0x5c, 0x97, 0x5a, 0xbb];
+
 fn u256_to_decimal_string(v: U256) -> String {
     v.to_string()
 }
 
-/// Build sale-state snapshot from values already read at `read_block_number` (Multicall3 batch path).
-pub fn sale_state_from_fields(
-    deadline: U256,
-    total_doub_raised: U256,
-    paused: bool,
-    block_ts: u64,
-    read_block_number: u64,
-    polled_at_ms: u64,
-) -> TimecurveSaleStateSnapshot {
-    TimecurveSaleStateSnapshot {
-        read_block_number: read_block_number.to_string(),
-        block_timestamp_sec: block_ts.to_string(),
-        polled_at_ms,
-        deadline_sec: u256_to_decimal_string(deadline),
-        total_doub_raised: u256_to_decimal_string(total_doub_raised),
-        paused,
+fn decode_return_u256(data: &[u8]) -> Result<U256> {
+    if data.len() < 32 {
+        return Err(eyre::eyre!(
+            "eth_call return too short: {} bytes",
+            data.len()
+        ));
     }
+    let slice = &data[data.len() - 32..];
+    Ok(U256::from_be_slice(slice))
+}
+
+fn decode_return_bool(data: &[u8]) -> Result<bool> {
+    Ok(!decode_return_u256(data)?.is_zero())
 }
 
 async fn eth_call_u256(
@@ -95,7 +94,30 @@ async fn eth_call_bool(
     decode_return_bool(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
-/// Poll arena timer basics at `block_id` (sequential fallback when Multicall3 unavailable).
+/// Build sale-state snapshot from Multicall3 sub-call return blobs (shared head with chain-timer).
+pub fn sale_state_from_returns(
+    deadline_raw: &[u8],
+    total_doub_raised_raw: &[u8],
+    paused_raw: &[u8],
+    block_ts: u64,
+    read_block_number: u64,
+    polled_at_ms: u64,
+) -> Result<TimecurveSaleStateSnapshot> {
+    let deadline = decode_return_u256(deadline_raw).wrap_err("decode deadline")?;
+    let total_doub_raised =
+        decode_return_u256(total_doub_raised_raw).wrap_err("decode totalDoubRaised")?;
+    let paused = decode_return_bool(paused_raw).wrap_err("decode paused")?;
+    Ok(TimecurveSaleStateSnapshot {
+        read_block_number: read_block_number.to_string(),
+        block_timestamp_sec: block_ts.to_string(),
+        polled_at_ms,
+        deadline_sec: u256_to_decimal_string(deadline),
+        total_doub_raised: u256_to_decimal_string(total_doub_raised),
+        paused,
+    })
+}
+
+/// Poll arena timer basics at `block_id` (sequential fallback when Multicall3 is unavailable).
 pub async fn poll_sale_state_at_block(
     providers: &[ReqwestProvider],
     arena: Address,
@@ -105,10 +127,6 @@ pub async fn poll_sale_state_at_block(
     polled_at_ms: u64,
     metrics: &RpcMetrics,
 ) -> Result<TimecurveSaleStateSnapshot> {
-    const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
-    const SEL_TOTAL_DOUB_RAISED: [u8; 4] = [0x6d, 0xc8, 0x4f, 0xb3];
-    const SEL_PAUSED: [u8; 4] = [0x5c, 0x97, 0x5a, 0xbb];
-
     let (deadline, total_doub_raised, paused) = tokio::try_join!(
         eth_call_u256(providers, arena, block_id, SEL_DEADLINE, "deadline", metrics),
         eth_call_u256(
@@ -122,12 +140,12 @@ pub async fn poll_sale_state_at_block(
         eth_call_bool(providers, arena, block_id, SEL_PAUSED, "paused", metrics),
     )?;
 
-    Ok(sale_state_from_fields(
-        deadline,
-        total_doub_raised,
-        paused,
-        block_ts,
-        read_block_number,
+    Ok(TimecurveSaleStateSnapshot {
+        read_block_number: read_block_number.to_string(),
+        block_timestamp_sec: block_ts.to_string(),
         polled_at_ms,
-    ))
+        deadline_sec: u256_to_decimal_string(deadline),
+        total_doub_raised: u256_to_decimal_string(total_doub_raised),
+        paused,
+    })
 }
