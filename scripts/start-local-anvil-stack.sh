@@ -100,12 +100,12 @@ die() {
 }
 
 # Bot swarm imports web3 via bots/timearena; fail fast with copy-paste fixes (PEP 668 / missing venv).
-ensure_timecurve_bot_deps() {
+ensure_timearena_bot_deps() {
   local py="$1"
   if "${py}" -c "import web3" >/dev/null 2>&1; then
     return 0
   fi
-  echo "Bot swarm: Python cannot import 'web3' (install timecurve-bot deps first)." >&2
+  echo "Bot swarm: Python cannot import 'web3' (install timearena-bot deps first)." >&2
   echo "" >&2
   echo "  Recommended (venv):" >&2
   echo "    cd ${ROOT}/bots/timearena && python3 -m venv .venv && .venv/bin/pip install -e \".[dev]\"" >&2
@@ -384,8 +384,8 @@ if [[ "${START_BOT_SWARM}" == "1" ]]; then
   if [[ -x "${ROOT}/bots/timearena/.venv/bin/python" ]]; then
     BOT_PY="${ROOT}/bots/timearena/.venv/bin/python"
   fi
-  ensure_timecurve_bot_deps "${BOT_PY}"
-  ( cd "${ROOT}" && export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 && PYTHONPATH="${ROOT}/bots/timearena/src" "${BOT_PY}" -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()" ) \
+  ensure_timearena_bot_deps "${BOT_PY}"
+  ( cd "${ROOT}" && export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 && PYTHONPATH="${ROOT}/bots/timearena/src" "${BOT_PY}" -c "from timearena_bot.swarm_runner import run_swarm; run_swarm()" ) \
     || die "Bot swarm failed (unexpected error after deps check; see /tmp/yieldomega_swarm_*.log)."
   echo "  Logs: /tmp/yieldomega_swarm_*.log   PIDs: /tmp/yieldomega_bot_swarm.pids"
 fi

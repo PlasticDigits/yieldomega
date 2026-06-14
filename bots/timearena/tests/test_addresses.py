@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from timecurve_bot.addresses import addresses_from_registry, checksum_addr, load_registry_file
+from timearena_bot.addresses import addresses_from_registry, checksum_addr, load_registry_file
 
 
 def test_checksum_addr() -> None:
@@ -36,7 +36,7 @@ def test_load_registry(tmp_path: Path) -> None:
     assert ad["time_arena"] == "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"
 
 
-def test_load_registry_timecurve_alias(tmp_path: Path) -> None:
+def test_load_registry_time_arena_alias(tmp_path: Path) -> None:
     p = tmp_path / "r.json"
     p.write_text(
         json.dumps({"contracts": {"TimeCurve": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"}}),

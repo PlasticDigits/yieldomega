@@ -2,6 +2,20 @@
 
 This document ties **product intent** and **must-hold properties** to **automated tests** and **manual evidence**. It complements [strategy.md](strategy.md) (stages and CI) and [ci.md](ci.md) (what runs in GitHub Actions).
 
+### CI vs local parity
+
+| Check | CI (`unit-tests` workflow) | Local equivalent |
+|-------|---------------------------|------------------|
+| Contracts | `forge test` (FOUNDRY_PROFILE=ci) | `cd contracts && FOUNDRY_PROFILE=ci forge test -vv` |
+| Indexer | `cargo clippy -D warnings` + `cargo test` (Postgres via `YIELDOMEGA_PG_TEST_URL`) | Same; unset URL → `integration_stage2` no-ops but passes |
+| Frontend unit | `npm test` | `cd frontend && npm ci && npm test` |
+| Playwright UI smoke | `npm run test:e2e` (no chain) | `cd frontend && npm run build && npm run test:e2e` |
+| Python simulations | `unittest` in `simulations/` | `cd simulations && PYTHONPATH=. python3 -m unittest discover -s tests -v` |
+| TimeArena bots | `bots-timearena-test` job | `cd bots/timearena && pip install -e ".[dev]" && pytest` |
+| Doc gates | `scripts-smoke` job | `bash scripts/check-doc-anchors.sh` (+ retired-terms / satellite scripts per [ci.md](ci.md)) |
+
+Full command blocks: [ci.md — Local parity](ci.md#local-parity) · [How to run the full automated matrix](#how-to-run-the-full-automated-matrix) below.
+
 **Player vs contributor aids:** Root [`skills/`](../../skills/) holds **play** skills (participation). Maintainer **manual QA** lives in [manual-qa-checklists.md](manual-qa-checklists.md).
 
 **Authoritative rules live onchain**; the indexer and frontend are derived read models ([architecture/overview.md](../architecture/overview.md)).
@@ -34,7 +48,7 @@ Umbrella for the full Arena v2 redeploy (TimeArena replaces v1 launchpad; **DOUB
 | **`INV-DOCS-245-PLAY-SKILLS`** | Root [`skills/README.md`](../../skills/README.md) indexes **`play-active-time-arena`**, **`play-time-arena-doub`**, **`play-time-arena-warbow`**, **`script-with-timearena-local`** only (legacy `play-timecurve-*` removed) | `skills/play-*-time-arena*/SKILL.md`, grep absence of `play-timecurve-doubloon` |
 | **`INV-DOCS-245-GUARDRAILS`** | [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) references Arena v2 onchain authority + [`skills/README.md`](../../skills/README.md) play index | manual review |
 | **`INV-DOCS-245-PHASE20`** | [`docs/agent-phases.md`](../agent-phases.md) Phase 20 prompt names Time Arena play skills + [`docs/product/time-arena.md`](../product/time-arena.md) | `grep play-time-arena agent-phases.md` |
-| **`INV-BOTS-245-TIMEARENA`** | Bot package at [`bots/timearena/`](../../bots/timearena/README.md); env **`YIELDOMEGA_TIME_ARENA_ADDRESS`**; `inspect` reads **`TimeArena.doub()`** / **`arenaStart`** / **`paused`** (not legacy `saleStart` / `acceptedAsset`) | `bots/timearena/tests/`, `bash scripts/sync-bot-env-from-frontend.sh` |
+| **`INV-BOTS-245-TIMEARENA`** | Bot package at [`bots/timearena/`](../../bots/timearena/README.md); Python module **`timearena_bot`**; CLI **`timearena-bot`**; env **`YIELDOMEGA_TIME_ARENA_ADDRESS`**; `inspect` reads **`TimeArena.doub()`** / **`arenaStart`** / **`paused`** (not legacy `saleStart` / `acceptedAsset`) | `bots/timearena/tests/`, `bash scripts/sync-bot-env-from-frontend.sh` |
 | **`INV-BOTS-245-ENV-SYNC`** | `scripts/sync-bot-env-from-frontend.sh` maps **`VITE_TIME_ARENA_ADDRESS`** → bot env (no Rabbit/Leprechaun required) | script + `frontend/.env.example` |
 
 <a id="satellite-docs-gitlab-274"></a>
@@ -66,7 +80,7 @@ Cross-links: [`docs/testing/strategy.md`](strategy.md) · [`.cursor/skills/yield
 
 ## Satellite docs — historical `timecurve` trim (GitLab [#284](https://gitlab.com/PlasticDigits/yieldomega/-/issues/284))
 
-Follow-up to [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263) / [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276): satellite **`docs/`** and **`skills/`** use **`/arena`**, **`GET /v1/arena/*`**, and **`idx_arena_*`** as primary vocabulary. Retired **`timecurve`** strings appear only in explicit legacy-alias sentences (redirects, denylist rows, **`timecurve-bot`** CLI name) or historical retirement notes.
+Follow-up to [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263) / [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276): satellite **`docs/`** and **`skills/`** use **`/arena`**, **`GET /v1/arena/*`**, and **`idx_arena_*`** as primary vocabulary. Retired **`timecurve`** strings appear only in explicit legacy-alias sentences (redirects, denylist rows) or historical retirement notes ([#323](https://gitlab.com/PlasticDigits/yieldomega/-/issues/323)).
 
 | ID | Property | Evidence |
 |----|----------|----------|
@@ -521,6 +535,12 @@ cd frontend && npm ci && npm test
 
 # Python simulations (bounded repricing / eco scenarios — not v1 launchpad sale authority)
 cd simulations && PYTHONPATH=. python3 -m unittest discover -s tests -v
+
+# TimeArena bots (CI: bots-timearena-test job)
+cd bots/timearena && pip install -e ".[dev]" && pytest tests -v
+
+# Doc anchor gate
+bash scripts/check-doc-anchors.sh
 ```
 
 Forge dependencies: [contracts/README.md](../../contracts/README.md).
@@ -537,7 +557,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 ### Indexer emitted-event coverage (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112))
 
-**INV-INDEXER-112:** Solidity `event`s emitted by **deployed Arena v2** contracts in [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) must each map to a **`DecodedEvent` variant**, a Postgres **`idx_*` table**, and **`persist_decoded_log_conn`** / **`rollback_after`** coverage in [`reorg.rs`](../../indexer/src/reorg.rs). **ReferralRegistry** and **DoubPresaleVesting** events remain first-class when deployed.
+**INV-INDEXER-112:** Solidity `event`s emitted by **deployed Arena v2** contracts in [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) must each map to a **`DecodedEvent` variant**, a Postgres **`idx_*` table**, and **`persist_decoded_log_conn`** / **`rollback_after`** coverage in [`reorg.rs`](../../indexer/src/reorg.rs). **ReferralRegistry** events remain first-class when deployed.
 
 <a id="indexer-transactional-block-ingestion-gitlab-140"></a>
 
@@ -562,7 +582,6 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 | **TimeArena** | DOUB/CRED buys, four podium timers, 100% podium buy routing (25% × 4 · 70/20/10 epoch tranches ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300))), epoch CRED, XP, DOUB WarBow, always-live (`paused` only) | [arena-v2.md](../product/arena-v2.md), [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) |
 | **PodiumVaults / AdminSellVault** | Active/seed pools, admin vault, `rollPodiumEpoch`, manual top-up ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)) | [arena-v2.md](../product/arena-v2.md) |
 | **ReferralRegistry** | Code registration; referred-buy **flat 5 CRED per side** on DOUB buys ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272); baseline [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)) | [referrals.md](../product/referrals.md) |
-| **DoubPresaleVesting** | Presale DOUB vesting schedule + claims gate | [`DoubPresaleVesting.sol`](../../contracts/src/vesting/DoubPresaleVesting.sol) |
 | **Indexer** | Arena + referral decode; per-block tx ([#140](#indexer-transactional-block-ingestion-gitlab-140)); reorg rollback | [`REORG_STRATEGY.md`](../../indexer/REORG_STRATEGY.md), [indexer design](../indexer/design.md) |
 | **Frontend `/arena`** | Env-driven addresses, indexer reads, wallet gating | [arena-views.md](../frontend/arena-views.md), [wallet-connection.md](../frontend/wallet-connection.md) |
 
@@ -784,7 +803,6 @@ Cross-links: [AGENTS.md § Postgres without Docker](../../AGENTS.md#postgres-wit
 |------|--------|
 | [`TimeArena.t.sol`](../../contracts/test/TimeArena.t.sol) | Timers, buys, CRED, XP, WarBow DOUB, routing, referral CRED ([#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)) |
 | [`ArenaPrizeRouting.t.sol`](../../contracts/test/ArenaPrizeRouting.t.sol) | 100% podium split math (25% × 4 · 70/20/10 epoch tranches) |
-| [`DoubPresaleVesting.t.sol`](../../contracts/test/DoubPresaleVesting.t.sol) | Vesting schedule + claims |
 | [`ReferralRegistry.t.sol`](../../contracts/test/ReferralRegistry.t.sol) | Referral burns + registration |
 | [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) | DeployDev wiring |
 | [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) | Optional RPC fork smoke ([#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)); **`INV-CONTRACTS-275-FORK-SMOKE`** |

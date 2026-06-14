@@ -6,9 +6,9 @@ from __future__ import annotations
 import random
 import time
 
-from timecurve_bot.actions import account_from_config, approve_if_needed, buy, print_dry
-from timecurve_bot.config import BotConfig
-from timecurve_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec, sale_ended
+from timearena_bot.actions import account_from_config, approve_if_needed, buy, print_dry
+from timearena_bot.config import BotConfig
+from timearena_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec, sale_ended
 from web3 import Web3
 from web3.contract import Contract
 

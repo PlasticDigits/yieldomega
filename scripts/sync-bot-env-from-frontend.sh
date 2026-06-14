@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Copy contract/RPC settings from frontend/.env.local (VITE_*) to bots/timecurve/.env.local (YIELDOMEGA_*)
+# Copy contract/RPC settings from frontend/.env.local (VITE_*) to bots/timearena/.env.local (YIELDOMEGA_*)
 # without redeploying contracts. Use after scripts/start-local-anvil-stack.sh or any workflow that
 # writes frontend/.env.local.
 #
@@ -9,15 +9,15 @@
 # Usage (from repo root):
 #   bash scripts/sync-bot-env-from-frontend.sh
 #   bash scripts/sync-bot-env-from-frontend.sh --frontend-env path/to/.env.local
-#   bash scripts/sync-bot-env-from-frontend.sh --output bots/timecurve/.env.local
+#   bash scripts/sync-bot-env-from-frontend.sh --output bots/timearena/.env.local
 #
-# Requires: cast on PATH (reads acceptedAsset from TimeCurve).
+# Requires: cast on PATH (reads TimeArena.doub() when needed).
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_ENV="${ROOT}/frontend/.env.local"
-OUT_FILE="${ROOT}/bots/timecurve/.env.local"
+OUT_FILE="${ROOT}/bots/timearena/.env.local"
 
 while [ $# -gt 0 ]; do
   case "$1" in
