@@ -176,7 +176,7 @@ contract TimeArenaTest is Test {
         arena.buy(1e18);
 
         address pool = vaults.activePools(cat);
-        uint256 activeBefore = doub.balanceOf(pool);
+        uint256 activeBefore = vaults.activePoolBalance(cat);
         assertGt(activeBefore, 0);
 
         (address[3] memory winners,) = arena.podium(cat);
@@ -187,7 +187,7 @@ contract TimeArenaTest is Test {
 
         assertEq(arena.podiumEpoch(cat), 1);
         assertTrue(doub.balanceOf(winners[0]) > firstBefore, "4:2:1 payout from rolled active pool");
-        assertGt(doub.balanceOf(pool), 0, "former seed tranche promoted to active");
+        assertGt(vaults.activePoolBalance(cat), 0, "former seed tranche promoted to active");
     }
 
     function test_timer_hard_reset_increments_epoch() public {
@@ -767,6 +767,21 @@ contract TimeArenaTest is Test {
         _warpPastBuyCooldown();
     }
 
+    /// Level to 4 with exactly one WarBow BP grant (the level-up buy).
+    function _reachLevel4OneWarbowBuy(address user) internal {
+        while (arena.level(user) < 3) {
+            _warpPastBuyCooldown();
+            vm.prank(user);
+            arena.buy(CHARM_MAX);
+        }
+        while (arena.level(user) < 4) {
+            _warpPastBuyCooldown();
+            vm.prank(user);
+            arena.buy(CHARM_MAX);
+        }
+        assertEq(arena.level(user), 4);
+    }
+
     /// INV-TIME-ARENA-XP-GAS: incremental onchain state matches lifetime reference after buys.
     function test_xp_incremental_matches_reference_many_buys() public {
         uint256 charm = 10e18;
@@ -936,11 +951,12 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buy(1e18);
         assertEq(arena.lastBuyEpoch(), 1);
+        uint256 streakEpoch = arena.podiumEpoch(arena.CAT_DEFENDED_STREAK());
 
-        vm.warp(arena.podiumDeadline(2) + 1);
+        vm.warp(arena.podiumDeadline(arena.CAT_DEFENDED_STREAK()) + 1);
         arena.rollPodiumEpoch(arena.CAT_DEFENDED_STREAK());
         assertEq(arena.lastBuyEpoch(), 1);
-        assertEq(arena.podiumEpoch(2), 1);
+        assertEq(arena.podiumEpoch(arena.CAT_DEFENDED_STREAK()), streakEpoch + 1);
     }
 
     function test_warbow_steal_pulls_doub() public {
@@ -1112,8 +1128,8 @@ contract TimeArenaTest is Test {
         assertEq(arena.podiumEpoch(arena.CAT_WARBOW()), 1);
     }
 
-    /// GitLab #252: roll retains pool; admin finalizeWarbowPodium pays 4:2:1 for past epoch.
-    function test_finalize_warbow_podium_pays_after_roll() public {
+    /// GitLab #312: WarBow roll auto-pays on-chain top-3; admin finalize superseded.
+    function test_warbow_roll_auto_pays_onchain_winners() public {
         _ensureLevel(alice, 4);
         vm.prank(alice);
         arena.buy(10e18);
@@ -1130,16 +1146,410 @@ contract TimeArenaTest is Test {
         (address[3] memory winners,) = arena.podium(cat);
         assertTrue(winners[0] != address(0));
 
+        uint256 firstBefore = doub.balanceOf(winners[0]);
         vm.warp(arena.podiumDeadline(cat) + 1);
         arena.rollPodiumEpoch(cat);
 
         assertEq(arena.podiumEpoch(cat), 1);
-        assertEq(doub.balanceOf(pool), poolBal, "WarBow roll must not auto-pay");
-
-        uint256 firstBefore = doub.balanceOf(winners[0]);
-        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
         assertTrue(doub.balanceOf(winners[0]) > firstBefore);
         assertTrue(arena.warbowEpochFinalized(0));
+        vm.expectRevert("TimeArena: superseded");
+        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
+    }
+
+    /// GitLab #312: buy succeeds after Last Buy deadline via autoroll.
+    function test_buy_autorolls_after_last_buy_deadline() public {
+        vm.warp(arena.deadline() + 1);
+        uint256 epochBefore = arena.podiumEpoch(arena.CAT_LAST_BUYERS());
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.podiumEpoch(arena.CAT_LAST_BUYERS()), epochBefore + 1);
+        assertGt(arena.deadline(), block.timestamp);
+    }
+
+    /// GitLab #312: WarBow steal succeeds after Last Buy deadline via autoroll.
+    function test_warbow_steal_autorolls_after_last_buy_deadline() public {
+        _seedWarbowStealBand(bob, alice);
+        vm.warp(arena.deadline() + 1);
+        uint256 epochBefore = arena.podiumEpoch(arena.CAT_LAST_BUYERS());
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        assertEq(arena.podiumEpoch(arena.CAT_LAST_BUYERS()), epochBefore + 1);
+    }
+
+    /// GitLab #312: on-chain top-3 matches brute-force for synthetic players.
+    function test_warbow_ranking_matches_brute_force() public {
+        uint256 n = 20;
+        for (uint256 i; i < n; ++i) {
+            address p = address(uint160(0x2000 + i));
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+            _ensureLevel(p, 4);
+            if (i > 0) _warpPastBuyCooldown();
+            uint256 charm = CHARM_MIN + ((i * 31) % (CHARM_MAX - CHARM_MIN));
+            vm.prank(p);
+            arena.buy(charm);
+        }
+
+        (address[3] memory onchain,) = arena.podium(arena.CAT_WARBOW());
+        (address first, address second, address third) = _bruteForceWarbowTop3(n);
+        assertEq(onchain[0], first);
+        assertEq(onchain[1], second);
+        assertEq(onchain[2], third);
+    }
+
+    function _bruteForceWarbowTop3(uint256 n) internal view returns (address first, address second, address third) {
+        address best1;
+        address best2;
+        address best3;
+        uint256 v1;
+        uint256 v2;
+        uint256 v3;
+        for (uint256 i; i < n; ++i) {
+            address p = address(uint160(0x2000 + i));
+            uint256 v = arena.battlePoints(p);
+            if (v == 0) continue;
+            if (v > v1 || (v == v1 && uint160(p) < uint160(best1))) {
+                best3 = best2;
+                v3 = v2;
+                best2 = best1;
+                v2 = v1;
+                best1 = p;
+                v1 = v;
+            } else if (v > v2 || (v == v2 && uint160(p) < uint160(best2))) {
+                best3 = best2;
+                v3 = v2;
+                best2 = p;
+                v2 = v;
+            } else if (v > v3 || (v == v3 && uint160(p) < uint160(best3))) {
+                best3 = p;
+                v3 = v;
+            }
+        }
+        return (best1, best2, best3);
+    }
+
+    /// Security: displaced podium entrant must be re-evaluated (stale third-place).
+    function test_warbow_top_three_reinserts_displaced_entrant() public {
+        address charlie = address(0xC0FFEE);
+        address david = address(0xDA11);
+        for (uint256 i; i < 2; ++i) {
+            address p = i == 0 ? charlie : david;
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+        }
+
+        _ensureLevel(alice, 4);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(CHARM_MAX);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(bob, 4);
+        vm.prank(bob);
+        arena.buy(CHARM_MAX);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(CHARM_MAX);
+
+        _warpPastBuyCooldown();
+        _ensureLevel(charlie, 4);
+        vm.prank(charlie);
+        arena.buy(CHARM_MAX);
+
+        _warpPastBuyCooldown();
+        _ensureLevel(david, 4);
+        for (uint256 i; i < 3; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(david);
+            arena.buy(CHARM_MAX);
+        }
+
+        assertGt(arena.battlePoints(alice), arena.battlePoints(david));
+        assertGt(arena.battlePoints(david), arena.battlePoints(bob));
+        assertGt(arena.battlePoints(bob), arena.battlePoints(charlie));
+
+        (address[3] memory winners,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(winners[0], alice);
+        assertEq(winners[1], david);
+        assertEq(winners[2], bob);
+    }
+
+    /// Security: BP drain must promote off-podium challengers (stale slot after in-place decrease).
+    function test_warbow_podium_promotes_challenger_after_bp_decrease() public {
+        address charlie = address(0xE0E0);
+        address eve = address(0xC0FFEE);
+        address stealer = address(0x57EA1);
+        for (uint256 i; i < 3; ++i) {
+            address p = i == 0 ? charlie : (i == 1 ? eve : stealer);
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+        }
+
+        _ensureLevel(alice, 4);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(bob, 4);
+        for (uint256 i; i < 4; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(bob);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(charlie, 4);
+        for (uint256 i; i < 3; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(charlie);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(eve, 4);
+        for (uint256 i; i < 3; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(eve);
+            arena.buy(CHARM_MIN);
+        }
+
+        assertEq(arena.battlePoints(charlie), arena.battlePoints(eve));
+        assertGt(uint160(eve), uint160(charlie), "eve loses tie-break to charlie");
+
+        (address[3] memory beforeSteal,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(beforeSteal[2], charlie, "charlie on podium before steal");
+        assertTrue(beforeSteal[0] != eve && beforeSteal[1] != eve, "eve off podium before steal");
+
+        _ensureLevel(stealer, 4);
+        _warpPastBuyCooldown();
+        vm.prank(stealer);
+        arena.buy(CHARM_MIN);
+
+        uint256 charlieBp = arena.battlePoints(charlie);
+        uint256 stealerBp = arena.battlePoints(stealer);
+        assertGe(charlieBp, 2 * stealerBp, "steal band lower");
+        assertLe(charlieBp, 10 * stealerBp, "steal band upper");
+
+        _warpPastBuyCooldown();
+        vm.prank(stealer);
+        arena.warbowSteal(charlie, false);
+
+        assertLt(arena.battlePoints(charlie), arena.battlePoints(eve));
+        (address[3] memory afterSteal,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(afterSteal[2], eve, "eve promoted after charlie BP drain");
+    }
+
+    /// Security: equal-BP off-podium challenger with better tie-break must reach global top-3.
+    function test_warbow_off_podium_tie_break_promotes_to_global() public {
+        address carol = address(0x300);
+        address d = address(0xD001);
+        address e = address(0xE001);
+        address f = address(0xF001);
+        address greg = address(0x100);
+        address[5] memory extras = [carol, d, e, f, greg];
+        for (uint256 i; i < extras.length; ++i) {
+            doub.mint(extras[i], 1_000_000e18);
+            vm.prank(extras[i]);
+            doub.approve(address(arena), type(uint256).max);
+        }
+
+        _ensureLevel(alice, 4);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(bob, 4);
+        for (uint256 i; i < 4; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(bob);
+            arena.buy(CHARM_MIN);
+        }
+
+        _reachLevel4OneWarbowBuy(carol);
+        _reachLevel4OneWarbowBuy(d);
+        _reachLevel4OneWarbowBuy(e);
+        _reachLevel4OneWarbowBuy(f);
+
+        uint256 sharedBp = arena.battlePoints(carol);
+        assertEq(arena.battlePoints(d), sharedBp);
+        assertEq(arena.battlePoints(e), sharedBp);
+        assertEq(arena.battlePoints(f), sharedBp);
+        assertGt(uint160(carol), uint160(greg), "greg wins tie-break over carol");
+
+        (address[3] memory before,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(before[2], carol, "carol on global podium before greg");
+        assertEq(arena.battlePoints(greg), 0, "greg untracked before first WarBow buy");
+
+        _reachLevel4OneWarbowBuy(greg);
+
+        assertEq(arena.battlePoints(greg), sharedBp);
+        (address[3] memory afterBuy,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(afterBuy[2], greg, "greg promoted via off-podium tie-break merge");
+    }
+
+    /// WarBow ≤6 tracking: a buy with BP above the worst podium slot must enter the merge set.
+    function test_warbow_higher_bp_buy_enters_podium() public {
+        address carol = address(0xC0FFEE);
+        address david = address(0xDA11);
+        doub.mint(carol, 1_000_000e18);
+        doub.mint(david, 1_000_000e18);
+        vm.prank(carol);
+        doub.approve(address(arena), type(uint256).max);
+        vm.prank(david);
+        doub.approve(address(arena), type(uint256).max);
+
+        _ensureLevel(alice, 4);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(bob, 4);
+        for (uint256 i; i < 4; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(bob);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(carol, 4);
+        vm.prank(carol);
+        arena.buy(CHARM_MIN);
+
+        uint256 carolBp = arena.battlePoints(carol);
+        (address[3] memory before,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(before[2], carol);
+
+        _warpPastBuyCooldown();
+        _ensureLevel(david, 4);
+        for (uint256 i; i < 2; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(david);
+            arena.buy(CHARM_MIN);
+        }
+
+        assertGt(arena.battlePoints(david), carolBp);
+        (address[3] memory afterBuy,) = arena.podium(arena.CAT_WARBOW());
+        assertTrue(
+            afterBuy[0] == david || afterBuy[1] == david || afterBuy[2] == david,
+            "higher-BP buy must land on podium"
+        );
+    }
+
+    /// GitLab #312: equal BP tie-break favors lower address.
+    function test_warbow_tie_break_lower_address_wins() public {
+        address low = address(0x100);
+        address high = address(0x200);
+        for (uint256 i; i < 2; ++i) {
+            address p = i == 0 ? low : high;
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+            _ensureLevel(p, 4);
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(p);
+            arena.buy(CHARM_MIN);
+        }
+        (address[3] memory winners, uint256[3] memory values) = arena.podium(arena.CAT_WARBOW());
+        assertEq(values[0], values[1]);
+        assertEq(winners[0], low);
+        assertEq(winners[1], high);
+    }
+
+    /// GitLab #312: autoroll cannot double-pay within one buy tx.
+    function test_autoroll_no_double_payout_same_tx() public {
+        _ensureLevel(alice, 4);
+        vm.prank(alice);
+        arena.buy(10e18);
+        uint8 cat = arena.CAT_WARBOW();
+        (address[3] memory winners,) = arena.podium(cat);
+        uint256 firstBefore = doub.balanceOf(winners[0]);
+        uint256 poolBal = vaults.activePoolBalance(cat);
+        assertGt(poolBal, 0);
+
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        vm.prank(alice);
+        arena.warbowActivateGuard();
+
+        assertTrue(arena.warbowEpochFinalized(0));
+        assertGt(doub.balanceOf(winners[0]), firstBefore, "single autoroll payout");
+        vm.expectRevert("TimeArena: timer live");
+        arena.rollPodiumEpoch(cat);
+    }
+
+    /// Security: multi-expired autoroll must pay each category's active tranche, not the commingled vault.
+    function test_autoroll_multi_expired_pays_each_category_tranche() public {
+        address carol = address(0xCA801);
+        address dave = address(0xDA11);
+        address eve = address(0xE0E0);
+        for (uint256 i; i < 3; ++i) {
+            address p = i == 0 ? carol : (i == 1 ? dave : eve);
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+        }
+
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(10e18);
+        }
+
+        _warpPastBuyCooldown();
+        vm.prank(carol);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(dave);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(eve);
+        arena.buy(1e18);
+
+        uint8 lastBuy = arena.CAT_LAST_BUYERS();
+        uint8 warbow = arena.CAT_WARBOW();
+        (address[3] memory lbWinners,) = arena.podium(lastBuy);
+        (address[3] memory wbWinners,) = arena.podium(warbow);
+        assertEq(lbWinners[0], eve);
+        assertEq(wbWinners[0], alice);
+
+        assertGt(vaults.activePoolBalance(lastBuy), 0);
+        assertGt(vaults.activePoolBalance(warbow), 0);
+
+        uint256 eveBefore = doub.balanceOf(eve);
+        uint256 warbowFirstBefore = doub.balanceOf(wbWinners[0]);
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+
+        uint256 maxDeadline = arena.podiumDeadline(lastBuy);
+        for (uint8 c = 0; c < arena.NUM_PODIUM_CATEGORIES(); ++c) {
+            uint256 d = arena.podiumDeadline(c);
+            if (d > maxDeadline) maxDeadline = d;
+        }
+        vm.warp(maxDeadline + 1);
+
+        vm.prank(eve);
+        arena.buy(1e18);
+
+        assertTrue(arena.warbowEpochFinalized(0));
+        uint256 warbowGain = doub.balanceOf(wbWinners[0]) - warbowFirstBefore;
+        uint256 eveGain = doub.balanceOf(eve) - eveBefore;
+        assertGt(warbowGain, 0, "WarBow #1 paid from WarBow tranche");
+        assertGt(eveGain, 0, "Last Buy #1 paid from Last Buy tranche");
+        assertLt(eveGain, (vaultBefore * 4) / 7, "Last Buy did not capture 4/7 of entire vault");
+        assertGt(warbowGain + eveGain, 0, "both categories received payout");
     }
 
     /// Sets victim BP high and attacker BP low so steal band (2x–10x) passes.
@@ -1610,7 +2020,7 @@ contract TimeArenaTest is Test {
         arena.claimWarBowFlag();
     }
 
-    /// Prevents double-paying a WarBow epoch (admin finalize replay).
+    /// GitLab #312: admin finalizeWarbowPodium superseded after on-chain roll payout.
     function test_finalize_warbow_podium_reverts_double() public {
         _ensureLevel(alice, 4);
         vm.prank(alice);
@@ -1619,13 +2029,12 @@ contract TimeArenaTest is Test {
         vm.warp(arena.podiumDeadline(cat) + 1);
         arena.rollPodiumEpoch(cat);
         (address[3] memory winners,) = arena.podium(cat);
-        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
-        vm.expectRevert("TimeArena: finalized");
+        vm.expectRevert("TimeArena: superseded");
         arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
     }
 
     function test_finalize_warbow_podium_reverts_bad_epoch() public {
-        vm.expectRevert("TimeArena: bad epoch");
+        vm.expectRevert("TimeArena: superseded");
         arena.finalizeWarbowPodium(99, alice, bob, address(0));
     }
 

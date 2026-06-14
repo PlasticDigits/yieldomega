@@ -39,7 +39,9 @@ On **`rollPodiumEpoch(category)`** (permissionless after deadline):
 4. Increment **`podiumEpoch[cat]`**; clear live scores for that category only.
 5. Emit **`PodiumEpochRolled`**.
 
-**WarBow (cat 3):** steps 1 and 3–5 apply; step 2 (auto 4∶2∶1 pay) is **skipped** — owner **`finalizeWarbowPodium(epoch, …)`** pays that epoch’s pool ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)). Live BP resets via **`warbowBpGeneration`** on roll.
+**WarBow (cat 3):** steps 1–5 apply on **`rollPodiumEpoch`** / autoroll — on-chain top-3 from live BP leaderboard pays **4∶2∶1**; emits **`WarbowPodiumFinalized`**. Owner **`finalizeWarbowPodium`** is **superseded** (reverts) ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)). Live BP resets via **`warbowBpGeneration`** on roll.
+
+**Always-live autoroll ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** When not **`paused`**, buys and WarBow actions call **`_autorollExpiredPodiums()`** before proceeding — any category with **`block.timestamp > podiumDeadline[cat]`** rolls in one tx (no **`TimeArena: timer expired`** gate on Last Buy).
 
 ## DOUB prize routing (per buy) — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)
 
@@ -97,6 +99,8 @@ BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses including **str
 ## Routes (frontend)
 
 - Primary play: **`/`** · AUDIT: **`/arena/protocol`** · referral capture: **`/arena/:code`** · legacy **`/arena`** / **`/timecurve`** → **`/`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)). See [arena-views.md](../frontend/arena-views.md).
+
+**On-chain podium ranking ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** WarBow top-3 is maintained incrementally via a global top-3 plus an off-podium top-3 buffer (≤6 addresses merged per BP update). Tie-break: equal BP ranks lower address higher. See [WarBow ranking benchmark § tradeoff](../testing/warbow-ranking-benchmark-312.md#6-address-tracking-tradeoff-gas-vs-accuracy) for gas/accuracy limits.
 
 ## Retired surfaces
 

@@ -57,7 +57,7 @@ All WarBow DOUB spends (**steal / guard / revenge**, including steal-limit bypas
 
 Buy-path WarBow BP includes **streak-break** (`activeDefendedStreak × WARBOW_STREAK_BREAK_MULT_BP` when a different buyer buys under **`DEFENDED_STREAK_WINDOW_SEC`**) and **ambush** (+`WARBOW_AMBUSH_BONUS_BP` on hard reset + streak break), matching [`warbow_buy_bp_delta`](../../simulations/timecurve_sim/model.py).
 
-Forge: `TimeArena.t.sol::test_warbow_*`, `test_finalize_warbow_podium_pays_after_roll`. Epoch roll clears BP via `warbowBpGeneration`; admin `finalizeWarbowPodium` pays (roll skips auto 4∶2∶1).
+Forge: `TimeArena.t.sol::test_warbow_*`, `test_warbow_roll_auto_pays_onchain_winners`. Epoch roll clears BP via `warbowBpGeneration`; autoroll pays on-chain top-3 **4∶2∶1** ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)). Gas benchmark: `TimeArenaWarbowBenchmark.t.sol::test_benchmark_warbow_10k_player_ranking`.
 
 ## TimeCurve (retired v1 — historical)
 

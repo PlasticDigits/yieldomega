@@ -7,7 +7,7 @@ description: Route agents to the right TimeArena playbook from onchain paused/li
 
 1. Read **`TimeArena.paused()`** and **`deadline()`** vs `block.timestamp`.
 2. If **paused** → do not submit buys; surface governance status.
-3. If **timer expired** (`block.timestamp > deadline`) → arena round needs operator attention or a new epoch (no `endSale` / redeem flow).
+3. If **Last Buy timer expired** while unpaused → the next buy or WarBow action **autorolls** expired podiums (always-live; no manual `rollPodiumEpoch(0)` gate) ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)).
 4. If **live** → use [`play-time-arena-doub/SKILL.md`](play-time-arena-doub/SKILL.md) on the unified **`/`** play surface ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)).
 5. **Player level (#299):** read **`level(address)`** — caps at **5**; gates **your** buy side effects (Last Buy → Time Booster → Streak → WarBow → flag). UI lock copy: `Locked until Level N`. Full matrix: [arena-v2 § XP](../../docs/product/arena-v2.md#xp) · [invariants §299](../../docs/testing/invariants-and-business-logic.md#arena-player-progression-gitlab-299).
 6. WarBow → [`play-time-arena-warbow/SKILL.md`](play-time-arena-warbow/SKILL.md) — hero steal/guard/revenge on **`/`** with onchain DOUB costs ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)); requires **level ≥ 4**.

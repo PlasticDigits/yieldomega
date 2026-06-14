@@ -13,6 +13,11 @@ contract PodiumVaults is Ownable {
     address[4] public seedPools;
     address[4] public futurePools;
 
+    /// @dev Per-category tranche balances when pools share `address(this)` (default wiring).
+    uint256[4] private _activeLedger;
+    uint256[4] private _seedLedger;
+    uint256[4] private _futureLedger;
+
     event PodiumFunded(uint8 indexed podiumId, uint256 amount, address indexed pool);
     event SeedFunded(uint8 indexed podiumId, uint256 amount, address indexed pool);
     /// @dev Buy routing: funds a specific target epoch pool (GitLab #300).
@@ -66,6 +71,25 @@ contract PodiumVaults is Ownable {
         emit PodiumEpochFunded(category, epoch, amount, pool);
     }
 
+    /// @dev Credit a category tranche when DOUB is routed to a commingled pool (`address(this)`).
+    /// @param tranche 0=active, 1=seed, 2=future.
+    function creditTranche(uint8 podiumId, uint8 tranche, uint256 amount) external {
+        require(msg.sender == arena, "PodiumVaults: not arena");
+        require(podiumId < ArenaBuyRouting.NUM_PODIUMS, "PodiumVaults: bad id");
+        require(tranche <= 2, "PodiumVaults: bad tranche");
+        if (amount == 0) return;
+        if (tranche == 0) {
+            require(activePools[podiumId] == address(this), "PodiumVaults: not commingled");
+            _activeLedger[podiumId] += amount;
+        } else if (tranche == 1) {
+            require(seedPools[podiumId] == address(this), "PodiumVaults: not commingled");
+            _seedLedger[podiumId] += amount;
+        } else {
+            require(futurePools[podiumId] == address(this), "PodiumVaults: not commingled");
+            _futureLedger[podiumId] += amount;
+        }
+    }
+
     /// @notice Pay 4:2:1 from active pool and roll seed → active (caller settles accounting).
     function payPodiumWinners(
         uint8 podiumId,
@@ -77,6 +101,11 @@ contract PodiumVaults is Ownable {
         uint256 amtThird
     ) external {
         require(msg.sender == arena, "PodiumVaults: not arena");
+        uint256 total = amtFirst + amtSecond + amtThird;
+        if (activePools[podiumId] == address(this) && total > 0) {
+            require(_activeLedger[podiumId] >= total, "PodiumVaults: ledger underflow");
+            _activeLedger[podiumId] -= total;
+        }
         if (amtFirst > 0 && first != address(0)) doub.transfer(first, amtFirst);
         if (amtSecond > 0 && second != address(0)) doub.transfer(second, amtSecond);
         if (amtThird > 0 && third != address(0)) doub.transfer(third, amtThird);
@@ -87,6 +116,14 @@ contract PodiumVaults is Ownable {
         require(msg.sender == arena, "PodiumVaults: not arena");
         address seed = seedPools[podiumId];
         address active = activePools[podiumId];
+        if (seed == address(this) && active == address(this)) {
+            moved = _seedLedger[podiumId];
+            if (moved > 0) {
+                _seedLedger[podiumId] = 0;
+                _activeLedger[podiumId] += moved;
+            }
+            return moved;
+        }
         moved = doub.balanceOf(seed);
         if (moved > 0) {
             doub.transfer(active, moved);
@@ -99,6 +136,19 @@ contract PodiumVaults is Ownable {
         address future = futurePools[podiumId];
         address seed = seedPools[podiumId];
         address active = activePools[podiumId];
+        if (future == address(this) && seed == address(this) && active == address(this)) {
+            movedToSeed = _futureLedger[podiumId];
+            if (movedToSeed > 0) {
+                _futureLedger[podiumId] = 0;
+                _seedLedger[podiumId] += movedToSeed;
+            }
+            movedToActive = _seedLedger[podiumId];
+            if (movedToActive > 0) {
+                _seedLedger[podiumId] = 0;
+                _activeLedger[podiumId] += movedToActive;
+            }
+            return (movedToSeed, movedToActive);
+        }
         movedToSeed = doub.balanceOf(future);
         if (movedToSeed > 0) {
             doub.transfer(seed, movedToSeed);
@@ -110,14 +160,23 @@ contract PodiumVaults is Ownable {
     }
 
     function activePoolBalance(uint8 podiumId) external view returns (uint256) {
+        if (activePools[podiumId] == address(this)) {
+            return _activeLedger[podiumId];
+        }
         return doub.balanceOf(activePools[podiumId]);
     }
 
     function seedPoolBalance(uint8 podiumId) external view returns (uint256) {
+        if (seedPools[podiumId] == address(this)) {
+            return _seedLedger[podiumId];
+        }
         return doub.balanceOf(seedPools[podiumId]);
     }
 
     function futurePoolBalance(uint8 podiumId) external view returns (uint256) {
+        if (futurePools[podiumId] == address(this)) {
+            return _futureLedger[podiumId];
+        }
         return doub.balanceOf(futurePools[podiumId]);
     }
 }
