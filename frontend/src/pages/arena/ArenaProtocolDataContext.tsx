@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+/* eslint-disable react-refresh/only-export-components -- arena protocol data context + hooks */
 
 import {
   createContext,

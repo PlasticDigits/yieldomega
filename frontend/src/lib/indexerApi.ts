@@ -84,6 +84,8 @@ export type PaginatedItems<T> = {
   limit: number;
   offset: number;
   next_offset: number | null;
+  /** `(block_number, log_index)` watermark when the indexer supports cursor paging ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)). */
+  next_cursor?: string | null;
 };
 
 /** Buys list includes total row count for the indexer table (schema ≥ 1.6.0). */
@@ -500,20 +502,26 @@ export type ArenaPlatformUsage = {
 export type PlatformUsageVelocityWindow = "1h" | "24h" | "sale";
 
 export function arenaPlatformUsageApiPath(
-  _limit: number,
-  _offset = 0,
-  _velocityWindow: PlatformUsageVelocityWindow = "1h",
+  limit = 20,
+  offset = 0,
+  velocityWindow: PlatformUsageVelocityWindow = "1h",
 ): string {
-  return "/v1/arena/timers";
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+    velocity_window: velocityWindow,
+  });
+  return `/v1/arena/platform-usage?${params.toString()}`;
 }
 
-/** Retired with TimeCurve v1 indexer HTTP (#266). */
 export async function fetchArenaPlatformUsage(
-  _limit = 20,
-  _offset = 0,
-  _velocityWindow: PlatformUsageVelocityWindow = "1h",
+  limit = 20,
+  offset = 0,
+  velocityWindow: PlatformUsageVelocityWindow = "1h",
 ) {
-  return null;
+  return getJson<ArenaPlatformUsage>(
+    arenaPlatformUsageApiPath(limit, offset, velocityWindow),
+  );
 }
 
 export type ArenaPodiumPoolDonationRecent = {
@@ -753,6 +761,8 @@ export type ArenaBuyItem = {
   tx_hash: string;
   timer_hard_reset: boolean;
   paid_with_cred: boolean;
+  /** Kumbaya pay asset when routed via `TimeArenaBuyRouter` (0 ETH, 1 stable, 2 CL8Y); null for direct DOUB/CRED. */
+  pay_kind?: number | null;
   /** Effective seconds added to the Last Buy deadline this tx (post cap); from `idx_arena_buy`. */
   actual_seconds_added?: string;
   /** Last Buy deadline after this buy (unix sec string from onchain `Buy` log). */
@@ -847,18 +857,34 @@ export type ArenaWalletHighestScore = {
   rank: number | null;
 };
 
-export async function fetchArenaBuys(limit = 20, offset = 0) {
-  return getJson<{ items: ArenaBuyItem[]; limit: number; offset: number }>(
-    `/v1/arena/buys?limit=${limit}&offset=${offset}`,
-  );
+export async function fetchArenaBuys(limit = 20, offset = 0, cursor?: string | null) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+  return getJson<PaginatedItems<ArenaBuyItem>>(`/v1/arena/buys?${params.toString()}`);
 }
 
-export function arenaActivityApiPath(limit = 25, offset = 0): string {
-  return `/v1/arena/activity?limit=${limit}&offset=${offset}`;
+export function arenaActivityApiPath(
+  limit = 25,
+  offset = 0,
+  cursor?: string | null,
+): string {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+  return `/v1/arena/activity?${params.toString()}`;
 }
 
-export async function fetchArenaActivity(limit = 25, offset = 0) {
-  return getJson<PaginatedItems<ArenaActivityItem>>(arenaActivityApiPath(limit, offset));
+export async function fetchArenaActivity(limit = 25, offset = 0, cursor?: string | null) {
+  return getJson<PaginatedItems<ArenaActivityItem>>(arenaActivityApiPath(limit, offset, cursor));
 }
 
 export async function fetchArenaTimers() {

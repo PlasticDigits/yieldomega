@@ -108,6 +108,17 @@ pub struct RegistryContracts {
     pub referral_registry: String,
 }
 
+impl RegistryContracts {
+    /// Non-zero buy-router proxy from registry JSON (`TimeArenaBuyRouter` preferred, legacy `TimeCurveBuyRouter` fallback).
+    pub fn buy_router_address(&self) -> &str {
+        let arena = self.time_arena_buy_router.trim();
+        if !arena.is_empty() {
+            return arena;
+        }
+        self.timecurve_buy_router.trim()
+    }
+}
+
 impl AddressRegistry {
     /// Non-empty configured contract addresses for `eth_getLogs` filtering.
     pub fn index_addresses(&self) -> Vec<Address> {
@@ -117,6 +128,7 @@ impl AddressRegistry {
             self.contracts.podium_vaults.trim(),
             self.contracts.admin_sell_vault.trim(),
             self.contracts.referral_registry.trim(),
+            self.contracts.buy_router_address(),
         ] {
             if s.is_empty() {
                 continue;
@@ -147,13 +159,19 @@ fn load_address_registry_from_path(path: &PathBuf) -> Result<AddressRegistry> {
         .wrap_err_with(|| format!("parse address registry JSON: {}", path.display()))
 }
 
+pub fn registry_require_buy_router_from_env() -> bool {
+    std::env::var("INDEXER_REGISTRY_REQUIRE_BUY_ROUTER")
+        .ok()
+        .is_some_and(|s| matches!(s.trim().to_lowercase().as_str(), "1" | "true" | "yes"))
+}
+
 /// When **`INDEXER_PRODUCTION`** is enabled, validate registry vs **`CHAIN_ID`** and (when
 /// ingestion is enabled) mandatory proxy addresses. See [`validate_address_registry_for_production`].
 pub fn ensure_production_address_registry(
     chain_id: u64,
     ingestion_enabled: bool,
     address_registry: &Option<AddressRegistry>,
-    _require_buy_router: bool,
+    require_buy_router: bool,
 ) -> Result<()> {
     if !crate::cors_config::indexer_production_enabled() {
         return Ok(());
@@ -171,20 +189,21 @@ pub fn ensure_production_address_registry(
         return Ok(());
     };
 
-    validate_address_registry_for_production(reg, chain_id, ingestion_enabled, false)
+    validate_address_registry_for_production(reg, chain_id, ingestion_enabled, require_buy_router)
 }
 
 /// Fail closed on misconfigured **`ADDRESS_REGISTRY`** JSON when **`INDEXER_PRODUCTION`** is on.
 ///
 /// - **`ingestion_enabled`:** mandatory protocol fields must be non-empty, parseable **ERC-20
 ///   sized** addresses, and **non-zero**; resolved log filter set must be non-empty; optional
+///   **`TimeArenaBuyRouter`** when **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
 /// - **Always (when this is called for a `Some` registry):** `registry.chain_id` must match
 ///   **`CHAIN_ID`**; any **non-empty** contract string must parse (no silent skip).
 pub fn validate_address_registry_for_production(
     reg: &AddressRegistry,
     chain_id: u64,
     ingestion_enabled: bool,
-    _require_buy_router: bool,
+    require_buy_router: bool,
 ) -> Result<()> {
     if reg.chain_id != chain_id {
         bail!(
@@ -230,6 +249,11 @@ pub fn validate_address_registry_for_production(
     let _ = strict_parse("TimeArena", &reg.contracts.time_arena)?;
     let _ = strict_parse("PodiumVaults", &reg.contracts.podium_vaults)?;
     let _ = strict_parse("ReferralRegistry", &reg.contracts.referral_registry)?;
+
+    if require_buy_router {
+        let router = reg.contracts.buy_router_address();
+        let _ = strict_parse("TimeArenaBuyRouter", router)?;
+    }
 
     if !PRODUCTION_OPTIONAL_DEPLOY_BLOCK_CHAIN_IDS.contains(&chain_id) && reg.deploy_block == 0 {
         bail!(
@@ -321,7 +345,7 @@ impl Config {
             chain_id,
             ingestion_enabled,
             &address_registry,
-            false,
+            registry_require_buy_router_from_env(),
         )?;
 
         if let Some(ref reg) = address_registry {
@@ -576,5 +600,22 @@ mod production_registry_validation_tests {
         c.time_arena = "bogus".into();
         let r = reg(5, 0, c);
         assert!(validate_address_registry_for_production(&r, 5, false, false).is_err());
+    }
+
+    #[test]
+    fn requires_buy_router_when_flag_set() {
+        let r = reg(1, 100, filled_contracts(""));
+        let e = validate_address_registry_for_production(&r, 1, true, true).unwrap_err();
+        assert!(
+            e.to_string().contains("TimeArenaBuyRouter"),
+            "{e:?}"
+        );
+    }
+
+    #[test]
+    fn index_addresses_includes_nonzero_buy_router() {
+        let r = reg(1, 1, filled_contracts(ADDR_A));
+        let addrs = r.index_addresses();
+        assert_eq!(addrs.len(), 5);
     }
 }

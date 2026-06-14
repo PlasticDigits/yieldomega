@@ -22,7 +22,7 @@ Ensure **user-facing token movement** in arena contracts does not proceed until 
 | CRED buy | `TimeArena.buyWithCred` | Burns CRED; same DOUB routing | **`paused`** |
 | ETH / USDm entry | `TimeArenaBuyRouter.buyViaKumbaya` → `buyFor` | Swap → DOUB → arena split | **`paused`** on arena |
 | WarBow DOUB spends | `warbowSteal`, `warbowRevenge`, `warbowActivateGuard`, `warbowStealLimitOverride` | DOUB from caller | **`paused`** |
-| WarBow flag claim | `claimWarBowFlag` | No DOUB spend | **Not** paused ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)) |
+| WarBow flag claim | `claimWarBowFlag` | No DOUB spend | **`paused`** (`_requireLive()` — same gate as buys and WarBow spends) |
 | Referral registration | `ReferralRegistry.registerCode` | CL8Y user → burn | Always live |
 | Podium roll / WarBow finalize | `rollPodiumEpoch`, `finalizeWarbowPodium` | DOUB vault → winners | Permissionless liveness |
 

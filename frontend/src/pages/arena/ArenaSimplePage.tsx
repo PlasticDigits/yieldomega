@@ -290,7 +290,7 @@ function ArenaSimpleAmountPayTokenSelect({
 }
 
 /**
- * Default `/arena` view — Arena v2 **always-on DOUB** sale. Surfaces time remaining,
+ * Default `/arena` view — Arena v2 **always-on DOUB** round. Surfaces time remaining,
  * the primary buy action, live per-CHARM DOUB price, and checkout preview (XP gain,
  * timer, and podium effects). Contract state comes from {@link useArenaSaleSession}
  * (`TimeArena` reads/writes; see `docs/frontend/arena-views.md`).
@@ -796,6 +796,15 @@ export function ArenaSimplePage({
     <motion.button
       type="button"
       data-testid="arena-simple-buy-charm"
+      aria-label={
+        buyOnCooldown
+          ? `Buy CHARM — wallet cooldown ${formatMmSsCountdown(session.walletCooldownRemainingSec)} remaining`
+          : session.buySubmitBusy || session.isWriting
+            ? "Buy CHARM — processing transaction"
+            : payUsesKumbaya && session.swapQuoteLoading
+              ? "Buy CHARM — refreshing pay token quote"
+              : `Buy CHARM with ${paySpendSuffix}`
+      }
       className={[
         "btn-primary btn-primary--priority arena-simple__cta arena-simple__cta--arcade",
         buyOnCooldown ? "arena-simple__cta--cooldown" : "",
@@ -1128,8 +1137,8 @@ export function ArenaSimplePage({
 
           {session.phase === "saleStartPending" && (
             <StatusMessage variant="muted">
-              The arena has not opened yet. Buy CHARM unlocks automatically when the countdown above
-              reaches zero.
+              {phaseNarrative(session.phase)} Buy CHARM unlocks automatically when the countdown
+              above reaches zero.
             </StatusMessage>
           )}
 

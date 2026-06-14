@@ -25,7 +25,7 @@ describe("Arena play surface copy (#318 · INV-FRONTEND-298-UX-DOCS-E2E)", () =>
   it("keeps forbidden sale framing out of ArenaSimplePage user-visible strings", () => {
     expect(arenaSimplePage).not.toMatch(/The sale has not opened yet/i);
     expect(arenaSimplePage).not.toMatch(/>\s*[^<{]*\bsale\b[^<{]*</i);
-    expect(arenaSimplePage).toContain("The arena has not opened yet");
+    expect(arenaSimplePage).toContain("phaseNarrative(session.phase)");
     expect(arenaSimplePage).toContain("Buy CHARM unlocks automatically");
   });
 
@@ -48,7 +48,7 @@ describe("Arena play surface copy (#318 · INV-FRONTEND-298-UX-DOCS-E2E)", () =>
     ]) {
       expect(friendlyRevertMessage(raw)).not.toMatch(/\bsale\b/i);
     }
-    expect(friendlyRevertMessage("TimeArena: not started")).toBe("Time Arena has not opened yet.");
+    expect(friendlyRevertMessage("TimeArena: not started")).toBe("The arena has not opened yet.");
   });
 
   it("wires WarBow rival rows to wallet profile modal (#258, #318)", () => {
