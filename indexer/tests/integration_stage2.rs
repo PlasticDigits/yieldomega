@@ -784,7 +784,7 @@ async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
 
     let db_row: (String, String, i32, Option<String>) = sqlx::query_as(
         r#"SELECT actual_seconds_added::text, new_deadline::text, log_index,
-                  EXTRACT(EPOCH FROM block_timestamp)::text
+                  FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text
            FROM idx_arena_buy
            WHERE tx_hash = $1 AND log_index = $2"#,
     )
