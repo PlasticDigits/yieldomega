@@ -1,6 +1,6 @@
-# Arena frontend (`/arena`)
+# Arena frontend (`/` play · `/arena/protocol` AUDIT)
 
-Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)). Legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Arena DOM/CSS and public art paths use **`arena-*`** naming ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) — **`INV-FRONTEND-280-ARENA-CSS-NAMING`**, `bash scripts/check-arena-naming.sh`.
+Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) at route **`/`** (index). AUDIT console: [`ArenaProtocolPage.tsx`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`**. Legacy **`/arena`** and **`/timecurve`** redirect to **`/`**; **`/timecurve/protocol`** → **`/arena/protocol`** ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Routes: [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx). Arena DOM/CSS and public art paths use **`arena-*`** naming ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) — **`INV-FRONTEND-280-ARENA-CSS-NAMING`**, `bash scripts/check-arena-naming.sh`.
 
 <a id="arena-css-naming-gitlab-280"></a>
 
@@ -14,7 +14,7 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | Podium pictograms | `/art/icons/arena-podium-*.png` | [`ArenaSimplePodiumSection.tsx`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx), [`arenaUi.tsx`](../../frontend/src/pages/arena/arenaUi.tsx) |
 | Scenes | `arena-simple-command-console.svg`, `arena-arena-command-console.svg`, `arena-protocol-command-console.svg` | [`ArenaTimerHero.tsx`](../../frontend/src/pages/arena/ArenaTimerHero.tsx), `index.css` buy-panel backplate, [`ArenaProtocolPage.tsx`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) |
 
-**Unchanged:** `/timecurve` → `/arena` redirects in [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx). **Do not** rename onchain revert substrings in [`revertMessage.ts`](../../src/lib/revertMessage.ts).
+**Unchanged:** `/arena` → `/` and `/timecurve` → `/` redirects in [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx). **Do not** rename onchain revert substrings in [`revertMessage.ts`](../../src/lib/revertMessage.ts).
 
 <a id="unified-arena-page-gitlab-256"></a>
 
@@ -48,26 +48,28 @@ Invariant: **`INV-FRONTEND-301-INDEXER-FIRST-DISPLAY`** · static gate `indexerF
 | Surface | Component | Notes |
 |---------|-----------|--------|
 | Last Buy countdown | [`ArenaTimerHero`](../../frontend/src/pages/arena/ArenaTimerHero.tsx) inside [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) | Primary timer; indexer `GET /v1/arena/timers` only ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
+| Podium timer carousel | [`ArenaTimerPodiumCarousel`](../../frontend/src/pages/arena/ArenaTimerPodiumCarousel.tsx) | One podium at a time on play surface; four-podium **grid** only on **`/arena/protocol`** |
 | Secondary podium timers | [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) | Time Booster · Defended Streak · WarBow — indexer `podium_deadlines_sec` ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
 | Buy hub | [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) buy panel | DOUB-primary toggle (`arena-paywith-cl8y` → **DOUB** label on v2); ETH / USDM / CRED ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); sale head from indexer timers ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
-| Four podiums | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) | Epoch id + live rankings via `GET /v1/arena/podiums` only ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273), [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)); DOUB prize preview + USD equiv from **`prize_places_doub_wad`** when indexer schema ≥ 2.8.0 ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)) |
+| Four-podium grid (AUDIT) | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) on **`ArenaProtocolPage`** | Epoch id + live rankings via `GET /v1/arena/podiums` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273), [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
 | CHARM + Play CRED | [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) | Current Last Buy epoch, epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`** ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)) |
 | WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads plus the gated donate-pools sponsorship action — no separate “Arena advanced” route |
 
-Global shell/design direction: [frontend design §290](./design.md#cyberminimalist-glass-app-shell-gitlab-290). Route-level copy stays compact: visible choices are **BUY** and **AUDIT**; mechanics live in tooltips, state rows, and action-adjacent feedback rather than default explanatory paragraphs.
+Global shell/design direction: [frontend design §290](./design.md#cyberminimalist-glass-app-shell-gitlab-290). Header nav: brand **`/`** · **AUDIT** (`/arena/protocol`) · **Referrals** — no in-page `ArenaSubnav` BUY/AUDIT row on the play surface ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)).
 
 <a id="arena-command-console-gitlab-291"></a>
 
 ### Production command console (GitLab [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291))
 
-`/arena` renders a single production **`arena-command-console`** surface. `TimeArenaPage` must not mount the old static [`ArenaThemeConcepts`](../../frontend/src/pages/arena/ArenaThemeConcepts.tsx) mock above the live Arena stack.
+**`/`** (and legacy **`/arena`**) renders a single production **`arena-command-console`** surface. `TimeArenaPage` must not mount the old static [`ArenaThemeConcepts`](../../frontend/src/pages/arena/ArenaThemeConcepts.tsx) mock above the live Arena stack.
 
 Layout priorities:
 
 - **Last Buy primary:** `ArenaTimerHero` sits in the primary console column with the largest timer treatment.
+- **Podium carousel:** `ArenaTimerPodiumCarousel` cycles one podium timer/scoring view at a time on the play surface (four-card grid lives on **`/arena/protocol`** only).
 - **Inline CHARM buy:** the buy panel remains visible in the primary column with text entry, slider, min/max controls, pay picker, and direct **Buy CHARM** CTA; no modal-first buy flow.
-- **Decision row:** action-adjacent tiles expose live **CHARM Price** in DOUB, **0.99–10 CHARM** buy range, and DOUB-buy **CRED yield**.
+- **No decision row / sub-nav:** the shipped play surface does **not** mount `ArenaSubnav` or the retired CHARM-price / CRED-yield decision-row tiles ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)).
 - **Secondary operations:** `ArenaCharmCredCard`, `ArenaTimerChips` (Time Booster · Defended Streak · WarBow), and `ArenaWarbowHeroPanel` sit in the secondary operations rail.
 - **Characters and art:** existing bunny + sniper-shark assets remain recognizable but render as low-opacity cyberminimalist console accents; consumed Arena scene backplates use the dark command-console SVGs from #297, not the older bright arcade JPG pack.
 

@@ -68,15 +68,15 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 - **CRED yield:** each **DOUB** buy adds **35 CRED** (18 decimals) to the current Last Buy epoch accrual pool (`epochCredPool[lastBuyEpoch]`).
 - **Last Buy epoch CHARM:** `epochCharmWad[epoch][user]` and `epochCharmTotal[epoch]` track weight per epoch. On Last Buy hard reset → **`lastBuyEpoch`** increments; prior epoch becomes claimable.
 - **`claimCred(epoch)`** (requires `epoch < lastBuyEpoch`): pro-rata share of `epochCredPool[epoch]` by `epochCharmWad`, plus any **`epochFixedCredBonus`**; zeros epoch CHARM weight onchain for that user/epoch.
-- **First buy ever** (DOUB or CRED, per wallet): schedules **150 CRED** in **`epochFixedCredBonus[lastBuyEpoch + 1]`** — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
+- **First buy ever** (DOUB or CRED, per wallet): schedules **`FIRST_BUY_CRED_BONUS`** (**`1100e18`** — 110% of starter `buyWithCred` burn at `ONBOARDING_STARTER_CHARM_WAD`) in **`epochFixedCredBonus[lastBuyEpoch + 1]`** — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268), [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299). Emits **`FirstBuyCredScheduled`**.
 
 ---
 
 ## XP
 
 - Per buy, **CHARM-scaled** ([#304](https://gitlab.com/PlasticDigits/yieldomega/-/issues/304)): linear **1–10** XP from min→max CHARM: `xp = 1 + (charmWad - CHARM_MIN) * 9 / (CHARM_MAX - CHARM_MIN)` (integer floor). Library: [`ArenaXp`](../../contracts/src/arena/libraries/ArenaXp.sol); mirror: [`arenaXpMath.ts`](../../frontend/src/lib/arenaXpMath.ts) ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250)). **`INV-TIME-ARENA-XP-CHARM-SCALE`**: [invariants §304](../testing/invariants-and-business-logic.md#timearena-xp-charm-scale-gitlab-304).
-- Level **L→L+1** threshold: `min(10 + (L-1)×5, 100)` XP — **L1 requires 10 XP** total to reach level 2; steps increase by +5 until **100 XP/level** cap, then flat **100 XP/level** forever.
-- Uncapped level; cached **`level`** + **`xpTowardNext`** on buy path ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)). Timer / epoch rolls **do not** reset XP ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250)).
+- Level **L→L+1** threshold: `min(10 + (L-1)×5, 100)` XP — **L1 requires 10 XP** total to reach level 2; steps increase by +5 until **100 XP/level** cap, then flat **100 XP/level** at high levels.
+- **Player level cap 5** ([#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)): `MAX_PLAYER_LEVEL = 5`; surplus XP at max is **discarded** (`xpTowardNext` stays **0**). Cached **`level`** + **`xpTowardNext`** on buy path ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)). Timer / epoch rolls **do not** reset XP ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250)). Detail: [arena-v2 § XP](arena-v2.md#xp).
 
 ---
 
@@ -104,8 +104,10 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 ## Routes (frontend)
 
-- Primary play route: **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)).
-- Legacy **`/arena/*`** redirects to **`/arena/*`** ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)).
+- Primary play route: **`/`** (index — [`TimeArenaPage`](../../frontend/src/pages/TimeArenaPage.tsx) via [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx)).
+- AUDIT console: **`/arena/protocol`** — four-podium grid, vault routing, activity feed.
+- Header nav: brand home **`/`** · **AUDIT** · **Referrals** (no in-page BUY/AUDIT sub-nav).
+- Legacy aliases: **`/arena`** → **`/`**; **`/timecurve`** → **`/`**; **`/timecurve/protocol`** → **`/arena/protocol`**; **`/timecurve/:segment`** → **`/arena/:segment`** ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)).
 
 ---
 
@@ -119,7 +121,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 | 2 | Referral registration burn | Keep **1 CL8Y** for existing-code continuity |
 | 3 | CRED referral payout | **Flat 5 CRED per side** (`REFERRAL_CRED_FLAT_WAD = 5e18`); supersedes BPS basis — [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272) |
 | 4 | Podium settlement trigger | Permissionless **`rollPodiumEpoch(cat)`** after deadline (not auto on first post-expiry buy) |
-| 5 | Route naming | **`/arena`** primary; **`/timecurve`** redirect (optional legacy alias) |
+| 5 | Route naming | **`/`** play primary; **`/arena/protocol`** AUDIT; **`/arena`** and **`/timecurve`** legacy redirects |
 
 ---
 

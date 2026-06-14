@@ -141,7 +141,7 @@ bash scripts/start-qa-local-full-stack.sh --live-sale --no-swarm
 
 - **RPC:** `http://127.0.0.1:8545` (chain id `31337`)
 - **Indexer:** `http://127.0.0.1:3100` — smoke: `curl -sf http://127.0.0.1:3100/v1/status`
-- **Frontend:** `http://127.0.0.1:5173` — primary route **`/arena`**
+- **Frontend:** `http://127.0.0.1:5173` — primary play route **`/`** (legacy **`/arena`** redirects)
 
 Stack-only (no Vite): add `--no-frontend`, then `cd frontend && npm run dev` after `frontend/.env.local` exists.
 

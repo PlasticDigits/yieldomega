@@ -30,7 +30,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 |-------|---------------|------------------|
 | Hero | **Yield Omega** H1; **PLAY TIME ARENA** primary; **AUDIT** verification action | [design §295](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) |
 | Tagline | Current PvP mechanics only (CHARM, timers, podiums, WarBow) | `surfaceContent.ts` |
-| Cards | Time Arena → `/arena`; Arena AUDIT → `/arena/protocol`; Referrals; Kumbaya; Sir | `HOME_SURFACE_CARDS` |
+| Cards | Time Arena → `/`; Arena AUDIT → `/arena/protocol`; Referrals; Kumbaya; Sir | `HOME_SURFACE_CARDS` |
 | Mechanics chips | BUY CHARM · 4 PODIUMS · WARBOW · AUDIT tooltips match TimeArena | `HOME_HERO_SIGNALS` |
 | Forbidden copy | No TimeCurve / sale / PvE / redemption / launchpad / worldbuilding | `surfaceContent.test.ts` |
 
@@ -45,23 +45,23 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Wordmark | **Yield Omega** H1 | `LaunchCountdownPage.tsx` |
 | Headline | **Time Arena opens in** (access gate, not DOUB sale launch) | [design §295](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) |
 | Chips | PLAY · CRED · PVP · AUDIT compact signals | `LAUNCH_COUNTDOWN_SIGNALS` |
-| Handoff links | `/arena` play + `/arena/protocol` audit | `LAUNCH_COUNTDOWN_LINKS` |
+| Handoff links | `/` play + `/arena/protocol` audit (external links in `LAUNCH_COUNTDOWN_LINKS`) | `LaunchCountdownPage.tsx` |
 
 **E2E:** `e2e/launch-countdown.spec.ts` · **Manual:** [manual QA §295](manual-qa-checklists.md#manual-qa-issue-295)
 
 ---
 
-## `/arena` — Time Arena command console
+## `/` — Time Arena play surface
 
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
 | Layout | Single **`arena-command-console`**; no `.arena-final-concept` mock above live stack | [arena-views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) |
-| Sub-nav | **BUY** (current) + **AUDIT** link only | `ArenaSubnav.tsx` |
+| Navigation | Header **AUDIT** + **Referrals** only; **no** `ArenaSubnav` BUY/AUDIT row on play surface | `RootLayout.tsx` · [#320](../product/time-arena.md#routes-frontend) |
 | Last Buy | Largest primary countdown in main column | `ArenaTimerHero.tsx` |
+| Podium UX | `ArenaTimerPodiumCarousel` — one podium at a time; **not** the four-card grid (AUDIT only) | `ArenaSimplePage.tsx` |
 | Inline buy | Text field, slider, min/max, pay picker, **Buy CHARM** without modal-first flow | `ArenaSimplePage.tsx` |
-| Decision row | **CHARM PRICE** (DOUB), **0.99–10 CHARM** range, DOUB-buy **CRED yield** | [arena-views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) |
+| No decision row | Play surface does **not** render CHARM-price / range / CRED-yield decision tiles | `arenaCommandConsoleStatic.test.ts` |
 | Secondary rail | CHARM/CRED card, secondary timer chips (Time Booster · Defended Streak · WarBow), WarBow PvP panel | [arena-views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) |
-| Podiums | Four independent podiums; epoch + DOUB prizes + USD equivalent; blockie + last-six addresses | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
 | Branding | Visible **Yield Omega** in console chrome; low-opacity bunny/shark accents | `ArenaSimplePage.tsx` |
 | Pay modes | DOUB-primary; ETH / USDM / Play CRED when configured | [arena-views pay modes](../frontend/arena-views.md#pay-modes) |
 | CSS naming | `arena-*` classes and testids only (no `timecurve-*`) | `bash scripts/check-arena-naming.sh` |
@@ -75,6 +75,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
 | Heading | **AUDIT** H1; compact VERIFY / TRACE / WATCH hierarchy | [arena-views §293](../frontend/arena-views.md#arena-audit-protocol-surfaces-gitlab-293) |
+| Four-podium grid | `ArenaSimplePodiumSection` — four cards with epoch + DOUB prizes + USD equivalent | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
 | Mechanics copy | Always-live when unpaused; flat DOUB CHARM buys; **100%** podium routing (**25%** per track · **70/20/10** epochs; [#300](../product/arena-v2.md#doub-prize-routing-per-buy--300)); 100% donate top-up; WarBow activity | [arena-v2.md](../product/arena-v2.md) |
 | Activity feed | `GET /v1/arena/activity` buy / steal / guard / revenge with explicit deltas | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
 | Donate pools | Required no-benefit disclosure; `topUpPodiumPools` write gated | [arena-views donate](../frontend/arena-views.md#protocol-donate-pools-gitlab-262) |
@@ -89,7 +90,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
-| Route | Valid referral segment loads `/arena` (not 404) | `LaunchGate.tsx` |
+| Route | Valid referral segment loads play surface at **`/`** (not 404) | `LaunchGate.tsx` |
 | Capture | Pending key `yieldomega.ref.v1` on `?ref=` or path segment | [referrals.md](../product/referrals.md) |
 | Legacy redirect | `/timecurve/:code` → `/arena/:code` | [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) |
 
@@ -119,7 +120,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Badge | **External venue** | `PageHero` |
 | Venue snapshot | Read-only framing; external custody boundary | [design §296](../frontend/design.md#secondary-product-surfaces-gitlab-296) |
 | Recovery | **Time Arena** + **AUDIT** secondary actions | `ThirdPartyDexPage.tsx` |
-| Arena handoff | Canonical **DOUB arena surface** at `/arena` (not launchpad framing) | `ThirdPartyDexPage.tsx` |
+| Arena handoff | Canonical **DOUB arena surface** at **`/`** (not launchpad framing) | `ThirdPartyDexPage.tsx` |
 | Env hint | When outbound URL unset: `Set VITE_*_DEX_URL at build time…` | `e2e/surface-shells.spec.ts` |
 
 **E2E:** `e2e/surface-shells.spec.ts`, `e2e/navigation.spec.ts` · **Manual:** [manual QA §296](manual-qa-checklists.md#manual-qa-issue-296)
@@ -143,8 +144,9 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 
 | Route | Expected |
 |-------|----------|
-| `/timecurve` | → `/arena` |
-| `/timecurve/arena` | → `/arena` |
+| `/arena` | → `/` |
+| `/timecurve` | → `/` |
+| `/timecurve/arena` | → `/` |
 | `/timecurve/protocol` | → `/arena/protocol` |
 | `/timecurve/:segment` | → `/arena/:segment` |
 
