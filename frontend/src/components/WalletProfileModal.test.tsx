@@ -2,7 +2,10 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { AddressInline } from "./AddressInline";
 import { WalletProfileModal } from "./WalletProfileModal";
 
 vi.mock("@/hooks/useWalletStats", () => ({
@@ -60,10 +63,17 @@ describe("WalletProfileModal (GitLab #321)", () => {
         onClose: () => {},
       }),
     );
+    expect(html).toContain("<dialog");
     expect(html).toContain('data-testid="wallet-profile-modal"');
     expect(html).toContain("Participant profile");
     expect(html).toContain('aria-label="Close dialog"');
     expect(html).toContain("0xdddddddddddddddddddddddddddddddddddddddd");
+  });
+
+  it("restores focus to the opener when the modal closes", () => {
+    const src = readFileSync(resolve(__dirname, "WalletProfileModal.tsx"), "utf8");
+    expect(src).toContain("returnFocusRef");
+    expect(src).toContain("returnFocusRef.current?.focus?.()");
   });
 
   it("escapes malicious address text in explorer links", () => {
@@ -78,5 +88,14 @@ describe("WalletProfileModal (GitLab #321)", () => {
       'href="https://explorer.example/&lt;img src=x onerror=alert(1)&gt;@evil.test"',
     );
     expect(html).toContain('<p class="wallet-profile-modal__address"><span class="mono">—</span></p>');
+  });
+
+  it("does not render attacker-controlled HTML in address labels", () => {
+    const xssAttempt = "0x<script>alert(1)</script>0000000000000000000000";
+    const html = renderToStaticMarkup(
+      createElement(AddressInline, { address: xssAttempt, explorer: false }),
+    );
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("—");
   });
 });

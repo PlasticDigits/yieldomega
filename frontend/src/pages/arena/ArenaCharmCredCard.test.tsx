@@ -2,6 +2,8 @@
 
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { ArenaCharmCredCard } from "./ArenaCharmCredCard";
 
@@ -70,6 +72,20 @@ describe("ArenaCharmCredCard (GitLab #321)", () => {
     expect(html).not.toContain("Connect wallet");
   });
 
+  it("shows CRED unavailable when wallet stats omit CRED fields", () => {
+    mockUseAccount.mockReturnValue({
+      address: "0xdddddddddddddddddddddddddddddddddddddddd",
+      isConnected: true,
+    });
+    mockWalletStats.mockReturnValue({
+      data: { epoch_charm_wad: "0", last_buy_epoch: "1" },
+      isLoading: false,
+      isFetching: false,
+    });
+    const html = renderToStaticMarkup(createElement(ArenaCharmCredCard));
+    expect(html).toContain("CRED unavailable");
+  });
+
   it("shows indexer-unavailable copy when indexer URL is unset", async () => {
     mockUseAccount.mockReturnValue({ address: undefined, isConnected: false });
     vi.resetModules();
@@ -86,5 +102,11 @@ describe("ArenaCharmCredCard (GitLab #321)", () => {
     const html = renderToStaticMarkup(createElement(Card));
     expect(html).toContain("Indexer URL is not configured");
     vi.resetModules();
+  });
+
+  it("reads wallet stats from indexer instead of onchain RPC (#301)", () => {
+    const src = readFileSync(resolve(__dirname, "ArenaCharmCredCard.tsx"), "utf8");
+    expect(src).not.toMatch(/useReadContract\(/);
+    expect(src).toContain("useWalletStats");
   });
 });

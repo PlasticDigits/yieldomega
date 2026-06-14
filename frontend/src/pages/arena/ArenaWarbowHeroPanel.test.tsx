@@ -92,4 +92,20 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
     );
     expect(html).toContain("Time Arena is paused onchain");
   });
+
+  it("surfaces WarBow PvP errors with dismiss control", () => {
+    mockWarbowHero.mockReturnValue({
+      ...baseHook,
+      pvpErr: "WarBow steal reverted",
+    });
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+      }),
+    );
+    expect(html).toContain("WarBow steal reverted");
+    expect(html).toContain("dismiss");
+  });
 });

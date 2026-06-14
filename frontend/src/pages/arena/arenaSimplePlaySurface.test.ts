@@ -35,8 +35,9 @@ describe("Arena play surface copy (#318 · INV-FRONTEND-298-UX-DOCS-E2E)", () =>
   });
 
   it("avoids sale wording in play-surface buy guard errors", () => {
+    const preflight = readArena("arenaSaleSessionBuyPreflight.ts");
     expect(saleSession).not.toMatch(/setBuyError\([^)]*\bsale\b/i);
-    expect(saleSession).toContain("wait for arena state");
+    expect(preflight).toContain("wait for sale state (indexer or contract reads)");
   });
 
   it("maps TimeArena revert copy without sale framing on the play console", () => {

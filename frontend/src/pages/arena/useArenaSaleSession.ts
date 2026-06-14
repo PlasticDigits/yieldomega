@@ -1244,11 +1244,11 @@ export function useArenaSaleSession(
     payTokenDecimals,
     payWalletBalance.raw,
     payWith,
+    payUsesKumbaya,
     quotedPayInWei,
     spendInputStr,
     spendWei,
     swapRoute,
-    payUsesKumbaya,
   ]);
 
   /**

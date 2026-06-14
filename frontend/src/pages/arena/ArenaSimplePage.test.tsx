@@ -3,6 +3,8 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { UseArenaSaleSession } from "./useArenaSaleSession";
 
@@ -224,5 +226,29 @@ describe("ArenaSimplePage (GitLab #321)", () => {
     const html = renderPage();
     expect(html).toContain('class="arena-simple__connect"');
     expect(html).toContain("Connect wallet");
+  });
+});
+
+describe("ArenaSimplePage smoke regions (GitLab #321)", () => {
+  const src = readFileSync(resolve(__dirname, "ArenaSimplePage.tsx"), "utf8");
+
+  it("exposes contextual aria-label on the primary buy CTA", () => {
+    expect(src).toContain('data-testid="arena-simple-buy-charm"');
+    expect(src).toContain("aria-label={");
+    expect(src).toContain("Buy CHARM with ${paySpendSuffix}");
+    expect(src).toContain("Buy CHARM — processing transaction");
+  });
+
+  it("keeps indexer-first WarBow display wiring (#301)", () => {
+    expect(src).toContain("indexerWarbowHead");
+    expect(src).toContain("resolveIndexerViewerWarbowBattlePoints");
+    expect(src).toContain("ArenaWarbowHeroPanel");
+  });
+
+  it("renders timer, podium carousel, and spend controls test ids", () => {
+    expect(src).toContain('data-testid="arena-simple-amount-pay-token"');
+    expect(src).toContain("ArenaTimerPodiumCarousel");
+    expect(src).toContain("ArenaTimerChips");
+    expect(src).toContain("ArenaCharmCredCard");
   });
 });
