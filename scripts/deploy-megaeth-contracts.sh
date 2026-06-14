@@ -371,7 +371,6 @@ jq -n \
   --arg doub "$DOUB" \
   --arg cred "$CRED" \
   --arg pv "$PV" \
-  --arg av "$AV" \
   --arg rr "$RR" \
   --arg ta "$TA" \
   --arg buyRouter "$BUY_ROUTER" \
@@ -388,7 +387,6 @@ jq -n \
       Doubloon: $doub,
       PlayCred: $cred,
       PodiumVaults: $pv,
-      AdminSellVault: $av,
       ReferralRegistry: $rr,
       TimeArena: $ta,
       TimeArenaBuyRouter: $buyRouter,
@@ -419,7 +417,6 @@ echo "  VITE_CHAIN_ID=${CHAIN_ID}"
 echo "  VITE_RPC_URL=${RPC_URL}"
 echo "  VITE_TIME_ARENA_ADDRESS=${TA}"
 echo "  VITE_PODIUM_VAULTS_ADDRESS=${PV}"
-echo "  VITE_ADMIN_SELL_VAULT_ADDRESS=${AV}"
 echo "  VITE_REFERRAL_REGISTRY_ADDRESS=${RR}"
 if [[ -n "$BUY_ROUTER" ]]; then
   echo "  VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER=${BUY_ROUTER}"

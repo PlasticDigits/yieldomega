@@ -9,7 +9,30 @@ import { AddressInline } from "./AddressInline";
 import { WalletProfileModal } from "./WalletProfileModal";
 
 vi.mock("@/hooks/useWalletStats", () => ({
-  useWalletStats: () => ({ data: undefined, isLoading: false, isError: false }),
+  useWalletStats: () => ({
+    data: {
+      address: "0xdddddddddddddddddddddddddddddddddddddddd",
+      buy_count: 1,
+      epochs_participated: 1,
+      total_spent_doub: "0",
+      average_buy_doub: "0",
+      max_single_buy_doub: "0",
+      xp: "0",
+      level: "1",
+      prizes_won: [],
+      total_won_doub: "0",
+      highest_scores: [],
+      warbow_steals: 0,
+      warbow_guards: 0,
+      cred_claimed: "0",
+      referral_cred_earned: "0",
+      longest_defended_streak: "0",
+      podium_win_rate: "0",
+      rank_distribution: {},
+    },
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 vi.mock("@/hooks/useWalletProfileBalances", () => ({
@@ -24,8 +47,16 @@ vi.mock("@/hooks/useWalletProfileBalances", () => ({
   }),
 }));
 
-describe("WalletProfileModal a11y and abuse guards (GitLab #321)", () => {
-  it("uses native dialog semantics with labelled title and close control", () => {
+vi.mock("@/lib/addresses", () => ({
+  indexerBaseUrl: () => "http://127.0.0.1:3100",
+}));
+
+vi.mock("@/lib/explorer", () => ({
+  explorerAddressUrl: (addr: string) => `https://explorer.example/${addr}`,
+}));
+
+describe("WalletProfileModal (GitLab #321)", () => {
+  it("renders dialog chrome with labelled title and close control", () => {
     const html = renderToStaticMarkup(
       createElement(WalletProfileModal, {
         address: "0xdddddddddddddddddddddddddddddddddddddddd",
@@ -34,14 +65,29 @@ describe("WalletProfileModal a11y and abuse guards (GitLab #321)", () => {
     );
     expect(html).toContain("<dialog");
     expect(html).toContain('data-testid="wallet-profile-modal"');
-    expect(html).toContain('aria-label="Close dialog"');
     expect(html).toContain("Participant profile");
+    expect(html).toContain('aria-label="Close dialog"');
+    expect(html).toContain("0xdddddddddddddddddddddddddddddddddddddddd");
   });
 
   it("restores focus to the opener when the modal closes", () => {
     const src = readFileSync(resolve(__dirname, "WalletProfileModal.tsx"), "utf8");
     expect(src).toContain("returnFocusRef");
     expect(src).toContain("returnFocusRef.current?.focus?.()");
+  });
+
+  it("escapes malicious address text in explorer links", () => {
+    const xss = '<img src=x onerror=alert(1)>@evil.test';
+    const html = renderToStaticMarkup(
+      createElement(WalletProfileModal, {
+        address: xss,
+        onClose: () => {},
+      }),
+    );
+    expect(html).toContain(
+      'href="https://explorer.example/&lt;img src=x onerror=alert(1)&gt;@evil.test"',
+    );
+    expect(html).toContain('<p class="wallet-profile-modal__address"><span class="mono">—</span></p>');
   });
 
   it("does not render attacker-controlled HTML in address labels", () => {
