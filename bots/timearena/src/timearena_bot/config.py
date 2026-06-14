@@ -28,7 +28,7 @@ class BotConfig:
     rpc_url: str
     chain_id: int
     private_key: Optional[str]
-    time_arena_address: str  # TimeArena ERC-1967 proxy
+    timearena_address: str  # TimeArena ERC-1967 proxy
     accepted_asset_address: Optional[str]
     address_file: Optional[Path]
     poll_interval_sec: float
@@ -131,7 +131,7 @@ def load_config(
         rpc_url=rpc.rstrip("/"),
         chain_id=chain_id,
         private_key=pk,
-        time_arena_address=tc,
+        timearena_address=tc,
         accepted_asset_address=aa,
         address_file=address_file,
         poll_interval_sec=poll,

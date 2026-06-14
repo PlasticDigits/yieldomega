@@ -10,7 +10,6 @@ import {PlayCred} from "../src/PlayCred.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {TimeArenaBuyRouter} from "../src/arena/TimeArenaBuyRouter.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {AnvilWETH9, AnvilMockUSDM, AnvilKumbayaRouter} from "../src/fixtures/AnvilKumbayaFixture.sol";
 import {AnvilKumbayaPools} from "../src/fixtures/AnvilKumbayaPools.sol";
@@ -34,7 +33,6 @@ abstract contract TimeArenaBuyRouterFixture is Test {
     Doubloon doub;
     PlayCred cred;
     PodiumVaults vaults;
-    AdminSellVault adminVault;
     TimeArena arena;
     AnvilWETH9 weth;
     AnvilMockUSDM usdm;
@@ -63,19 +61,17 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         doub = new Doubloon(address(this));
         cred = new PlayCred(address(this));
         vaults = new PodiumVaults(doub, address(this));
-        adminVault = new AdminSellVault(doub, address(this));
 
         TimeArena impl = new TimeArena();
         (uint256[4] memory ext, uint256[4] memory init, uint256[4] memory cap, uint256[4] memory below, uint256[4] memory to) =
             _productionTimerInit();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, address(this))
+            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, address(this))
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
         vaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         cred.grantRole(cred.MINTER_ROLE(), address(arena));
         arena.startArena();
 
@@ -100,7 +96,7 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         arena.setEpochCharmAnchorWad(charmPriceWad);
 
         buyRouter = new TimeArenaBuyRouter(
-            arena, address(kumbaya), address(doub), address(cl8y), address(weth), address(usdm), address(adminVault), address(this)
+            arena, address(kumbaya), address(doub), address(cl8y), address(weth), address(usdm), address(this), address(this)
         );
         arena.setTimeArenaBuyRouter(address(buyRouter));
     }
@@ -110,19 +106,17 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         doub = new Doubloon(address(this));
         cred = new PlayCred(address(this));
         vaults = new PodiumVaults(doub, address(this));
-        adminVault = new AdminSellVault(doub, address(this));
 
         TimeArena impl = new TimeArena();
         (uint256[4] memory ext, uint256[4] memory init, uint256[4] memory cap, uint256[4] memory below, uint256[4] memory to) =
             _productionTimerInit();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, address(this))
+            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, address(this))
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
         vaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         cred.grantRole(cred.MINTER_ROLE(), address(arena));
         arena.startArena();
 
@@ -156,7 +150,7 @@ abstract contract TimeArenaBuyRouterFixture is Test {
             address(cl8y),
             address(weth),
             address(feeStable),
-            address(adminVault),
+            address(this),
             address(this)
         );
         arena.setTimeArenaBuyRouter(address(buyRouter));
@@ -260,7 +254,7 @@ contract TimeArenaBuyRouterTest is TimeArenaBuyRouterFixture {
         assertEq(arena.totalCharmWeight(), charmWad);
     }
 
-    function test_buyViaKumbaya_doub_surplus_to_admin_vault() public {
+    function test_buyViaKumbaya_doub_surplus_to_recipient() public {
         uint256 charmWad = 1e18;
         bytes memory path = _pathEthToDoub();
         uint256 gross = _grossDoub(charmWad);
@@ -268,7 +262,7 @@ contract TimeArenaBuyRouterTest is TimeArenaBuyRouterFixture {
         uint256 maxIn = (quotedIn * 110) / 100 + 1;
 
         doub.transfer(address(buyRouter), 1e15);
-        uint256 adminBefore = doub.balanceOf(address(adminVault));
+        uint256 recipientBefore = doub.balanceOf(address(this));
 
         vm.deal(alice, maxIn);
         vm.startPrank(alice);
@@ -277,7 +271,7 @@ contract TimeArenaBuyRouterTest is TimeArenaBuyRouterFixture {
         );
         vm.stopPrank();
 
-        assertGe(doub.balanceOf(address(adminVault)), adminBefore + 1e15);
+        assertGe(doub.balanceOf(address(this)), recipientBefore + 1e15);
         assertEq(doub.balanceOf(address(buyRouter)), 0);
     }
 

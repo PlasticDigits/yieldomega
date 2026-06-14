@@ -11,7 +11,7 @@
 #   bash scripts/sync-bot-env-from-frontend.sh --frontend-env path/to/.env.local
 #   bash scripts/sync-bot-env-from-frontend.sh --output bots/timearena/.env.local
 #
-# Requires: cast on PATH (reads TimeArena.doub() when needed).
+# Requires: cast on PATH (reads TimeArena env from frontend/.env.local).
 
 set -euo pipefail
 
@@ -49,7 +49,6 @@ get_vite() {
 RPC_URL="$(get_vite VITE_RPC_URL)"
 TA="$(get_vite VITE_TIME_ARENA_ADDRESS)"
 PV="$(get_vite VITE_PODIUM_VAULTS_ADDRESS)"
-AV="$(get_vite VITE_ADMIN_SELL_VAULT_ADDRESS)"
 RR="$(get_vite VITE_REFERRAL_REGISTRY_ADDRESS)"
 CHAIN_ID="$(get_vite VITE_CHAIN_ID)"
 
@@ -70,7 +69,6 @@ YIELDOMEGA_RPC_URL=${RPC_URL}
 YIELDOMEGA_CHAIN_ID=${CHAIN_ID}
 YIELDOMEGA_TIME_ARENA_ADDRESS=${TA}
 YIELDOMEGA_PODIUM_VAULTS_ADDRESS=${PV}
-YIELDOMEGA_ADMIN_SELL_VAULT_ADDRESS=${AV}
 YIELDOMEGA_REFERRAL_REGISTRY_ADDRESS=${RR}
 # Optional: YIELDOMEGA_PRIVATE_KEY=  (Anvil account #0 key from Foundry docs — local only)
 EOF

@@ -84,7 +84,7 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
 
     w3 = make_web3(cfg.rpc_url)
     assert_chain_id(w3, cfg.chain_id)
-    tc = timearena_contract(w3, cfg.time_arena_address)
+    tc = timearena_contract(w3, cfg.timearena_address)
     doub = arena_doub_address(tc, explicit=cfg.accepted_asset_address)
     asset = mock_reserve_contract(w3, doub)
 

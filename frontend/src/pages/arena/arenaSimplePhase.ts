@@ -117,6 +117,11 @@ export function phaseNarrative(phase: SaleSessionPhase): string {
   }
 }
 
+/** Pre-launch buy gate on the play console — no forbidden "sale" framing ([#318](https://gitlab.com/PlasticDigits/yieldomega/-/issues/318)). */
+export function preLaunchBuyGateMessage(): string {
+  return "The arena has not opened yet. Buy CHARM unlocks automatically when the countdown above reaches zero.";
+}
+
 export type TimerPayoutPreviewState = "loading" | "unavailable" | "ready";
 
 /** Primary timer bay `<h2>` — pre-open label or Last Buy 1st-prize hook. */
