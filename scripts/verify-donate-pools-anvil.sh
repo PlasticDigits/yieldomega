@@ -11,68 +11,22 @@ PG_URL="${DATABASE_URL:-postgres://yieldomega:password@127.0.0.1:5433/yieldomega
 DEPLOY_LOG="$(mktemp)"
 REGISTRY="${ROOT}/contracts/deployments/local-anvil-registry.json"
 
-# shellcheck source=scripts/lib/anvil_deploy_dev.sh
-source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
+VERIFY_SCRIPT_PREFIX="verify-donate-pools-anvil"
+VERIFY_ANVIL_LOG="/tmp/yieldomega_verify262_anvil.log"
+VERIFY_INDEXER_LOG="/tmp/yieldomega_verify262_indexer.log"
+VERIFY_REGISTRY_COMMENT="verify-donate-pools-anvil.sh"
+
+# shellcheck source=scripts/lib/verify_indexer_stack.sh
+source "${ROOT}/scripts/lib/verify_indexer_stack.sh"
 
 cleanup() {
   rm -f "${DEPLOY_LOG}"
-  if [[ -n "${INDEXER_PID:-}" ]]; then kill "${INDEXER_PID}" 2>/dev/null || true; fi
-  if [[ -n "${ANVIL_PID:-}" ]]; then kill "${ANVIL_PID}" 2>/dev/null || true; fi
+  yieldomega_verify_kill_pid_if_set "${INDEXER_PID:-}"
+  yieldomega_verify_kill_pid_if_set "${ANVIL_PID:-}"
 }
 trap cleanup EXIT
 
-pkill -f "anvil.*${PORT}" 2>/dev/null || true
-pkill -f 'yieldomega-indexer' 2>/dev/null || true
-sleep 1
-
-anvil --host 127.0.0.1 --port "${PORT}" --gas-limit 60000000 --code-size-limit 524288 \
-  >/tmp/yieldomega_verify262_anvil.log 2>&1 &
-ANVIL_PID=$!
-for _ in $(seq 1 30); do
-  cast block-number --rpc-url "${RPC}" >/dev/null 2>&1 && break
-  sleep 0.5
-done
-cast block-number --rpc-url "${RPC}" >/dev/null
-
-ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
-yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
-
-DEPLOY_BLOCK="$(cast block-number --rpc-url "${RPC}")"
-jq -n \
-  --argjson chainId 31337 \
-  --arg ta "${TA}" \
-  --arg pv "${PV}" \
-  --arg rr "${RR}" \
-  --argjson deployBlock "${DEPLOY_BLOCK}" \
-  '{
-    _comment: "verify-donate-pools-anvil.sh",
-    chainId: $chainId,
-    contracts: { TimeArena: $ta, PodiumVaults: $pv, ReferralRegistry: $rr },
-    deployBlock: $deployBlock
-  }' >"${REGISTRY}"
-
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c \
-  "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'yieldomega_indexer' AND pid <> pg_backend_pid();" \
-  >/dev/null 2>&1 || true
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS yieldomega_indexer;" >/dev/null
-psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE yieldomega_indexer OWNER yieldomega;" >/dev/null
-
-export DATABASE_URL="${PG_URL}"
-export CHAIN_ID=31337
-export START_BLOCK=0
-export ADDRESS_REGISTRY_PATH="${REGISTRY}"
-export LISTEN_ADDR="127.0.0.1:${INDEXER_PORT}"
-export INGESTION_ENABLED=true
-export RPC_URL="${RPC}"
-cd "${ROOT}/indexer"
-cargo run --release >/tmp/yieldomega_verify262_indexer.log 2>&1 &
-INDEXER_PID=$!
-
-for _ in $(seq 1 90); do
-  curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/status" >/dev/null 2>&1 && break
-  sleep 1
-done
-curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/status" >/dev/null
+yieldomega_verify_boot_indexer_stack "${ROOT}"
 
 EMPTY="$(curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/arena/podium-pool-donations")"
 echo "${EMPTY}" | jq -e '.total_donated_doub_wad == "0" and (.recent | length) == 0' >/dev/null
@@ -94,7 +48,7 @@ for _ in $(seq 1 60); do
 done
 [[ "${TOTAL}" == "${AMOUNT}" ]] || {
   echo "Expected total ${AMOUNT}, got ${TOTAL}" >&2
-  tail -40 /tmp/yieldomega_verify262_indexer.log >&2
+  tail -40 "${VERIFY_INDEXER_LOG}" >&2
   exit 1
 }
 

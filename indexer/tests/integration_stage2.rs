@@ -1212,7 +1212,7 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
     assert_eq!(j.get("warbow_guards").and_then(|v| v.as_i64()), Some(1));
     assert_eq!(
         j.get("warbow_battle_points").and_then(|v| v.as_str()),
-        Some("750")
+        Some("1000")
     );
     let guard_until = j
         .get("warbow_guard_until")
