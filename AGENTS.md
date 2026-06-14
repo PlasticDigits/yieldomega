@@ -141,7 +141,7 @@ bash scripts/start-qa-local-full-stack.sh --live-sale --no-swarm
 
 - **RPC:** `http://127.0.0.1:8545` (chain id `31337`)
 - **Indexer:** `http://127.0.0.1:3100` — smoke: `curl -sf http://127.0.0.1:3100/v1/status`
-- **Frontend:** `http://127.0.0.1:5173` — primary play route **`/`** (AUDIT **`/arena/protocol`**)
+- **Frontend:** `http://127.0.0.1:5173` — primary play route **`/`** (AUDIT: **`/arena/protocol`**)
 
 Stack-only (no Vite): add `--no-frontend`, then `cd frontend && npm run dev` after `frontend/.env.local` exists.
 
@@ -160,7 +160,7 @@ Use the **smallest** check that proves your change. Do **not** require Docker, P
 | Indexer changes | `cd indexer && cargo clippy --all-targets -- -D warnings && cargo test` | Arena buys + wallet profile: `bash scripts/verify-wallet-profile-anvil.sh` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)) |
 | Frontend changes | `cd frontend && npm run typecheck && npm run lint && npm test` | Arena display: **`INV-FRONTEND-301-INDEXER-FIRST-DISPLAY`** — no browser RPC mirrors for podiums/timers/sale head when `VITE_INDEXER_URL` set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)); `indexerFirstDisplay.test.ts` |
 | Browser E2E / Playwright | `bash scripts/e2e-anvil.sh` | Needs Anvil stack or script-managed Anvil; see [`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md). |
-| Full product stack (indexer ingest, `/arena` UI) | `bash scripts/start-qa-local-full-stack.sh …` | Native or Docker Postgres + Rust + optional Vite — only when acceptance criteria need indexer/UI. |
+| Full product stack (indexer ingest, `/` play UI) | `bash scripts/start-qa-local-full-stack.sh …` | Native or Docker Postgres + Rust + optional Vite — only when acceptance criteria need indexer/UI. |
 | **GitLab merge requests** (Cloud agents) | `bash scripts/glab-mr-create.sh --title "…"` | PlasticDigits GitLab — use **`glab`**, not GitHub PR tooling. |
 | Security review of **local dev keys** | Same as row 1 + confirm keys are **Anvil defaults only** and documented in [`scripts/lib/evm_dev_keys.sh`](scripts/lib/evm_dev_keys.sh) | Never use dev keys on public networks. |
 
@@ -206,7 +206,7 @@ Browsers land under `~/.cache/ms-playwright/`. Automated Playwright E2E uses the
 |------|---------|
 | **Dev keys** | `KEY_EVM_1`, `KEY_EVM_2`, `KEY_EVM_3` — default to Foundry Anvil accounts **#0–#2** (override via Cursor Cloud secrets). Addresses: `source scripts/lib/evm_dev_keys.sh` → `ADDR_EVM_*`. |
 | **Rabby install** | Automatic in `bootstrap-cloud-vm-toolchain.sh` + `bootstrap-cloud-agent.sh` (calls `install-browser-extensions.sh` with sudo). Manual retry: `sudo bash scripts/install-browser-extensions.sh` → `/opt/cursor/browser-extensions/rabby/manifest.json` |
-| **Rabby import** | `node scripts/setup-rabby-dev-wallets.mjs` (from `frontend/` so Playwright resolves); password `RABBY_DEV_PASSWORD` (default `YieldomegaDevOnly1!`, **local only**). Manual fallback: `bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/arena` |
+| **Rabby import** | `node scripts/setup-rabby-dev-wallets.mjs` (from `frontend/` so Playwright resolves); password `RABBY_DEV_PASSWORD` (default `YieldomegaDevOnly1!`, **local only**). Manual fallback: `bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/` |
 | **Rabby build (no mock)** | `bash scripts/qa/build-frontend-for-rabby.sh` then `npm run preview` — **omit** `VITE_E2E_MOCK_WALLET` |
 | **Wrong-network automation** | `bash scripts/verify-rabby-chain-mismatch.sh` (requires Anvil + preview on `:5173`) |
 | **On-chain seed** | After `DeployDev`, [`scripts/seed-evm-dev-wallets-anvil.sh`](scripts/seed-evm-dev-wallets-anvil.sh) funds all three addresses with **ETH + DOUB + CRED + mock CL8Y** (via [`scripts/lib/anvil_deploy_dev.sh`](scripts/lib/anvil_deploy_dev.sh) when `YIELDOMEGA_SEED_EVM_DEV_WALLETS=1`, default). Minter key follows **`PRIVATE_KEY`** (DeployDev broadcaster), not **`KEY_EVM_1`** ([#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281)). Verify: `bash scripts/verify-evm-dev-wallet-seed-anvil.sh`. |
@@ -224,7 +224,7 @@ sudo bash scripts/install-browser-extensions.sh
 Launch Chrome with Rabby + a persistent profile:
 
 ```bash
-bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/arena
+bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/
 ```
 
 - Extension path: `/opt/cursor/browser-extensions/rabby`

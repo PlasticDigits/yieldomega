@@ -39,8 +39,13 @@ describe("arenaActivityApiPath", () => {
 });
 
 describe("arenaPlatformUsageApiPath", () => {
-  it("points at arena timers after platform-usage retirement (#266)", () => {
-    expect(arenaPlatformUsageApiPath(20, 0)).toBe("/v1/arena/timers");
+  it("targets arena platform-usage with paging and velocity (#319)", () => {
+    expect(arenaPlatformUsageApiPath(20, 0)).toBe(
+      "/v1/arena/platform-usage?limit=20&offset=0&velocity_window=1h",
+    );
+    expect(arenaPlatformUsageApiPath(10, 40, "sale")).toBe(
+      "/v1/arena/platform-usage?limit=10&offset=40&velocity_window=sale",
+    );
   });
 });
 
