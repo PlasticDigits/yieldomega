@@ -96,7 +96,7 @@ export function ArenaWarbowHeroPanel({
     playerLevel !== undefined && isFeatureUnlocked(playerLevel, "warbow_flag");
   const [targetFilter, setTargetFilter] = useState<TargetFilter>("eligible");
   const [targetSort, setTargetSort] = useState<TargetSort>("bp-desc");
-  const targetOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const targetOptionRefs = useRef<Array<HTMLDivElement | null>>([]);
   const selectedTarget = w.stealVictimInput.trim();
   const visibleTargets = useMemo(() => {
     const filtered = warbowTargets.filter((target) => {
