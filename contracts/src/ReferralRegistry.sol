@@ -4,14 +4,14 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
 
 /// @title ReferralRegistry — short codes registered by burning CL8Y
 /// @notice See docs/product/referrals.md for code rules and economics.
 ///         Production: UUPS proxy; **proxy address** is canonical (GitLab #54).
-contract ReferralRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, IReferralRegistry {
+contract ReferralRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable, IReferralRegistry {
     using SafeERC20 for IERC20;
 
     /// @dev Irreversible burn sink (not EOA-controlled).
@@ -34,6 +34,7 @@ contract ReferralRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable,
         require(address(_cl8yToken) != address(0), "ReferralRegistry: zero CL8Y");
         require(_registrationBurnAmount > 0, "ReferralRegistry: zero burn");
         __Ownable_init(initialOwner);
+        __Ownable2Step_init();
         cl8yToken = _cl8yToken;
         registrationBurnAmount = _registrationBurnAmount;
     }

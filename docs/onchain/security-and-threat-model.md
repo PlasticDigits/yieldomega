@@ -93,7 +93,21 @@ Internal review items (not a substitute for an **external audit**):
 | **`TimeArenaBuyRouter` `PAY_STABLE`** | **Fee-on-transfer stable** | Stable ingress balance-delta parity before swap (#123). Test: `TimeArenaBuyRouter.t.sol`. |
 | **`AdminSellVault.sellDoubToUsdm`** | **Slippage / router misconfig** — Owner-only liquidation; bad `minOut` or router address drains value. | **`onlyOwner`**; immutable router wiring; tests in `AdminSellVault.t.sol` ([#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249)). |
 | **`TimeArena.setPaused`** | **Emergency halt scope** — Pause must block participant writes including **`claimWarBowFlag`**. | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`**; all **`_requireLive()`** paths revert when **`paused`** ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)). |
+| **`TimeArena` / `ReferralRegistry` UUPS ownership** | **Single-step `transferOwnership` on proxies** — mistyped owner address or malicious immediate takeover. | **`Ownable2StepUpgradeable`** on new deployments and future proxy implementation upgrades ([#329](https://gitlab.com/PlasticDigits/yieldomega/-/issues/329), parent [#325](https://gitlab.com/PlasticDigits/yieldomega/-/issues/325) F-01 partial); **`acceptOwnership`** required; UUPS **`upgradeTo`** remains **`onlyOwner`**. Multisig/timelock deferred until volume threshold. See [UUPS ownership upgrades](#uups-ownership-upgrades-gitlab-329). |
 **Still accepted** (by design / governance): MEV and block ordering on podiums and timers; permissionless **`rollPodiumEpoch`** / **`finalizeWarbowPodium`** for liveness; small rounding residue in DOUB prize splits; **`topUpPodiumPools`** as permissionless sponsorship ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)).
+
+### UUPS ownership upgrades (GitLab [#329](https://gitlab.com/PlasticDigits/yieldomega/-/issues/329))
+
+Parent security review [#325](https://gitlab.com/PlasticDigits/yieldomega/-/issues/325) approved **`Ownable2StepUpgradeable`** for **`TimeArena`** and **`ReferralRegistry`** (recommendation **#5**). **Multisig + timelock in-contract** (recommendation **#1**) remains **rejected** until $100k monthly volume.
+
+| Topic | Detail |
+|-------|--------|
+| **New deployments** | `DeployDev` / `DeployProduction` call `initialize` → `__Ownable_init(admin)` + `__Ownable2Step_init()`; ownership transfers require **`acceptOwnership`**. |
+| **Existing proxies** | Upgrade implementation to a build that inherits **`Ownable2StepUpgradeable`**. OpenZeppelin v5 stores **`_owner`** and **`_pendingOwner`** in separate **ERC-7201** namespaced slots — no collision with prior **`OwnableUpgradeable`** layout. After upgrade, **`pendingOwner()`** is zero until the owner calls **`transferOwnership`**. |
+| **UUPS upgrades** | Still gated by **`_authorizeUpgrade` → `onlyOwner`**; pending owner cannot upgrade until they accept. |
+| **Out of scope** | On-chain timelock/multisig wrappers; indexer address validation is separate (same issue, F-09). |
+
+Invariant map: **`INV-CONTRACTS-329-OWNABLE2STEP`**, **`INV-INDEXER-329-ADDRESS-VALIDATE`** — [invariants §329](../testing/invariants-and-business-logic.md#wallet-address-validation-and-uups-ownable2step-gitlab-329).
 
 ## Audit and bug bounty (intent)
 

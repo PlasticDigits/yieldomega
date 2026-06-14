@@ -12,6 +12,7 @@ use serde_json::json;
 use sqlx::Row;
 
 use crate::api::{internal_db_error_response, pg_row_required, with_schema_version, AppState, PageParams};
+use crate::api_validate::valid_0x_address20;
 use crate::api_cursor::{
     bad_cursor_response, paginated_list_json, BlockLogCursor, ListPageParams,
     TimestampBlockLogCursor,
@@ -129,7 +130,7 @@ async fn arena_podium_pool_donations(
 
     if let Some(donor) = p.donor.as_deref() {
         let w = donor.trim().to_ascii_lowercase();
-        if !w.starts_with("0x") || w.len() != 42 {
+        if !valid_0x_address20(&w) {
             return (
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "error": "invalid_address" })),
@@ -777,20 +778,26 @@ async fn arena_warbow_latest_bp(
     State(state): State<AppState>,
     Query(p): Query<WarbowLatestBpQuery>,
 ) -> Response {
-    let players: Vec<String> = p
-        .players
-        .split(',')
-        .map(|s| s.trim().to_ascii_lowercase())
-        .filter(|s| s.starts_with("0x") && s.len() == 42)
-        .take(32)
-        .collect();
-    if players.is_empty() {
+    let raw_players: Vec<&str> = p.players.split(',').map(str::trim).filter(|s| !s.is_empty()).collect();
+    if raw_players.is_empty() {
         return (
             StatusCode::OK,
             with_schema_version(axum::http::HeaderMap::new()),
             Json(json!({ "items": [] })),
         )
             .into_response();
+    }
+    let mut players = Vec::with_capacity(raw_players.len().min(32));
+    for s in raw_players.iter().take(32) {
+        let w = s.to_ascii_lowercase();
+        if !valid_0x_address20(&w) {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "invalid_address" })),
+            )
+                .into_response();
+        }
+        players.push(w);
     }
 
     let rows = match sqlx::query(
@@ -833,7 +840,7 @@ async fn arena_wallet_stats(
     Path(address): Path<String>,
 ) -> Response {
     let w = address.trim().to_ascii_lowercase();
-    if !w.starts_with("0x") || w.len() != 42 {
+    if !valid_0x_address20(&w) {
         return (
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "invalid_address" })),
