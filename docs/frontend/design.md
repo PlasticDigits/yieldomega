@@ -10,19 +10,19 @@
 
 ## Pages (illustrative)
 
-- **Time Arena (`/arena`)** — unified participant command console at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)); legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Renders through [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) → [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx):
+- **Time Arena (`/`)** — unified participant command console at index route **`/`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291), [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)); legacy **`/arena`** and **`/timecurve`** redirect here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Renders through [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) → [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx):
   - **Last Buy countdown** — [`ArenaTimerHero`](../../frontend/src/pages/arena/ArenaTimerHero.tsx) in the primary console column (largest timer; RPC/indexer deadline).
   - **Inline CHARM buy** — text entry, slider, min/max, pay picker, and direct **Buy CHARM** CTA in the primary column; no modal-first buy flow.
-  - **Decision row** — live CHARM price in DOUB, 0.99–10 CHARM buy range, and DOUB-buy CRED yield.
+  - **Buy hub metrics** — CHARM price in DOUB, 0.99–10 CHARM range, and DOUB-buy CRED yield in the buy panel / projected-effects pills (**no** separate decision-row strip — [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)).
+  - **Podium UX** — [`ArenaTimerPodiumCarousel`](../../frontend/src/pages/arena/ArenaTimerPodiumCarousel.tsx) (one podium at a time); **no** four-card grid on play (AUDIT only).
   - **Secondary podium timers** — [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) in the operations rail (Time Booster · Defended Streak · WarBow).
   - **Buy hub** — DOUB-primary toggle plus ETH / USDM / Play CRED paths ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)).
-  - **Four podiums** — [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) (epoch id + live rankings via `GET /v1/arena/podiums`; indexer-first [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
   - **CHARM + Play CRED** — [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) (epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`**).
   - **WarBow PvP** — [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (steal / guard / revenge with DOUB cost pills).
-  - **`/arena/protocol`** — operator AUDIT view via [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) (`TimeArena`, vault reads, live buy ticker, gated donate-pools sponsorship action).
+  - **`/arena/protocol`** — operator AUDIT view via [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) (`TimeArena`, vault reads, four-podium grid via [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx), live buy ticker, gated donate-pools sponsorship action).
   - See [`docs/frontend/arena-views.md`](./arena-views.md) for the layout contract and indexer/RPC invariants.
 - **Rabbit Treasury (retired Arena v2)** — historical only; do not route new user flows through Rabbit Treasury / Burrow.
-- **Collection (retired [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241))** — removed; primary route is **`/arena`**.
+- **Collection (retired [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241))** — removed; primary play route is **`/`**.
 - **Governance links** — pointers to CL8Y interfaces (external or embedded read-only).
 
 ## Data sources
@@ -105,15 +105,12 @@ visual work should consume the semantic tokens and shared primitives.
   route decisions compact (`Time Arena`, `Referrals`, wallet/network/music).
 - Wallet chrome: [`AppProviders`](../../frontend/src/providers/AppProviders.tsx)
   uses a dark RainbowKit theme aligned to the console accent palette.
-- Arena route IA: [`ArenaSubnav`](../../frontend/src/pages/arena/ArenaSubnav.tsx)
-  exposes **BUY** and **AUDIT** as the visible decisions. Mechanics belong in
-  `title` / `aria-label` tooltips or action-adjacent states, not default body
-  paragraphs.
+- Arena route IA ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)): header nav exposes **AUDIT** (`/arena/protocol`) and **Referrals** only — **no** in-page `ArenaSubnav` BUY/AUDIT row. Mechanics belong in `title` / `aria-label` tooltips or action-adjacent states, not default body paragraphs.
 - Arena production surface ([#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)):
-  **`arena-command-console`** is the single `/arena` layout. The old static
+  **`arena-command-console`** is the single **`/`** layout. The old static
   concept mock must not be mounted above the live Arena stack. Last Buy and
   inline CHARM buy controls are primary; CHARM/CRED state, secondary timers,
-  and WarBow are secondary operations.
+  and WarBow are secondary operations. **Removed chrome (do not document as shipped):** `ArenaSubnav`, `arena-command-console__decision-row` tiles.
 - AUDIT production surface ([#293](https://gitlab.com/PlasticDigits/yieldomega/-/issues/293)):
   `/arena/protocol` uses the same cyberminimalist glass system for a compact
   state/routing/activity console. Visible copy should be short; detailed
@@ -145,7 +142,7 @@ visual work should consume the semantic tokens and shared primitives.
   sale-end, PvE, redemption, or launchpad cross-sell framing.
 - Art, motion, and audio pass ([#297](https://gitlab.com/PlasticDigits/yieldomega/-/issues/297)):
   keep the existing bunny / sniper-shark cast recognizable across Home,
-  countdown, `/arena`, `/arena/protocol`, and Referrals, but render them as
+  countdown, `/`, `/arena/protocol`, and Referrals, but render them as
   subdued command-console accents. Consumed scene backplates use dark
   cyberminimalist SVGs in `frontend/public/art/scenes/`, not the older bright
   arcade JPGs. Motion stays radar/drift/subtle pulse; audio cues are sparse and
@@ -158,7 +155,7 @@ Evidence: [`INV-FRONTEND-290-CYBER-GLASS-SHELL`](../testing/invariants-and-busin
 ### Shared frontend primitives (GitLab #294)
 
 Shared UX primitives carry the approved cyberminimalist glass direction across
-`/arena`, `/arena/protocol`, `/referrals`, and secondary routes without changing
+`/`, `/arena/protocol`, `/referrals`, and secondary routes without changing
 onchain, indexer, or wallet behavior:
 
 - [`AddressInline`](../../frontend/src/components/AddressInline.tsx) is the
@@ -189,7 +186,7 @@ Evidence: [`INV-FRONTEND-294-SHARED-PRIMITIVES`](../testing/invariants-and-busin
 ### Secondary product surfaces (GitLab #296)
 
 `/referrals`, `/kumbaya`, `/sir`, 404, and under-construction fallbacks inherit
-the approved command-console visual language without becoming copies of `/arena`.
+the approved command-console visual language without becoming copies of `/`.
 
 - Referrals: compact hero + command strip, guide-code registration, share links,
   wallet CRED, and guide leaderboard. Canonical share path is `/arena/{code}`;
@@ -232,7 +229,7 @@ shape constraint:
   production scene consumers use the `*-command-console.svg` backplates from
   #297; older bright JPGs are reference-only unless explicitly reapproved.
 - `icons/` — 256px square PNG pictograms used inside `PageBadge` (status,
-  phase), `IndexerStatusBar`, `ArenaSubnav`, and the WarBow legend.
+  phase), `IndexerStatusBar`, header nav chrome, and the WarBow legend.
 - `public/tokens/` — canonical **CHARM / CL8Y / DOUB / ETH / USDM** logos and
   the **MegaETH** mark, served as `/tokens/…` and centralized in
   [`tokenMedia.ts`](../../frontend/src/lib/tokenMedia.ts) (see
