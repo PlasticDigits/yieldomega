@@ -22,14 +22,13 @@ yieldomega_verify_write_anvil_registry() {
     --argjson chainId 31337 \
     --arg ta "${TA}" \
     --arg pv "${PV}" \
-    --arg av "${AV}" \
     --arg rr "${RR}" \
     --argjson deployBlock "${deploy_block}" \
     --arg comment "${comment}" \
     '{
       _comment: $comment,
       chainId: $chainId,
-      contracts: { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr },
+      contracts: { TimeArena: $ta, PodiumVaults: $pv, ReferralRegistry: $rr },
       deployBlock: $deployBlock
     }' >"${registry}"
 }
