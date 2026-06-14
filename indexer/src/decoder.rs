@@ -93,10 +93,16 @@ mod contracts {
             event PodiumPoolsToppedUp(address indexed donor, uint256 amountDoubWad);
         }
     }
+    sol! {
+        contract TimeArenaBuyRouterEvents {
+            event BuyViaKumbaya(address indexed buyer, uint256 charmWad, uint256 grossDoub, uint8 payKind);
+        }
+    }
 }
 
 use contracts::{
-    AdminSellVaultEvents, PodiumVaultsEvents, ReferralRegistryEvents, TimeArenaEvents,
+    AdminSellVaultEvents, PodiumVaultsEvents, ReferralRegistryEvents, TimeArenaBuyRouterEvents,
+    TimeArenaEvents,
 };
 
 /// Buy-sourced DOUB prize routing row kind (maps to `idx_arena_vault_funding.kind`).
@@ -255,6 +261,12 @@ pub enum DecodedEvent {
         target_epoch: Option<U256>,
         amount_doub_wad: U256,
         pool_address: Option<Address>,
+    },
+    ArenaBuyViaKumbaya {
+        buyer: Address,
+        charm_wad: U256,
+        gross_doub: U256,
+        pay_kind: u8,
     },
     Unknown {
         #[allow(dead_code)]
@@ -511,6 +523,16 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 target_epoch: None,
                 amount_doub_wad: e.amount,
                 pool_address: None,
+            };
+        }
+    }
+    if topic0 == TimeArenaBuyRouterEvents::BuyViaKumbaya::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaBuyRouterEvents::BuyViaKumbaya::decode_log(log, true) {
+            return DecodedEvent::ArenaBuyViaKumbaya {
+                buyer: e.buyer,
+                charm_wad: e.charmWad,
+                gross_doub: e.grossDoub,
+                pay_kind: e.payKind,
             };
         }
     }

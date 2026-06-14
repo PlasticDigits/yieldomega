@@ -11,7 +11,6 @@
     "DoubLPIncentives": "79bddb144d797ba7dd0585b60b1de84edb5a1ed74094fe2065b280b0829c0242",
     "EcosystemTreasury": "79bddb144d797ba7dd0585b60b1de84edb5a1ed74094fe2065b280b0829c0242",
     "ReferralRegistry": "67d5be23d24c61c0ea6c9ddd9a8da9ce6f2d0e5cd3b0806dd2ecc81f50db4084",
-    "DoubPresaleVesting": "3ca421e5975afc4926dd8bb7b300fc73442c267431acbc3e13b9f79089ab8b99",
     "PresaleCharmBeneficiaryRegistry": "3033fa3e58fb46a22ba83ac38e4987d1c99bc753afda1ba4247591062dd24f0e",
     "TimeCurveBuyRouter": "161b8e707b769e1f730963cd5b197648b45820fad61c7cb1a640feb57a40a5f5"
   },
@@ -28,7 +27,6 @@
     "TimeCurveBuyRouter": "0x9f7b0fd3ed1ca730e37882ac3644b9991cdcaed9",
     "LaunchedToken": "0xc3654b4f879937b767afbb64b7c230ff436d2342",
     "ReferralRegistry": "0xedebced146e85ce4a4b6f6be11877485766adaf7",
-    "DoubPresaleVesting": "0xb4128c9f52dc345ad13680973146b23f5383dda0",
     "PresaleCharmBeneficiaryRegistry": "0x6bfe055e767bf777a963157a6aede2f1e3ee2107"
   },
   "deployer": "0xd5f3eff25caa075f1f33dbf9ca6883c741d408a2",

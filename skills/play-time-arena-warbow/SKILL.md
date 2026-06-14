@@ -9,23 +9,23 @@ WarBow on **`TimeArena`** spends **DOUB** (not CL8Y). Canonical costs and BP rul
 
 ## DOUB costs (18 decimals)
 
-| Action | DOUB |
-|--------|------|
-| `warbowSteal(victim, payBypassBurn)` | 1000 (+ 50000 if daily steal limit exceeded) |
-| `warbowActivateGuard()` | 10000 |
-| `warbowRevenge(stealer)` | 1000 |
-| `claimWarBowFlag()` | 0 |
+| Action | DOUB | Prize routing |
+|--------|------|----------------|
+| `warbowSteal(victim, payBypassBurn)` | 1000 (+ 50000 if daily steal limit exceeded) | 100% podiums via `_routeDoubPrizeSplit`; bumps `totalDoubRaised` ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)) |
+| `warbowActivateGuard()` | 10000 | same |
+| `warbowRevenge(stealer)` | 1000 | same |
+| `claimWarBowFlag()` | 0 | n/a |
 
 ## Flow
 
-1. **Earn BP** — each DOUB/CRED buy adds WarBow BP (base + Last Buy timer bonuses; scoring uses **Last Buy** timer only — [#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
+1. **Earn BP** — each DOUB/CRED buy adds WarBow BP (base + Last Buy timer bonuses + **streak-break** + **ambush** when qualifying ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)); scoring uses **Last Buy** timer only — [#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
 2. **Steal** — attacker BP &gt; 0; victim BP in **2×–10×** band; drains 10% (1% if guarded).
 3. **Guard / revenge / flag** — see [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) constants `WARBOW_*`.
 4. **Epoch roll / autoroll** — when the WarBow timer expires, **`rollPodiumEpoch(CAT_WARBOW)`** or any buy/WarBow action autorolls: pays on-chain top-3 **4∶2∶1**, emits **`WarbowPodiumFinalized`**, clears live BP ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252), [#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)). Admin **`finalizeWarbowPodium`** is superseded.
 
 ## Frontend (GitLab [#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256))
 
-Participant UI: **`/arena`** → [`ArenaWarbowHeroPanel.tsx`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (`data-testid="warbow-hero-actions"`). Cost pills read **`WARBOW_STEAL_DOUB`**, **`WARBOW_GUARD_DOUB`**, **`WARBOW_STEAL_LIMIT_BYPASS_DOUB`**, **`WARBOW_REVENGE_DOUB`** from the `TimeArena` proxy. Doc map: [arena-views § unified](../../docs/frontend/arena-views.md#unified-arena-page-gitlab-256) · **`INV-FRONTEND-256-UNIFIED-ARENA`**.
+Participant UI: **`/`** → [`ArenaWarbowHeroPanel.tsx`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (`data-testid="warbow-hero-actions"`). Cost pills read **`WARBOW_STEAL_DOUB`**, **`WARBOW_GUARD_DOUB`**, **`WARBOW_STEAL_LIMIT_BYPASS_DOUB`**, **`WARBOW_REVENGE_DOUB`** from the `TimeArena` proxy. Doc map: [arena-views § unified](../../docs/frontend/arena-views.md#unified-arena-page-gitlab-256) · **`INV-FRONTEND-256-UNIFIED-ARENA`**.
 
 ## Local stack
 

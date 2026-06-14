@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+/* eslint-disable react-refresh/only-export-components -- shared arena podium copy helpers */
 
 import { FEATURE_UNLOCK_LEVEL, type ArenaFeatureKey } from "@/lib/arenaProgression";
 

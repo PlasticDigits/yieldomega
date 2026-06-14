@@ -11,7 +11,12 @@ use axum::{
 use serde_json::json;
 use sqlx::Row;
 
-use crate::api::{internal_db_error_response, with_schema_version, AppState, PageParams};
+use crate::api::{internal_db_error_response, pg_row_required, with_schema_version, AppState, PageParams};
+use crate::api_cursor::{
+    bad_cursor_response, paginated_list_json, BlockLogCursor, ListPageParams,
+    TimestampBlockLogCursor,
+};
+use crate::arena_platform_usage::arena_platform_usage;
 use crate::arena_podium_live::{
     fetch_live_podium_conn, last_buy_winner_buy_sec_pool, live_row_has_entrant,
     warbow_top3_from_scores_conn, LivePodiumRow, PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
@@ -29,6 +34,10 @@ pub fn arena_routes() -> axum::Router<AppState> {
         .route("/v1/arena/podiums", axum::routing::get(arena_podiums))
         .route("/v1/arena/buys", axum::routing::get(arena_buys))
         .route("/v1/arena/activity", axum::routing::get(arena_activity))
+        .route(
+            "/v1/arena/platform-usage",
+            axum::routing::get(arena_platform_usage),
+        )
         .route(
             "/v1/arena/wallet/{address}/stats",
             axum::routing::get(arena_wallet_stats),
@@ -345,64 +354,168 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         .into_response()
 }
 
-async fn arena_buys(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
+async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParams>) -> Response {
     let limit = p.limit.clamp(1, 200);
     let offset = p.offset.max(0);
-    let rows = match sqlx::query(
-        r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
-                  timer_hard_reset, paid_with_cred, actual_seconds_added::text,
-                  new_deadline::text, buy_index::text, log_index,
-                  EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
-           FROM idx_arena_buy
-           ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
-           LIMIT $1 OFFSET $2"#,
-    )
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(&state.pool)
-    .await
-    {
-        Ok(r) => r,
-        Err(e) => return internal_db_error_response("GET /v1/arena/buys", e),
+    let cursor = match p.cursor.as_deref() {
+        None => None,
+        Some(raw) => match TimestampBlockLogCursor::decode(raw) {
+            Ok(c) => Some(c),
+            Err(_) => return bad_cursor_response(),
+        },
     };
+
+    let rows = if let Some(c) = cursor {
+        let (null_rank, ts_epoch, block_number, log_index) = c.sort_key_binds();
+        match sqlx::query(
+            r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
+                      timer_hard_reset, paid_with_cred, actual_seconds_added::text,
+                      new_deadline::text, buy_index::text, log_index, pay_kind,
+                      FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text AS block_timestamp_sec
+               FROM idx_arena_buy
+               WHERE (
+                   CASE WHEN block_timestamp IS NULL THEN 0 ELSE 1 END,
+                   COALESCE(EXTRACT(EPOCH FROM block_timestamp)::bigint, 0),
+                   block_number,
+                   log_index
+               ) < ($1, $2, $3, $4)
+               ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
+               LIMIT $5"#,
+        )
+        .bind(null_rank)
+        .bind(ts_epoch)
+        .bind(block_number)
+        .bind(log_index)
+        .bind(limit)
+        .fetch_all(&state.pool)
+        .await
+        {
+            Ok(r) => r,
+            Err(e) => return internal_db_error_response("GET /v1/arena/buys", e),
+        }
+    } else {
+        match sqlx::query(
+            r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
+                      timer_hard_reset, paid_with_cred, actual_seconds_added::text,
+                      new_deadline::text, buy_index::text, log_index, pay_kind,
+                      FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text AS block_timestamp_sec
+               FROM idx_arena_buy
+               ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
+               LIMIT $1 OFFSET $2"#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await
+        {
+            Ok(r) => r,
+            Err(e) => return internal_db_error_response("GET /v1/arena/buys", e),
+        }
+    };
+
+    let mut items = Vec::with_capacity(rows.len());
+    for r in &rows {
+        let block_number: i64 = match pg_row_required(r, "block_number", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let log_index: i32 = match pg_row_required(r, "log_index", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let pay_kind: Option<i16> = match pg_row_required(r, "pay_kind", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let buyer: String = match pg_row_required(r, "buyer", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let charm_wad: String = match pg_row_required(r, "charm_wad", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let doub_paid: String = match pg_row_required(r, "doub_paid", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let tx_hash: String = match pg_row_required(r, "tx_hash", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let timer_hard_reset: bool =
+            match pg_row_required(r, "timer_hard_reset", "GET /v1/arena/buys") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let paid_with_cred: bool = match pg_row_required(r, "paid_with_cred", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let actual_seconds_added: String =
+            match pg_row_required(r, "actual_seconds_added", "GET /v1/arena/buys") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let new_deadline: String = match pg_row_required(r, "new_deadline", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let buy_index: String = match pg_row_required(r, "buy_index", "GET /v1/arena/buys") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let block_timestamp: Option<String> = match pg_row_required(
+            r,
+            "block_timestamp_sec",
+            "GET /v1/arena/buys",
+        ) {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        items.push(json!({
+            "buyer": buyer,
+            "charm_wad": charm_wad,
+            "doub_paid": doub_paid,
+            "block_number": block_number,
+            "tx_hash": tx_hash,
+            "timer_hard_reset": timer_hard_reset,
+            "paid_with_cred": paid_with_cred,
+            "actual_seconds_added": actual_seconds_added,
+            "new_deadline": new_deadline,
+            "buy_index": buy_index,
+            "log_index": log_index,
+            "block_timestamp": block_timestamp,
+            "pay_kind": pay_kind,
+        }));
+    }
+
     let row_count = rows.len() as i64;
-    let items: Vec<_> = rows
-        .iter()
-        .map(|r| {
-            json!({
-                "buyer": r.get::<String, _>("buyer"),
-                "charm_wad": r.get::<String, _>("charm_wad"),
-                "doub_paid": r.get::<String, _>("doub_paid"),
-                "block_number": r.get::<i64, _>("block_number"),
-                "tx_hash": r.get::<String, _>("tx_hash"),
-                "timer_hard_reset": r.get::<bool, _>("timer_hard_reset"),
-                "paid_with_cred": r.get::<bool, _>("paid_with_cred"),
-                "actual_seconds_added": r.get::<String, _>("actual_seconds_added"),
-                "new_deadline": r.get::<String, _>("new_deadline"),
-                "buy_index": r.get::<String, _>("buy_index"),
-                "log_index": r.get::<i32, _>("log_index"),
-                "block_timestamp": r.get::<Option<String>, _>("block_timestamp_sec"),
-            })
+    let next_cursor = if row_count == limit {
+        rows.last().map(|r| {
+            let block_timestamp_sec = r
+                .get::<Option<String>, _>("block_timestamp_sec")
+                .and_then(|s| s.parse::<i64>().ok());
+            TimestampBlockLogCursor {
+                block_timestamp_sec,
+                block_number: r.get::<i64, _>("block_number"),
+                log_index: r.get::<i32, _>("log_index"),
+            }
+            .encode()
         })
-        .collect();
-    (
-        StatusCode::OK,
-        with_schema_version(axum::http::HeaderMap::new()),
-        Json(json!({
-            "items": items,
-            "limit": limit,
-            "offset": offset,
-            "next_offset": if row_count == limit { Some(offset + limit) } else { None },
-        })),
-    )
-        .into_response()
+    } else {
+        None
+    };
+    let next_offset = if cursor.is_none() && row_count == limit {
+        Some(offset + limit)
+    } else {
+        None
+    };
+
+    paginated_list_json(items, limit, offset, next_cursor, next_offset)
 }
 
-async fn arena_activity(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
-    let limit = p.limit.clamp(1, 200);
-    let offset = p.offset.max(0);
-    let rows = match sqlx::query(
-        r#"SELECT *
+const ACTIVITY_UNION_SQL: &str = r#"SELECT *
            FROM (
                SELECT 'buy' AS kind,
                       buyer AS actor,
@@ -471,52 +584,161 @@ async fn arena_activity(State(state): State<AppState>, Query(p): Query<PageParam
                       log_index,
                       EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
                FROM idx_arena_warbow_revenge
-           ) activity
-           ORDER BY block_number DESC, log_index DESC
-           LIMIT $1 OFFSET $2"#,
-    )
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(&state.pool)
-    .await
-    {
-        Ok(r) => r,
-        Err(e) => return internal_db_error_response("GET /v1/arena/activity", e),
+           ) activity"#;
+
+async fn arena_activity(State(state): State<AppState>, Query(p): Query<ListPageParams>) -> Response {
+    let limit = p.limit.clamp(1, 200);
+    let offset = p.offset.max(0);
+    let cursor = match p.cursor.as_deref() {
+        None => None,
+        Some(raw) => match BlockLogCursor::decode(raw) {
+            Ok(c) => Some(c),
+            Err(_) => return bad_cursor_response(),
+        },
     };
+
+    let rows = if let Some(c) = cursor {
+        let sql = format!(
+            "{ACTIVITY_UNION_SQL}
+           WHERE (block_number, log_index) < ($1, $2)
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT $3"
+        );
+        match sqlx::query(&sql)
+            .bind(c.block_number)
+            .bind(c.log_index)
+            .bind(limit)
+            .fetch_all(&state.pool)
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => return internal_db_error_response("GET /v1/arena/activity", e),
+        }
+    } else {
+        let sql = format!(
+            "{ACTIVITY_UNION_SQL}
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT $1 OFFSET $2"
+        );
+        match sqlx::query(&sql)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pool)
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => return internal_db_error_response("GET /v1/arena/activity", e),
+        }
+    };
+
+    let mut items = Vec::with_capacity(rows.len());
+    for r in &rows {
+        let kind: String = match pg_row_required(r, "kind", "GET /v1/arena/activity") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let actor: String = match pg_row_required(r, "actor", "GET /v1/arena/activity") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let target: Option<String> = match pg_row_required(r, "target", "GET /v1/arena/activity") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let charm_wad: Option<String> =
+            match pg_row_required(r, "charm_wad", "GET /v1/arena/activity") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let amount_doub_wad: Option<String> =
+            match pg_row_required(r, "amount_doub_wad", "GET /v1/arena/activity") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let seconds_delta: Option<String> =
+            match pg_row_required(r, "seconds_delta", "GET /v1/arena/activity") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let bp_delta: Option<String> = match pg_row_required(r, "bp_delta", "GET /v1/arena/activity") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let guard_until: Option<String> =
+            match pg_row_required(r, "guard_until", "GET /v1/arena/activity") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let timer_hard_reset: Option<bool> =
+            match pg_row_required(r, "timer_hard_reset", "GET /v1/arena/activity") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let paid_with_cred: Option<bool> =
+            match pg_row_required(r, "paid_with_cred", "GET /v1/arena/activity") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let limit_bypass: Option<bool> =
+            match pg_row_required(r, "limit_bypass", "GET /v1/arena/activity") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        let block_number: i64 = match pg_row_required(r, "block_number", "GET /v1/arena/activity") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let tx_hash: String = match pg_row_required(r, "tx_hash", "GET /v1/arena/activity") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let log_index: i32 = match pg_row_required(r, "log_index", "GET /v1/arena/activity") {
+            Ok(v) => v,
+            Err(res) => return res,
+        };
+        let block_timestamp: Option<String> =
+            match pg_row_required(r, "block_timestamp_sec", "GET /v1/arena/activity") {
+                Ok(v) => v,
+                Err(res) => return res,
+            };
+        items.push(json!({
+            "kind": kind,
+            "actor": actor,
+            "target": target,
+            "charm_wad": charm_wad,
+            "amount_doub_wad": amount_doub_wad,
+            "seconds_delta": seconds_delta,
+            "bp_delta": bp_delta,
+            "guard_until": guard_until,
+            "timer_hard_reset": timer_hard_reset,
+            "paid_with_cred": paid_with_cred,
+            "limit_bypass": limit_bypass,
+            "block_number": block_number,
+            "tx_hash": tx_hash,
+            "log_index": log_index,
+            "block_timestamp": block_timestamp,
+        }));
+    }
+
     let row_count = rows.len() as i64;
-    let items: Vec<_> = rows
-        .iter()
-        .map(|r| {
-            json!({
-                "kind": r.get::<String, _>("kind"),
-                "actor": r.get::<String, _>("actor"),
-                "target": r.get::<Option<String>, _>("target"),
-                "charm_wad": r.get::<Option<String>, _>("charm_wad"),
-                "amount_doub_wad": r.get::<Option<String>, _>("amount_doub_wad"),
-                "seconds_delta": r.get::<Option<String>, _>("seconds_delta"),
-                "bp_delta": r.get::<Option<String>, _>("bp_delta"),
-                "guard_until": r.get::<Option<String>, _>("guard_until"),
-                "timer_hard_reset": r.get::<Option<bool>, _>("timer_hard_reset"),
-                "paid_with_cred": r.get::<Option<bool>, _>("paid_with_cred"),
-                "limit_bypass": r.get::<Option<bool>, _>("limit_bypass"),
-                "block_number": r.get::<i64, _>("block_number"),
-                "tx_hash": r.get::<String, _>("tx_hash"),
-                "log_index": r.get::<i32, _>("log_index"),
-                "block_timestamp": r.get::<Option<String>, _>("block_timestamp_sec"),
-            })
+    let next_cursor = if row_count == limit {
+        rows.last().map(|r| {
+            BlockLogCursor {
+                block_number: r.get::<i64, _>("block_number"),
+                log_index: r.get::<i32, _>("log_index"),
+            }
+            .encode()
         })
-        .collect();
-    (
-        StatusCode::OK,
-        with_schema_version(axum::http::HeaderMap::new()),
-        Json(json!({
-            "items": items,
-            "limit": limit,
-            "offset": offset,
-            "next_offset": if row_count == limit { Some(offset + limit) } else { None },
-        })),
-    )
-        .into_response()
+    } else {
+        None
+    };
+    let next_offset = if cursor.is_none() && row_count == limit {
+        Some(offset + limit)
+    } else {
+        None
+    };
+
+    paginated_list_json(items, limit, offset, next_cursor, next_offset)
 }
 
 #[derive(Debug, serde::Deserialize)]

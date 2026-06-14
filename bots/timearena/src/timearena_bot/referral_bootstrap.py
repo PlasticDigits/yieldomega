@@ -11,10 +11,10 @@ from eth_account.signers.local import LocalAccount
 from web3 import Web3
 from web3.contract import Contract
 
-from timecurve_bot.actions import _build_and_send, _tx_template, approve_if_needed
-from timecurve_bot.contracts import erc20_contract, referral_registry_contract
-from timecurve_bot.swarm_layout import REFERRAL_REGISTRAR_INDEX
-from timecurve_bot.referral_code import normalize_referral_code
+from timearena_bot.actions import _build_and_send, _tx_template, approve_if_needed
+from timearena_bot.contracts import erc20_contract, referral_registry_contract
+from timearena_bot.swarm_layout import REFERRAL_REGISTRAR_INDEX
+from timearena_bot.referral_code import normalize_referral_code
 
 
 def swarm_referrals_enabled() -> bool:
@@ -86,7 +86,7 @@ def ensure_swarm_referral_registered(
 
 
 def load_referral_registrar_account() -> LocalAccount:
-    from timecurve_bot.anvil_accounts import private_key_hex
+    from timearena_bot.anvil_accounts import private_key_hex
 
     pk = "0x" + private_key_hex(referral_registrar_index())
     return Account.from_key(pk)

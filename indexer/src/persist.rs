@@ -405,6 +405,15 @@ pub async fn persist_decoded_log_conn(
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::ArenaBuyViaKumbaya { pay_kind, .. } => {
+            sqlx::query(
+                r#"UPDATE idx_arena_buy SET pay_kind = $1 WHERE tx_hash = $2"#,
+            )
+            .bind(*pay_kind as i16)
+            .bind(&tx_h)
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::ArenaWarbowFlagClaimed { player, bonus_bp } => {
             sqlx::query(
                 r#"INSERT INTO idx_arena_warbow_flag_claimed (
