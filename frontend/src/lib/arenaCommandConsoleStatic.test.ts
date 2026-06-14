@@ -28,6 +28,10 @@ describe("Arena command-console production surface (GitLab #291)", () => {
     path.resolve(__dirname, "../pages/arena/ArenaTimerHero.tsx"),
     "utf8",
   );
+  const arenaWarbowHeroPanel = fs.readFileSync(
+    path.resolve(__dirname, "../pages/arena/ArenaWarbowHeroPanel.tsx"),
+    "utf8",
+  );
   const arenaProtocolPage = fs.readFileSync(
     path.resolve(__dirname, "../pages/arena/ArenaProtocolPage.tsx"),
     "utf8",
@@ -62,6 +66,14 @@ describe("Arena command-console production surface (GitLab #291)", () => {
     expect(arenaSimplePage).toContain("arena-command-console__hub-warbow");
     expect(arenaSimplePage).toContain("arena-simple__warbow-gate");
     expect(arenaSimplePage).toContain("<ArenaWarbowHeroPanel");
+  });
+
+  it("keeps forbidden sale copy off the play console and wires WarBow profile modal (#318)", () => {
+    expect(arenaSimplePage).toContain("preLaunchBuyGateMessage()");
+    expect(arenaSimplePage).not.toMatch(/\bThe sale has not opened yet\b/i);
+    expect(arenaSimplePage).toMatch(/onOpenWalletProfile=\{onOpenWalletProfile\}[\s\S]*<ArenaWarbowHeroPanel/);
+    expect(arenaWarbowHeroPanel).toContain("onOpenWalletProfile?: (address: string) => void");
+    expect(arenaWarbowHeroPanel).toContain("onOpenProfile={onOpenWalletProfile}");
   });
 
   it("uses the cyberminimalist console CSS", () => {
