@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Run Anvil, deploy Arena v2 (DeployDev), build frontend, Playwright anvil-arena-* E2E.
+# Run Anvil, deploy Arena v2 (DeployDev), build frontend, Playwright anvil E2E (arena + referrals; optional indexer-first).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,8 +16,13 @@ source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
 E2E_ENV_FILE=""
 PREVIEW_PID=""
 ANVIL_PID=""
+INDEXER_PID=""
+INDEXER_PORT="${INDEXER_PORT:-3100}"
+INDEXER_URL=""
+E2E_REGISTRY=""
 ANVIL_PID_FILE="/tmp/yieldomega-anvil-${PORT}.pid"
 PREVIEW_PID_FILE="/tmp/yieldomega-preview-4173.pid"
+INDEXER_PID_FILE="/tmp/yieldomega-indexer-${INDEXER_PORT}.pid"
 GOLDEN_VERIFY_LOG="${YIELDOMEGA_GOLDEN_IMAGE_VERIFY_LOG:-/home/agent/.gch/golden-image-verify.log}"
 
 _e2e_note() {
@@ -42,10 +47,11 @@ _e2e_kill_pid_file() {
 }
 
 _e2e_anvil_cleanup() {
-  rm -f "${DEPLOY_LOG}" "${E2E_ENV_FILE}"
+  rm -f "${DEPLOY_LOG}" "${E2E_ENV_FILE}" "${E2E_REGISTRY}"
+  _yieldomega_kill_pid_if_set "${INDEXER_PID:-}"
   _yieldomega_kill_pid_if_set "${PREVIEW_PID:-}"
   _yieldomega_kill_pid_if_set "${ANVIL_PID:-}"
-  rm -f "${ANVIL_PID_FILE}" "${PREVIEW_PID_FILE}"
+  rm -f "${ANVIL_PID_FILE}" "${PREVIEW_PID_FILE}" "${INDEXER_PID_FILE}"
 }
 trap '_e2e_anvil_cleanup' EXIT
 
@@ -104,11 +110,103 @@ if [ "${YIELDOMEGA_DEPLOY_KUMBAYA:-0}" = "1" ]; then
   yieldomega_export_kumbaya_addrs_from_log "${DEPLOY_LOG}"
 fi
 
+if [ -z "${TA}" ]; then
+  _e2e_append_golden_log FAIL "DeployDev missing TimeArena (TA)"
+  echo "DeployDev did not set TimeArena (TA). Check ${DEPLOY_LOG}." >&2
+  exit 1
+fi
+
+_e2e_start_indexer_if_requested() {
+  if [[ "${YIELDOMEGA_E2E_INDEXER:-0}" != "1" ]]; then
+    return 0
+  fi
+
+  # shellcheck source=scripts/lib/postgres_cloud_agent.sh
+  source "${ROOT}/scripts/lib/postgres_cloud_agent.sh"
+  if ! yieldomega_pg_select_mode; then
+    _e2e_append_golden_log FAIL "Postgres unavailable for YIELDOMEGA_E2E_INDEXER=1"
+    echo "YIELDOMEGA_E2E_INDEXER=1 requires native Postgres or Docker yieldomega-pg." >&2
+    echo "  bash scripts/bootstrap-cloud-postgres-native.sh" >&2
+    echo "  bash scripts/verify-cloud-postgres.sh" >&2
+    exit 1
+  fi
+  if ! yieldomega_pg_wait_ready 60; then
+    _e2e_append_golden_log FAIL "Postgres not ready for indexer E2E"
+    echo "Postgres did not become ready for indexer E2E." >&2
+    exit 1
+  fi
+
+  _e2e_kill_pid_file "${INDEXER_PID_FILE}" "indexer"
+  pkill -f 'yieldomega-indexer' 2>/dev/null || true
+  sleep 1
+
+  E2E_REGISTRY="$(mktemp)"
+  DEPLOY_BLOCK="$(cast block-number --rpc-url "${RPC}")"
+  jq -n \
+    --argjson chainId 31337 \
+    --arg ta "${TA}" \
+    --arg pv "${PV}" \
+    --arg av "${AV}" \
+    --arg rr "${RR}" \
+    --arg tcbr "${KUMBAYA_BUY_ROUTER:-}" \
+    --argjson deployBlock "${DEPLOY_BLOCK}" \
+    '{
+      _comment: "scripts/e2e-anvil.sh indexer-first E2E (#322)",
+      chainId: $chainId,
+      contracts: (
+        { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr }
+        + (if $tcbr != "" then {TimeArenaBuyRouter: $tcbr} else {} end)
+      ),
+      deployBlock: $deployBlock
+    }' >"${E2E_REGISTRY}"
+
+  yieldomega_pg_reset_indexer_db
+
+  export DATABASE_URL="$(yieldomega_pg_database_url)"
+  export CHAIN_ID=31337
+  export START_BLOCK=0
+  export ADDRESS_REGISTRY_PATH="${E2E_REGISTRY}"
+  export LISTEN_ADDR="127.0.0.1:${INDEXER_PORT}"
+  export INGESTION_ENABLED=true
+  export RPC_URL="${RPC}"
+
+  source /usr/local/cargo/env 2>/dev/null || true
+  _e2e_note "Starting indexer on http://127.0.0.1:${INDEXER_PORT}..."
+  (
+    cd "${ROOT}/indexer"
+    cargo build --release 2>/dev/null || cargo build
+  ) >/tmp/yieldomega_e2e_indexer.log 2>&1
+  (
+    cd "${ROOT}/indexer"
+    cargo run --release
+  ) >>/tmp/yieldomega_e2e_indexer.log 2>&1 &
+  INDEXER_PID=$!
+  echo "${INDEXER_PID}" >"${INDEXER_PID_FILE}"
+
+  for _ in $(seq 1 120); do
+    if curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/status" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+  if ! curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/status" >/dev/null 2>&1; then
+    tail -40 /tmp/yieldomega_e2e_indexer.log >&2 || true
+    _e2e_append_golden_log FAIL "indexer /v1/status unavailable"
+    echo "Indexer did not become ready at http://127.0.0.1:${INDEXER_PORT}/v1/status." >&2
+    exit 1
+  fi
+
+  INDEXER_URL="http://127.0.0.1:${INDEXER_PORT}"
+  export ANVIL_E2E_INDEXER=1
+  _e2e_note "Indexer ready (${INDEXER_URL})"
+}
+
+_e2e_start_indexer_if_requested
+
 export VITE_CHAIN_ID=31337
 export VITE_RPC_URL="${RPC}"
 export VITE_TIME_ARENA_ADDRESS="${TA}"
 export VITE_PODIUM_VAULTS_ADDRESS="${PV}"
-export VITE_ADMIN_SELL_VAULT_ADDRESS="${AV}"
 export VITE_REFERRAL_REGISTRY_ADDRESS="${RR}"
 if [ -n "${KUMBAYA_WETH:-}" ]; then
   export VITE_KUMBAYA_WETH="${KUMBAYA_WETH}"
@@ -124,15 +222,9 @@ if [ -n "${KUMBAYA_BUY_ROUTER:-}" ]; then
   export VITE_KUMBAYA_TIMECURVE_BUY_ROUTER="${KUMBAYA_BUY_ROUTER}"
 fi
 export VITE_E2E_MOCK_WALLET=1
-export VITE_INDEXER_URL=
+export VITE_INDEXER_URL="${INDEXER_URL}"
 unset VITE_LAUNCH_TIMESTAMP
 export ANVIL_E2E=1
-
-if [ -z "${TA}" ]; then
-  _e2e_append_golden_log FAIL "DeployDev missing TimeArena (TA)"
-  echo "DeployDev did not set TimeArena (TA). Check ${DEPLOY_LOG}." >&2
-  exit 1
-fi
 
 # Vite only inlines env at build time; persist for npm subprocesses (GitLab #256 / #260).
 E2E_ENV_FILE="${ROOT}/frontend/.env.production.local"
@@ -141,10 +233,9 @@ VITE_CHAIN_ID=${VITE_CHAIN_ID}
 VITE_RPC_URL=${VITE_RPC_URL}
 VITE_TIME_ARENA_ADDRESS=${TA}
 VITE_PODIUM_VAULTS_ADDRESS=${PV}
-VITE_ADMIN_SELL_VAULT_ADDRESS=${AV}
 VITE_REFERRAL_REGISTRY_ADDRESS=${RR}
 VITE_E2E_MOCK_WALLET=1
-VITE_INDEXER_URL=
+VITE_INDEXER_URL=${VITE_INDEXER_URL}
 EOF
 if [ -n "${CRED:-}" ]; then
   cat >>"${E2E_ENV_FILE}" <<EOF
@@ -177,13 +268,12 @@ fi
 cd "${ROOT}/frontend"
 # Parent shells often export `VITE_TIME_ARENA_ADDRESS=` (empty). Vite loadEnv will not
 # override existing process.env keys — unset so .env.production.local inlines deploy addresses.
-unset VITE_TIME_ARENA_ADDRESS VITE_PODIUM_VAULTS_ADDRESS VITE_ADMIN_SELL_VAULT_ADDRESS \
   VITE_REFERRAL_REGISTRY_ADDRESS VITE_PLAY_CRED_ADDRESS VITE_INDEXER_URL VITE_LAUNCH_TIMESTAMP \
   VITE_KUMBAYA_WETH VITE_KUMBAYA_USDM VITE_KUMBAYA_SWAP_ROUTER VITE_KUMBAYA_QUOTER \
   VITE_KUMBAYA_CL8Y VITE_KUMBAYA_FEE_DOUB_CL8Y VITE_KUMBAYA_FEE_CL8Y_WETH VITE_KUMBAYA_FEE_USDM_WETH \
   VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER VITE_KUMBAYA_TIMECURVE_BUY_ROUTER || true
 
-BUILD_STAMP="${ROOT}/frontend/.cache/e2e-anvil-build-${TA}.stamp"
+BUILD_STAMP="${ROOT}/frontend/.cache/e2e-anvil-build-${TA}-idx${YIELDOMEGA_E2E_INDEXER:-0}.stamp"
 _kumbaya_cl8y_in_dist() {
   [[ -z "${KUMBAYA_CL8Y:-}" ]] || grep -rq "${KUMBAYA_CL8Y}" dist/assets/ 2>/dev/null
 }
@@ -235,11 +325,18 @@ if ! curl -sf "http://127.0.0.1:4173/" >/dev/null 2>&1; then
 fi
 _e2e_note "Vite preview ready"
 
-PLAYWRIGHT_SPECS="${PLAYWRIGHT_SPECS:-e2e/anvil-arena-*.spec.ts}"
+_DEFAULT_PLAYWRIGHT_SPECS="e2e/anvil-arena-*.spec.ts e2e/anvil-referrals.spec.ts"
+if [[ "${YIELDOMEGA_E2E_INDEXER:-0}" == "1" ]]; then
+  _DEFAULT_PLAYWRIGHT_SPECS="${_DEFAULT_PLAYWRIGHT_SPECS} e2e/anvil-indexer-first.spec.ts"
+fi
+PLAYWRIGHT_SPECS="${PLAYWRIGHT_SPECS:-${_DEFAULT_PLAYWRIGHT_SPECS}}"
 # Playwright specs read deploy addresses (e.g. #257 claim warp); build-time unset must not leak.
 export VITE_TIME_ARENA_ADDRESS="${TA}"
 export VITE_RPC_URL="${RPC}"
 export VITE_DOUB_ADDRESS="${DOUB}"
+if [[ -n "${INDEXER_URL}" ]]; then
+  export ANVIL_E2E_INDEXER=1
+fi
 if [ -n "${KUMBAYA_BUY_ROUTER:-}" ]; then
   export VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER="${KUMBAYA_BUY_ROUTER}"
   export VITE_KUMBAYA_TIMECURVE_BUY_ROUTER="${KUMBAYA_BUY_ROUTER}"

@@ -154,6 +154,78 @@ pub async fn persist_decoded_log_conn(
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::ArenaFirstBuyCredScheduled {
+            buyer,
+            target_epoch,
+            amount,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_first_buy_cred_scheduled (
+                    block_number, block_timestamp, tx_hash, log_index,
+                    buyer, target_epoch, amount
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric, $7::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*buyer))
+            .bind(u256_dec(*target_epoch))
+            .bind(u256_dec(*amount))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaLevelUp { player, new_level } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_level_up (
+                    block_number, block_timestamp, tx_hash, log_index, player, new_level
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*player))
+            .bind(u256_dec(*new_level))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaFeatureUnlocked {
+            player,
+            feature_level,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_feature_unlocked (
+                    block_number, block_timestamp, tx_hash, log_index, player, feature_level
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*player))
+            .bind(u256_dec(*feature_level))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaPausedSet { paused } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_paused_set (
+                    block_number, block_timestamp, tx_hash, log_index, paused
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(*paused)
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::ArenaPodiumEpochRolled {
             category,
             epoch,
@@ -333,7 +405,55 @@ pub async fn persist_decoded_log_conn(
             .execute(&mut *conn)
             .await?;
         }
-        DecodedEvent::ArenaWarbowFlagClaimed { .. } => {}
+        DecodedEvent::ArenaBuyViaKumbaya { pay_kind, .. } => {
+            sqlx::query(
+                r#"UPDATE idx_arena_buy SET pay_kind = $1 WHERE tx_hash = $2"#,
+            )
+            .bind(*pay_kind as i16)
+            .bind(&tx_h)
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaWarbowFlagClaimed { player, bonus_bp } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_warbow_flag_claimed (
+                    block_number, block_timestamp, tx_hash, log_index, player, bonus_bp
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*player))
+            .bind(u256_dec(*bonus_bp))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaWarbowPodiumFinalized {
+            epoch,
+            first,
+            second,
+            third,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_warbow_podium_finalized (
+                    block_number, block_timestamp, tx_hash, log_index,
+                    epoch, first_place, second_place, third_place
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5::numeric, $6, $7, $8)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(u256_dec(*epoch))
+            .bind(addr_hex(*first))
+            .bind(addr_hex(*second))
+            .bind(addr_hex(*third))
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::ArenaVaultFunding {
             kind,
             podium_id,
