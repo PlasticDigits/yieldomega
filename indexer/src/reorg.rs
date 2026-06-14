@@ -114,6 +114,7 @@ pub const ARENA_INDEX_TABLES: &[&str] = &[
     "idx_referral_code_registered",
     "idx_arena_podium_pool_top_up",
     "idx_arena_vault_funding",
+    "idx_arena_buy_router_kumbaya",
     "idx_arena_buy",
     "idx_arena_last_buy_epoch_started",
     "idx_arena_started",

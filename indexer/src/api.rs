@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::TimecurveHeadSnapshot;
 use crate::rpc_metrics::RpcMetrics;
 
-const SCHEMA_VERSION: &str = "2.11.0";
+const SCHEMA_VERSION: &str = "2.12.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -37,6 +37,8 @@ pub struct PageParams {
     pub limit: i64,
     #[serde(default)]
     pub offset: i64,
+    /// `(block_number, log_index)` watermark for stable pagination (GitLab #319).
+    pub cursor: Option<String>,
 }
 
 fn default_limit() -> i64 {
@@ -87,6 +89,22 @@ pub(crate) fn internal_db_error_response(context: &'static str, err: sqlx::Error
         Json(json!({ "error": PUBLIC_INTERNAL_DB_ERROR })),
     )
         .into_response()
+}
+
+pub(crate) fn corrupt_row_response(context: &'static str, err: sqlx::Error) -> Response {
+    tracing::error!(error = %err, context, "indexer API: corrupt index row");
+    internal_db_error_response(context, err)
+}
+
+pub(crate) fn try_row_get<'r, T>(
+    row: &'r sqlx::postgres::PgRow,
+    col: &str,
+    _route: &'static str,
+) -> Result<T, sqlx::Error>
+where
+    T: sqlx::Decode<'r, sqlx::Postgres> + sqlx::Type<sqlx::Postgres>,
+{
+    row.try_get(col)
 }
 
 async fn healthz() -> impl IntoResponse {
@@ -212,19 +230,42 @@ async fn referral_registrations(
         Err(e) => return internal_db_error_response("GET /v1/referrals/registrations", e),
     };
 
-    let items: Vec<ReferralRegistrationRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(ReferralRegistrationRow {
-                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
-                tx_hash: r.try_get("tx_hash").ok()?,
-                log_index: r.try_get("log_index").ok()?,
-                owner_address: r.try_get("owner_address").ok()?,
-                code_hash: r.try_get("code_hash").ok()?,
-                normalized_code: r.try_get("normalized_code").ok()?,
-            })
-        })
-        .collect();
+    let items = {
+        let mut out = Vec::with_capacity(rows.len());
+        for r in &rows {
+            out.push(ReferralRegistrationRow {
+                block_number: match try_row_get::<i64>(r, "block_number", "GET /v1/referrals/registrations") {
+                    Ok(v) => v.to_string(),
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/registrations", e),
+                },
+                tx_hash: match try_row_get(r, "tx_hash", "GET /v1/referrals/registrations") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/registrations", e),
+                },
+                log_index: match try_row_get(r, "log_index", "GET /v1/referrals/registrations") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/registrations", e),
+                },
+                owner_address: match try_row_get(r, "owner_address", "GET /v1/referrals/registrations") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/registrations", e),
+                },
+                code_hash: match try_row_get(r, "code_hash", "GET /v1/referrals/registrations") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/registrations", e),
+                },
+                normalized_code: match try_row_get(
+                    r,
+                    "normalized_code",
+                    "GET /v1/referrals/registrations",
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/registrations", e),
+                },
+            });
+        }
+        out
+    };
 
     let next_offset = if items.len() as i64 == lim {
         Some(off + lim)
@@ -317,21 +358,46 @@ async fn referral_applied(
         Err(e) => return internal_db_error_response("GET /v1/referrals/applied", e),
     };
 
-    let items: Vec<ReferralAppliedRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(ReferralAppliedRow {
-                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
-                tx_hash: r.try_get("tx_hash").ok()?,
-                log_index: r.try_get("log_index").ok()?,
-                buyer: r.try_get("buyer").ok()?,
-                referrer: r.try_get("referrer").ok()?,
-                code_hash: r.try_get("code_hash").ok()?,
-                referrer_cred: r.try_get("referrer_cred").ok()?,
-                buyer_cred: r.try_get("buyer_cred").ok()?,
-            })
-        })
-        .collect();
+    let items = {
+        let mut out = Vec::with_capacity(rows.len());
+        for r in &rows {
+            out.push(ReferralAppliedRow {
+                block_number: match try_row_get::<i64>(r, "block_number", "GET /v1/referrals/applied") {
+                    Ok(v) => v.to_string(),
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/applied", e),
+                },
+                tx_hash: match try_row_get(r, "tx_hash", "GET /v1/referrals/applied") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/applied", e),
+                },
+                log_index: match try_row_get(r, "log_index", "GET /v1/referrals/applied") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/applied", e),
+                },
+                buyer: match try_row_get(r, "buyer", "GET /v1/referrals/applied") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/applied", e),
+                },
+                referrer: match try_row_get(r, "referrer", "GET /v1/referrals/applied") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/applied", e),
+                },
+                code_hash: match try_row_get(r, "code_hash", "GET /v1/referrals/applied") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/applied", e),
+                },
+                referrer_cred: match try_row_get(r, "referrer_cred", "GET /v1/referrals/applied") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/applied", e),
+                },
+                buyer_cred: match try_row_get(r, "buyer_cred", "GET /v1/referrals/applied") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/applied", e),
+                },
+            });
+        }
+        out
+    };
 
     let next_offset = if items.len() as i64 == lim {
         Some(off + lim)
@@ -436,18 +502,46 @@ async fn referral_referrer_leaderboard(
         Err(e) => return internal_db_error_response("GET /v1/referrals/referrer-leaderboard", e),
     };
 
-    let items: Vec<ReferralReferrerLeaderboardRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(ReferralReferrerLeaderboardRow {
-                rank: r.try_get("rank").ok()?,
-                referrer: r.try_get("referrer").ok()?,
-                total_referrer_cred_wad: r.try_get("total_referrer_cred_wad").ok()?,
-                referred_buy_count: r.try_get("referred_buy_count").ok()?,
-                codes_registered_count: r.try_get("codes_registered_count").ok()?,
-            })
-        })
-        .collect();
+    let items = {
+        let mut out = Vec::with_capacity(rows.len());
+        for r in &rows {
+            out.push(ReferralReferrerLeaderboardRow {
+                rank: match try_row_get(r, "rank", "GET /v1/referrals/referrer-leaderboard") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/referrer-leaderboard", e),
+                },
+                referrer: match try_row_get(r, "referrer", "GET /v1/referrals/referrer-leaderboard") {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/referrer-leaderboard", e),
+                },
+                total_referrer_cred_wad: match try_row_get(
+                    r,
+                    "total_referrer_cred_wad",
+                    "GET /v1/referrals/referrer-leaderboard",
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/referrer-leaderboard", e),
+                },
+                referred_buy_count: match try_row_get(
+                    r,
+                    "referred_buy_count",
+                    "GET /v1/referrals/referrer-leaderboard",
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/referrer-leaderboard", e),
+                },
+                codes_registered_count: match try_row_get(
+                    r,
+                    "codes_registered_count",
+                    "GET /v1/referrals/referrer-leaderboard",
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return corrupt_row_response("GET /v1/referrals/referrer-leaderboard", e),
+                },
+            });
+        }
+        out
+    };
 
     let next_offset = if items.len() as i64 == lim {
         Some(off + lim)

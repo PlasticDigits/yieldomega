@@ -316,6 +316,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             timer_hard_reset: false,
             paid_with_cred: false,
         }),
+        next(DecodedEvent::ArenaBuyRouterBuyViaKumbaya {
+            buyer: alice,
+            charm_wad: u1,
+            gross_doub: u2,
+            pay_kind: 0,
+        }),
         next(DecodedEvent::ArenaReferralCred {
             buyer: alice,
             referrer: addr_byte(0xee),
@@ -405,6 +411,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         1
     );
     assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_arena_buy_router_kumbaya", 100).await,
+        1
+    );
     let buy_epoch: i64 = sqlx::query_scalar(
         "SELECT last_buy_epoch FROM idx_arena_buy WHERE block_number = 100 LIMIT 1",
     )
@@ -438,6 +448,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     api_podium_pool_donations_smoke(&pool).await;
     api_arena_buys_actual_seconds_added_smoke(&pool).await;
     api_arena_activity_smoke(&pool).await;
+    api_issue319_smoke(&pool).await;
 
     persist_decoded_log_autocommit(&pool, &logs[1])
         .await
@@ -1298,6 +1309,119 @@ async fn last_buy_epoch_global_assignment_non_resetting_participant() {
         Some(1)
     );
     assert_eq!(j.get("buy_count").and_then(|v| v.as_i64()), Some(1));
+}
+
+/// GitLab #319 — platform-usage route, Kumbaya buy enrichment, cursor pagination.
+async fn api_issue319_smoke(pool: &sqlx::PgPool) {
+    let tx_id = 31_900u64;
+    let block = 319u64;
+    let alice = addr_byte(0xa1);
+    let charm = U256::from(1_000_000_000_000_000_000u128);
+    let buy_log = sample_log_tx(
+        block,
+        tx_id,
+        1,
+        DecodedEvent::ArenaBuy {
+            buyer: alice,
+            charm_wad: charm,
+            doub_paid: U256::from(DOUB_100),
+            new_deadline: U256::from(1_700_000_319u64),
+            total_doub_raised_after: U256::from(DOUB_100),
+            buy_index: U256::from(99u8),
+            actual_seconds_added: U256::from(60u64),
+            timer_hard_reset: false,
+            paid_with_cred: false,
+        },
+    );
+    let kumbaya_log = sample_log_tx(
+        block,
+        tx_id,
+        0,
+        DecodedEvent::ArenaBuyRouterBuyViaKumbaya {
+            buyer: alice,
+            charm_wad: charm,
+            gross_doub: U256::from(DOUB_100),
+            pay_kind: 0,
+        },
+    );
+    persist_decoded_log_autocommit(pool, &kumbaya_log)
+        .await
+        .expect("persist kumbaya");
+    persist_decoded_log_autocommit(pool, &buy_log)
+        .await
+        .expect("persist kumbaya buy");
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer: chain_timer.clone(),
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/platform-usage?limit=5&velocity_window=1h")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let usage = response_json(res).await;
+    assert!(usage.get("unique_wallets").is_some());
+    assert!(usage.get("warbow").and_then(|v| v.get("steals")).is_some());
+    assert!(usage.get("velocity").and_then(|v| v.get("window")).is_some());
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/buys?limit=5")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let buys = response_json(res).await;
+    let items = buys.get("items").and_then(|v| v.as_array()).expect("items");
+    assert!(
+        items.iter().any(|r| {
+            r.get("entry_pay_asset").and_then(|v| v.as_str()) == Some("eth")
+                && r.get("pay_kind").and_then(|v| v.as_i64()) == Some(0)
+        }),
+        "expected Kumbaya-enriched buy row"
+    );
+    let next_cursor = buys
+        .get("next_cursor")
+        .and_then(|v| v.as_str())
+        .expect("next_cursor");
+    let res2 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/buys?limit=5&cursor={next_cursor}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+
+    let res3 = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/activity?limit=3&cursor=not-a-cursor")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res3.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]

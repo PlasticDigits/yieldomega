@@ -404,6 +404,32 @@ pub async fn persist_decoded_log_conn(
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::ArenaBuyRouterBuyViaKumbaya {
+            buyer,
+            charm_wad,
+            gross_doub,
+            pay_kind,
+        } => {
+            let contract = addr_hex(d.contract);
+            sqlx::query(
+                r#"INSERT INTO idx_arena_buy_router_kumbaya (
+                    block_number, block_timestamp, tx_hash, log_index, contract_address,
+                    buyer, charm_wad, gross_doub, pay_kind
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6, $7::numeric, $8::numeric, $9)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*buyer))
+            .bind(u256_dec(*charm_wad))
+            .bind(u256_dec(*gross_doub))
+            .bind(*pay_kind as i16)
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::Unknown { .. } => {}
     }
     Ok(())

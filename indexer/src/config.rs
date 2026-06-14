@@ -97,7 +97,7 @@ pub struct RegistryContracts {
     /// Legacy JSON field (ignored for Arena v2 ingestion).
     #[serde(rename = "TimeCurveBuyRouter", default)]
     pub timecurve_buy_router: String,
-    /// Optional local Anvil buy router ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); not yet used for log filters.
+    /// Optional local Anvil buy router ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); ingests `BuyViaKumbaya` when set ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
     #[serde(rename = "TimeArenaBuyRouter", default)]
     pub time_arena_buy_router: String,
     #[serde(rename = "PodiumVaults", default)]
@@ -117,6 +117,7 @@ impl AddressRegistry {
             self.contracts.podium_vaults.trim(),
             self.contracts.admin_sell_vault.trim(),
             self.contracts.referral_registry.trim(),
+            self.contracts.time_arena_buy_router.trim(),
         ] {
             if s.is_empty() {
                 continue;
@@ -153,7 +154,7 @@ pub fn ensure_production_address_registry(
     chain_id: u64,
     ingestion_enabled: bool,
     address_registry: &Option<AddressRegistry>,
-    _require_buy_router: bool,
+    require_buy_router: bool,
 ) -> Result<()> {
     if !crate::cors_config::indexer_production_enabled() {
         return Ok(());
@@ -171,7 +172,7 @@ pub fn ensure_production_address_registry(
         return Ok(());
     };
 
-    validate_address_registry_for_production(reg, chain_id, ingestion_enabled, false)
+    validate_address_registry_for_production(reg, chain_id, ingestion_enabled, require_buy_router)
 }
 
 /// Fail closed on misconfigured **`ADDRESS_REGISTRY`** JSON when **`INDEXER_PRODUCTION`** is on.
@@ -184,7 +185,7 @@ pub fn validate_address_registry_for_production(
     reg: &AddressRegistry,
     chain_id: u64,
     ingestion_enabled: bool,
-    _require_buy_router: bool,
+    require_buy_router: bool,
 ) -> Result<()> {
     if reg.chain_id != chain_id {
         bail!(
@@ -245,6 +246,10 @@ pub fn validate_address_registry_for_production(
         bail!(
             "INDEXER_PRODUCTION: no contract addresses resolved for eth_getLogs — check ADDRESS_REGISTRY (GitLab #156)"
         );
+    }
+
+    if require_buy_router {
+        let _ = strict_parse("TimeArenaBuyRouter", &reg.contracts.time_arena_buy_router)?;
     }
 
     Ok(())
@@ -319,11 +324,16 @@ impl Config {
             Err(_) => true,
         };
 
+        let require_buy_router = match std::env::var("INDEXER_REGISTRY_REQUIRE_BUY_ROUTER") {
+            Ok(s) => matches!(s.to_lowercase().as_str(), "1" | "true" | "yes"),
+            Err(_) => false,
+        };
+
         ensure_production_address_registry(
             chain_id,
             ingestion_enabled,
             &address_registry,
-            false,
+            require_buy_router,
         )?;
 
         if let Some(ref reg) = address_registry {

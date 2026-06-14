@@ -12,6 +12,8 @@ use serde_json::json;
 use sqlx::Row;
 
 use crate::api::{internal_db_error_response, with_schema_version, AppState, PageParams};
+use crate::api_pagination::{encode_cursor, parse_cursor};
+use crate::arena_platform_usage::arena_platform_usage;
 use crate::arena_podium_live::{
     fetch_live_podium_conn, last_buy_winner_buy_sec_pool, live_row_has_entrant,
     warbow_top3_from_scores_conn, LivePodiumRow, PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
@@ -29,6 +31,10 @@ pub fn arena_routes() -> axum::Router<AppState> {
         .route("/v1/arena/podiums", axum::routing::get(arena_podiums))
         .route("/v1/arena/buys", axum::routing::get(arena_buys))
         .route("/v1/arena/activity", axum::routing::get(arena_activity))
+        .route(
+            "/v1/arena/platform-usage",
+            axum::routing::get(arena_platform_usage),
+        )
         .route(
             "/v1/arena/wallet/{address}/stats",
             axum::routing::get(arena_wallet_stats),
@@ -345,20 +351,61 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         .into_response()
 }
 
+/// Maps `TimeArenaBuyRouter` `PAY_ETH` / `PAY_STABLE` / `PAY_CL8Y` for API consumers (GitLab #67, #319).
+fn kumbaya_entry_pay_asset(pay_kind: Option<i16>) -> Option<String> {
+    match pay_kind? {
+        0 => Some("eth".to_string()),
+        1 => Some("stable".to_string()),
+        2 => Some("cl8y".to_string()),
+        _ => None,
+    }
+}
+
 async fn arena_buys(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
     let limit = p.limit.clamp(1, 200);
     let offset = p.offset.max(0);
+    let cursor = match parse_cursor(p.cursor.as_deref()) {
+        None => None,
+        Some(Ok(c)) => Some(c),
+        Some(Err(msg)) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": msg })),
+            )
+                .into_response();
+        }
+    };
+    let (cursor_block, cursor_log) = match cursor {
+        Some(c) => (Some(c.block_number), Some(c.log_index)),
+        None => (None, None),
+    };
+    let effective_offset = if cursor.is_some() { 0 } else { offset };
+
     let rows = match sqlx::query(
-        r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
-                  timer_hard_reset, paid_with_cred, actual_seconds_added::text,
-                  new_deadline::text, buy_index::text, log_index,
-                  EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
-           FROM idx_arena_buy
-           ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
+        r#"SELECT b.buyer, b.charm_wad::text, b.doub_paid::text, b.block_number, b.tx_hash,
+                  b.timer_hard_reset, b.paid_with_cred, b.actual_seconds_added::text,
+                  b.new_deadline::text, b.buy_index::text, b.log_index,
+                  EXTRACT(EPOCH FROM b.block_timestamp)::text AS block_timestamp_sec,
+                  k.pay_kind AS kumbaya_pay_kind_raw,
+                  k.gross_doub::text AS router_attested_gross_doub
+           FROM idx_arena_buy b
+           LEFT JOIN LATERAL (
+               SELECT kk.pay_kind, kk.gross_doub
+               FROM idx_arena_buy_router_kumbaya kk
+               WHERE kk.tx_hash = b.tx_hash
+                 AND lower(kk.buyer) = lower(b.buyer)
+                 AND kk.charm_wad = b.charm_wad
+               ORDER BY kk.log_index DESC
+               LIMIT 1
+           ) k ON true
+           WHERE ($3::bigint IS NULL OR (b.block_number, b.log_index) < ($3, $4))
+           ORDER BY b.block_timestamp DESC NULLS LAST, b.block_number DESC, b.log_index DESC
            LIMIT $1 OFFSET $2"#,
     )
     .bind(limit)
-    .bind(offset)
+    .bind(effective_offset)
+    .bind(cursor_block)
+    .bind(cursor_log)
     .fetch_all(&state.pool)
     .await
     {
@@ -382,17 +429,39 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<PageParams>) 
                 "buy_index": r.get::<String, _>("buy_index"),
                 "log_index": r.get::<i32, _>("log_index"),
                 "block_timestamp": r.get::<Option<String>, _>("block_timestamp_sec"),
+                "entry_pay_asset": kumbaya_entry_pay_asset(
+                    r.get::<Option<i16>, _>("kumbaya_pay_kind_raw"),
+                ),
+                "pay_kind": r.get::<Option<i16>, _>("kumbaya_pay_kind_raw"),
+                "router_attested_gross_doub": r.get::<Option<String>, _>("router_attested_gross_doub"),
             })
         })
         .collect();
+
+    let next_cursor = if row_count == limit {
+        rows.last().map(|r| {
+            encode_cursor(
+                r.get::<i64, _>("block_number"),
+                r.get::<i32, _>("log_index"),
+            )
+        })
+    } else {
+        None
+    };
+
     (
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
         Json(json!({
             "items": items,
             "limit": limit,
-            "offset": offset,
-            "next_offset": if row_count == limit { Some(offset + limit) } else { None },
+            "offset": effective_offset,
+            "next_offset": if cursor.is_none() && row_count == limit {
+                Some(offset + limit)
+            } else {
+                None
+            },
+            "next_cursor": next_cursor,
         })),
     )
         .into_response()
@@ -401,6 +470,23 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<PageParams>) 
 async fn arena_activity(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
     let limit = p.limit.clamp(1, 200);
     let offset = p.offset.max(0);
+    let cursor = match parse_cursor(p.cursor.as_deref()) {
+        None => None,
+        Some(Ok(c)) => Some(c),
+        Some(Err(msg)) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": msg })),
+            )
+                .into_response();
+        }
+    };
+    let (cursor_block, cursor_log) = match cursor {
+        Some(c) => (Some(c.block_number), Some(c.log_index)),
+        None => (None, None),
+    };
+    let effective_offset = if cursor.is_some() { 0 } else { offset };
+
     let rows = match sqlx::query(
         r#"SELECT *
            FROM (
@@ -472,11 +558,14 @@ async fn arena_activity(State(state): State<AppState>, Query(p): Query<PageParam
                       EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
                FROM idx_arena_warbow_revenge
            ) activity
+           WHERE ($3::bigint IS NULL OR (block_number, log_index) < ($3, $4))
            ORDER BY block_number DESC, log_index DESC
            LIMIT $1 OFFSET $2"#,
     )
     .bind(limit)
-    .bind(offset)
+    .bind(effective_offset)
+    .bind(cursor_block)
+    .bind(cursor_log)
     .fetch_all(&state.pool)
     .await
     {
@@ -506,14 +595,31 @@ async fn arena_activity(State(state): State<AppState>, Query(p): Query<PageParam
             })
         })
         .collect();
+
+    let next_cursor = if row_count == limit {
+        rows.last().map(|r| {
+            encode_cursor(
+                r.get::<i64, _>("block_number"),
+                r.get::<i32, _>("log_index"),
+            )
+        })
+    } else {
+        None
+    };
+
     (
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
         Json(json!({
             "items": items,
             "limit": limit,
-            "offset": offset,
-            "next_offset": if row_count == limit { Some(offset + limit) } else { None },
+            "offset": effective_offset,
+            "next_offset": if cursor.is_none() && row_count == limit {
+                Some(offset + limit)
+            } else {
+                None
+            },
+            "next_cursor": next_cursor,
         })),
     )
         .into_response()

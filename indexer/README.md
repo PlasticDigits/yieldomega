@@ -27,7 +27,7 @@ When **`INDEXER_PRODUCTION`** is **`1`**, **`true`**, or **`yes`** (case-insensi
 
 1. **CORS** — **`CORS_ALLOWED_ORIGINS`** must be a non-empty comma-separated list of allowed origins ([`src/cors_config.rs`](src/cors_config.rs)).
 2. **Database URL** — **`DATABASE_URL`** must **not** contain placeholder substrings documented in [`src/config.rs`](src/config.rs) (`FORBIDDEN_PRODUCTION_DATABASE_URL_SUBSTRINGS`). This rejects copy-pasted template credentials such as **`CHANGE_ME_BEFORE_DEPLOY`** or the legacy **`:password@`** tutorial pattern ([GitLab #142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142), **`INV-INDEXER-142`** in [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md#indexer-production-database-url-placeholders-gitlab-142)).
-3. **Address registry** — [`ensure_production_address_registry`](src/config.rs) / [`validate_address_registry_for_production`](src/config.rs) fail closed on **`ADDRESS_REGISTRY`** JSON vs **`CHAIN_ID`**, invalid or zero proxy strings, empty resolved log-filter addresses when **`INGESTION_ENABLED`** is true, and **`deploy_block == 0`** on non-Anvil chains ([GitLab #156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156), **`INV-INDEXER-156`** in [invariants](../docs/testing/invariants-and-business-logic.md#indexer-production-address-registry-fail-closed-gitlab-156)). Optional **`TimeCurveBuyRouter`** stays optional unless **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** (then the router proxy must be present for **`BuyViaKumbaya`** ingestion — [GitLab #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)).
+3. **Address registry** — [`ensure_production_address_registry`](src/config.rs) / [`validate_address_registry_for_production`](src/config.rs) fail closed on **`ADDRESS_REGISTRY`** JSON vs **`CHAIN_ID`**, invalid or zero proxy strings, empty resolved log-filter addresses when **`INGESTION_ENABLED`** is true, and **`deploy_block == 0`** on non-Anvil chains ([GitLab #156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156), **`INV-INDEXER-156`** in [invariants](../docs/testing/invariants-and-business-logic.md#indexer-production-address-registry-fail-closed-gitlab-156)). Optional **`TimeArenaBuyRouter`** is included in **`index_addresses()`** when set; export **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** to require a non-zero router for **`BuyViaKumbaya`** ingestion ([#67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67), [#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
 
 Omit **`INDEXER_PRODUCTION`** for local stacks (e.g. [`scripts/start-local-anvil-stack.sh`](../scripts/start-local-anvil-stack.sh) exporting **`postgres://yieldomega:password@…`**).
 
@@ -45,7 +45,7 @@ When **`INDEXER_PRODUCTION=1`** and **`INGESTION_ENABLED`** is not disabled:
 - Confirm **`chain_id`** in that file equals **`CHAIN_ID`**.
 - Confirm every mandatory contract key is the **ERC-1967 proxy** address from your deploy artifact, **not** an implementation row ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)): **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`ReferralRegistry`**, **`PlayCred`** (Arena v2). Legacy v1 keys (`TimeCurve`, `RabbitTreasury`, `FeeRouter`, `PodiumPool`) apply only to historical registries.
 - Set **`deploy_block`** to the deployment anchor block (must be **> 0** except on **`CHAIN_ID=31337`** Anvil).
-- If the stack serves **`BuyViaKumbaya`** rows, set **`TimeCurveBuyRouter`** or export **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** to force the router field populated.
+- If the stack serves **`BuyViaKumbaya`** rows, set **`TimeArenaBuyRouter`** in the registry or export **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** to force the router field populated.
 
 ### Verification ([issue #142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142))
 
@@ -106,7 +106,7 @@ Integration tests in `tests/integration_stage2.rs` run only when **`YIELDOMEGA_P
 
 ### Platform usage (retired HTTP, GitLab [#231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231), [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266))
 
-Legacy **`GET /v1/timecurve/platform-usage`** is **not** served. AUDIT may read **`GET /v1/arena/timers`** until **`GET /v1/arena/platform-usage`** ships. Map: [design — platform usage](../docs/indexer/design.md#arena-platform-usage-http-gitlab-231) · [invariants §231](../docs/testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231).
+**`GET /v1/arena/platform-usage`** (schema ≥ 2.12.0) serves network-wide sale + WarBow usage; **`GET /v1/arena/buys`** and **`GET /v1/arena/activity`** accept optional **`cursor=block:log_index`** watermarks ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)). Map: [design — platform usage](../docs/indexer/design.md#arena-platform-usage-http-gitlab-231).
 
 ### Live podiums (`GET /v1/arena/podiums`, GitLab [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273))
 
