@@ -50,6 +50,8 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 **Wrong-network / Rabby (required for full PASS):** The mock connector cannot change `chainId`. For [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) and issue paths such as [#277](https://gitlab.com/PlasticDigits/yieldomega/-/issues/277) **#7**, use Rabby — [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md) · `bash scripts/verify-rabby-chain-mismatch.sh` · [`.cursor/skills/rabby-cloud-verification/SKILL.md`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
 
+**Collection** — removed; placeholder routes are covered by [`frontend/e2e/surface-shells.spec.ts`](../../frontend/e2e/surface-shells.spec.ts) (non-Anvil UI smoke).
+
 **Referrals `/referrals` (issue #64)** — [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts): mock wallet registers a code and asserts share-link copy UX. See [`referrals.md`](../product/referrals.md) and [manual QA — #64](manual-qa-checklists.md#manual-qa-issue-64).
 
 ## Environment contract (build time)
