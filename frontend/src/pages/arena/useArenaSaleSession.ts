@@ -50,8 +50,6 @@ import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import {
   captureWalletBuySession,
   WALLET_BUY_SESSION_DRIFT_MESSAGE,
-  WALLET_WRITE_NOT_READY_MESSAGE,
-  resolveLiveWriteConnector,
 } from "@/lib/walletBuySessionGuard";
 import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeArenaBuyAmount";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeArenaBuyReceipt";
@@ -101,6 +99,7 @@ import {
   DEFAULT_ARENA_BUY_PREVIEW_POLICY,
   type ArenaBuyPreviewPolicy,
 } from "@/lib/timeArenaBuyPreview";
+import { arenaSaleSessionBuyPreflight } from "@/pages/arena/arenaSaleSessionBuyPreflight";
 
 export type { SaleSessionPhase };
 
@@ -691,11 +690,6 @@ export function useArenaSaleSession(
       ? isNonZeroHexAddress(referralRegistryR.result)
       : (referralMetaLatchRef.current.referralRegistryOn ?? false);
 
-  const referralRegistryAddr =
-    referralRegistryR?.status === "success"
-      ? hexAddressFromRead(referralRegistryR.result)
-      : undefined;
-
   const referralFlatCredWadOnchain =
     referralFlatCredWadR?.status === "success"
       ? (referralFlatCredWadR.result as bigint)
@@ -1254,6 +1248,7 @@ export function useArenaSaleSession(
     spendInputStr,
     spendWei,
     swapRoute,
+    payUsesKumbaya,
   ]);
 
   /**
@@ -1397,46 +1392,28 @@ export function useArenaSaleSession(
 
   const submitBuy = useCallback(async () => {
     setBuyError(null);
-    if (walletStatus !== "connected" || !resolveLiveWriteConnector(wagmiConfig)) {
-      setBuyError(WALLET_WRITE_NOT_READY_MESSAGE);
-      return;
-    }
-    const netErr = chainMismatchWriteMessage(chainId);
-    if (netErr) {
-      setBuyError(netErr);
+    const preflightErr = arenaSaleSessionBuyPreflight({
+      walletStatus,
+      chainId,
+      address: address as HexAddress | undefined,
+      timeArenaAddress: tc,
+      acceptedAsset,
+      arenaPaused,
+      payWith,
+      playCredConfigured,
+      playCredAddress,
+      credCheckoutBoundsGate,
+      walletCooldownRemainingSec,
+      charmWadSelected,
+      isArenaV2,
+      charmBoundsR,
+      hasLatchedCharmBounds: checkoutReadLatchRef.current.charmBounds !== undefined,
+    });
+    if (preflightErr) {
+      setBuyError(preflightErr);
       return;
     }
     if (!address || !tc || !acceptedAsset) {
-      setBuyError("Connect a wallet and wait for arena state (indexer or contract reads).");
-      return;
-    }
-    if (arenaPaused === true) {
-      setBuyError("Time Arena is paused — buys and WarBow DOUB spend are disabled until operators unpause.");
-      return;
-    }
-    if (payWith === "cred") {
-      if (!playCredConfigured || !playCredAddress) {
-        setBuyError("Play CRED is not configured on this arena.");
-        return;
-      }
-      if (credCheckoutBoundsGate.kind === "insufficient_cred") {
-        setBuyError("Not enough Play CRED in your wallet for this CHARM amount.");
-        return;
-      }
-    }
-    if (walletCooldownRemainingSec > 0) {
-      setBuyError("TimeArena: buy cooldown");
-      return;
-    }
-    if (charmWadSelected === undefined || charmWadSelected <= 0n) {
-      setBuyError(`Pick a ${isArenaV2 ? "DOUB" : "CL8Y"} amount inside the live min–max band (and your balance).`);
-      return;
-    }
-    if (
-      charmBoundsR?.status !== "success" &&
-      checkoutReadLatchRef.current.charmBounds === undefined
-    ) {
-      setBuyError("Waiting for onchain CHARM bounds.");
       return;
     }
 
@@ -1610,10 +1587,8 @@ export function useArenaSaleSession(
     charmWadSelected,
     charmBoundsR,
     spendWei,
-    walletBalanceWei,
     useReferral,
     referralRegistryOn,
-    referralRegistryAddr,
     pendingReferralCode,
     plantWarBowFlag,
     writeContractAsync,
@@ -1626,10 +1601,6 @@ export function useArenaSaleSession(
     buyCooldownSecResolved,
     isArenaV2,
     pricePerCharmR,
-    plantWarBowFlag,
-    referralRegistryOn,
-    pendingReferralCode,
-    useReferral,
     playCredAddress,
     playCredConfigured,
     credPerCharmWad,

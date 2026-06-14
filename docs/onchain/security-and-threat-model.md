@@ -92,7 +92,7 @@ Internal review items (not a substitute for an **external audit**):
 | **`ReferralRegistry` `registerCode`** | **Fee-on-transfer** burn mismatch | **Burn-address `balanceOf` delta** vs `registrationBurnAmount` (#123). Test: [`test_feeOnTransfer_referralRegistry_register_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol). |
 | **`TimeArenaBuyRouter` `PAY_STABLE`** | **Fee-on-transfer stable** | Stable ingress balance-delta parity before swap (#123). Test: `TimeArenaBuyRouter.t.sol`. |
 | **`AdminSellVault.sellDoubToUsdm`** | **Slippage / router misconfig** — Owner-only liquidation; bad `minOut` or router address drains value. | **`onlyOwner`**; immutable router wiring; tests in `AdminSellVault.t.sol` ([#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249)). |
-| **`TimeArena.setPaused`** | **Emergency halt scope** — Pause must block buys and WarBow DOUB spends but not break views or flag claims. | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`**; `claimWarBowFlag` unchanged ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). |
+| **`TimeArena.setPaused`** | **Emergency halt scope** — Pause must block participant writes including **`claimWarBowFlag`**. | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`**; all **`_requireLive()`** paths revert when **`paused`** ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)). |
 **Still accepted** (by design / governance): MEV and block ordering on podiums and timers; permissionless **`rollPodiumEpoch`** / **`finalizeWarbowPodium`** for liveness; small rounding residue in DOUB prize splits; **`topUpPodiumPools`** as permissionless sponsorship ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)).
 
 ## Audit and bug bounty (intent)

@@ -290,7 +290,7 @@ without replacing the established Yield Omega cast.
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-FRONTEND-297-ART-MOTION-AUDIO`** | (see summary row above) | `bash scripts/check-art-readme-consumers.sh`; `cd frontend && npm run typecheck && npm run lint && npm test`; visual/browser pass of Home, countdown, `/arena`, `/arena/protocol`, and Referrals |
+| **`INV-FRONTEND-297-ART-MOTION-AUDIO`** | (see summary row above) | `bash scripts/check-art-readme-consumers.sh`; `cd frontend && npm run typecheck && npm run lint && npm test`; visual/browser pass of Home, countdown, **`/`**, `/arena/protocol`, and Referrals |
 
 <a id="frontend-ux-docs-e2e-gitlab-298"></a>
 
@@ -300,7 +300,20 @@ Follow-up to the cyberminimalist shell ([#290](https://gitlab.com/PlasticDigits/
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-FRONTEND-298-UX-DOCS-E2E`** | (see summary row above) | [frontend-content-audit.md](frontend-content-audit.md) · `cd frontend && npm run typecheck && npm run lint && npm test` · `bash scripts/check-arena-naming.sh` · `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena.spec.ts e2e/home.spec.ts e2e/navigation.spec.ts e2e/referrals-surface.spec.ts e2e/footer-site-links.spec.ts e2e/launch-countdown.spec.ts e2e/surface-shells.spec.ts e2e/referral-path.spec.ts`; Rabby/Chromium visual pass per [manual QA §298](manual-qa-checklists.md#manual-qa-issue-298) |
+| **`INV-FRONTEND-298-UX-DOCS-E2E`** | (see summary row above) | [frontend-content-audit.md](frontend-content-audit.md) · `bash scripts/check-doc-anchors.sh` · `cd frontend && npm run typecheck && npm run lint && npm test` · `bash scripts/check-arena-naming.sh` · `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena.spec.ts e2e/home.spec.ts e2e/navigation.spec.ts e2e/referrals-surface.spec.ts e2e/footer-site-links.spec.ts e2e/launch-countdown.spec.ts e2e/surface-shells.spec.ts e2e/referral-path.spec.ts`; Rabby/Chromium visual pass per [manual QA §298](manual-qa-checklists.md#manual-qa-issue-298) |
+
+<a id="docs-product-ui-reconcile-gitlab-320"></a>
+
+### Product / UI / ops doc reconcile (GitLab [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320))
+
+Follow-up to gap analysis [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309): product specs, content audit, pause ops, indexer design, and play skills agree with shipped `TimeArena` constants, `LaunchGate` routes, and indexer HTTP.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-DOCS-320-PRODUCT-CONSTANTS`** | `MAX_PLAYER_LEVEL = 5`, `FIRST_BUY_CRED_BONUS = 1100e18`, `effectiveCharmPriceWad()` for DOUB buys documented consistently in [time-arena.md](../product/time-arena.md) and [arena-v2.md](../product/arena-v2.md) | Manual diff vs [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol), [`ArenaXp.sol`](../../contracts/src/arena/libraries/ArenaXp.sol) |
+| **`INV-DOCS-320-ROUTE-IA`** | Play **`/`**, AUDIT **`/arena/protocol`**, legacy **`/arena`** / **`/timecurve`** → **`/`**; no removed `ArenaSubnav` / decision row in audit docs | [frontend-content-audit.md](frontend-content-audit.md), [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx), `frontendContentAudit.test.ts`, `e2e/navigation.spec.ts` |
+| **`INV-DOCS-320-PAUSE-OPS`** | Ops docs: **`claimWarBowFlag`** gated by **`paused`** via **`_requireLive()`** | [pause-and-final-signoff.md](../operations/pause-and-final-signoff.md), [final-signoff-and-value-movement.md](../operations/final-signoff-and-value-movement.md) |
+| **`INV-DOCS-320-INDEXER-ROUTES`** | [design.md](../indexer/design.md) lists **`GET /v1/arena/last-buy-epoch-pricing`**, **`GET /v1/arena/warbow/latest-bp`**, and **`limit`/`offset`** pagination (not cursor) | [`api_arena.rs`](../../indexer/src/api_arena.rs) |
 
 <a id="frontend-arena-css-naming-gitlab-280"></a>
 
@@ -612,7 +625,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 ### Indexer emitted-event coverage (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112))
 
-**INV-INDEXER-112:** Solidity `event`s emitted by **deployed Arena v2** contracts in [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) must each map to a **`DecodedEvent` variant**, a Postgres **`idx_*` table**, and **`persist_decoded_log_conn`** / **`rollback_after`** coverage in [`reorg.rs`](../../indexer/src/reorg.rs). **ReferralRegistry** events remain first-class when deployed.
+**INV-INDEXER-112:** Solidity `event`s emitted by **deployed Arena v2** contracts in [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) must each map to a **`DecodedEvent` variant**, a Postgres **`idx_*` table**, and **`persist_decoded_log_conn`** / **`rollback_after`** coverage in [`reorg.rs`](../../indexer/src/reorg.rs). **ReferralRegistry** events remain first-class when deployed. **`DoubPresaleVesting`** was removed from the production address registry ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)); **`BuyViaKumbaya`** on **`TimeArenaBuyRouter`** annotates **`idx_arena_buy.pay_kind`** ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
 
 <a id="indexer-timearena-events-gitlab-317"></a>
 
@@ -649,6 +662,18 @@ Vault **`PodiumFunded` / `SeedFunded` / `PodiumEpochFunded` / `AdminVaultFunded`
 | **`INV-INDEXER-317-REORG`** | `rollback_after` clears new `idx_*` tables | `integration_stage2.rs` rollback assertions |
 
 Vault events and **`ReferralCodeRegistered`** remain per the table above and [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267).
+
+<a id="indexer-registry-cleanup-gitlab-319"></a>
+
+### Indexer registry cleanup, Kumbaya ingest, platform-usage API (GitLab [#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319))
+
+| ID | Check |
+|----|--------|
+| **`INV-INDEXER-319-REGISTRY-VESTING`** | **`address-registry.megaeth-mainnet.json`** has no **`DoubPresaleVesting`** entry ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)) |
+| **`INV-INDEXER-319-KUMBAYA-BUY`** | **`TimeArenaBuyRouter`** in **`index_addresses()`**; **`BuyViaKumbaya`** decoded; **`GET /v1/arena/buys`** exposes **`pay_kind`**; optional **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** fail-closed | `config.rs`, `decoder.rs`, `persist.rs`, `bash scripts/verify-time-arena-buy-router-anvil.sh` |
+| **`INV-INDEXER-319-PLATFORM-USAGE`** | **`GET /v1/arena/platform-usage`** returns documented JSON (schema **≥ 2.12.0**); frontend **`fetchArenaPlatformUsage`** wired | `integration_stage2.rs` **`api_platform_usage_smoke`**, `frontend/src/lib/indexerApi.test.ts` |
+| **`INV-INDEXER-319-CURSOR-PAGE`** | **`GET /v1/arena/buys`** and **`GET /v1/arena/activity`** accept **`cursor`** + emit **`next_cursor`** | `api_cursor.rs`, `integration_stage2.rs` **`api_buys_cursor_smoke`** |
+| **`INV-INDEXER-319-NO-SILENT-DROP`** | Referral list handlers return **500** on corrupt row projection (no **`filter_map`** drop) | `api.rs` **`pg_row_required`** |
 
 <a id="indexer-transactional-block-ingestion-gitlab-140"></a>
 
