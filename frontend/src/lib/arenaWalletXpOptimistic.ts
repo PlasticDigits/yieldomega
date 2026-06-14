@@ -28,6 +28,7 @@ export function emptyArenaWalletStats(address: string): ArenaWalletStats {
     last_buy_epoch: "0",
     epoch_charm_wad: "0",
     epoch_charm_total_wad: "0",
+    epoch_buy_count: "0",
     epoch_doub_buy_count: "0",
     pending_cred_accrual: "0",
     claimable_cred_epoch: null,
@@ -98,11 +99,11 @@ function pendingCredDelta(
   weightAfter: bigint,
   totalBefore: bigint,
   totalAfter: bigint,
-  doubBuysBefore: bigint,
-  doubBuysAfter: bigint,
+  epochBuysBefore: bigint,
+  epochBuysAfter: bigint,
 ): bigint {
-  const poolBefore = doubBuysBefore * CRED_PER_BUY_WAD;
-  const poolAfter = doubBuysAfter * CRED_PER_BUY_WAD;
+  const poolBefore = epochBuysBefore * CRED_PER_BUY_WAD;
+  const poolAfter = epochBuysAfter * CRED_PER_BUY_WAD;
   const before =
     weightBefore > 0n && totalBefore > 0n
       ? (poolBefore * weightBefore) / totalBefore
@@ -123,19 +124,19 @@ export function applyCharmCredBuyToWalletStats(
   const totalBefore = BigInt(base.epoch_charm_total_wad ?? "0");
   const weightAfter = weightBefore + charmWad;
   const totalAfter = totalBefore + charmWad;
-  const doubBuysBefore = BigInt(base.epoch_doub_buy_count ?? "0");
-  const doubBuysAfter = paidWithCred ? doubBuysBefore : doubBuysBefore + 1n;
+  const epochBuysBefore = BigInt(
+    base.epoch_buy_count ?? base.epoch_doub_buy_count ?? "0",
+  );
+  const epochBuysAfter = epochBuysBefore + 1n;
   const pending = BigInt(base.pending_cred_accrual ?? "0");
-  const delta = paidWithCred
-    ? 0n
-    : pendingCredDelta(
-        weightBefore,
-        weightAfter,
-        totalBefore,
-        totalAfter,
-        doubBuysBefore,
-        doubBuysAfter,
-      );
+  const delta = pendingCredDelta(
+    weightBefore,
+    weightAfter,
+    totalBefore,
+    totalAfter,
+    epochBuysBefore,
+    epochBuysAfter,
+  );
   let balance = BigInt(base.cred_balance_wad ?? "0");
   if (paidWithCred) {
     balance -= (charmWad * 100_000_000_000_000_000_000n) / 1_000_000_000_000_000_000n;

@@ -66,6 +66,7 @@ describe("Arena command-console production surface (GitLab #291)", () => {
     expect(arenaSimplePage).toContain("arena-command-console__hub-warbow");
     expect(arenaSimplePage).toContain("arena-simple__warbow-gate");
     expect(arenaSimplePage).toContain("<ArenaWarbowHeroPanel");
+    expect(arenaSimplePage).toMatch(/<ArenaWarbowHeroPanel[\s\S]*onOpenWalletProfile=\{onOpenWalletProfile\}/);
   });
 
   it("keeps forbidden sale copy off the play console and wires WarBow profile modal (#318)", () => {
