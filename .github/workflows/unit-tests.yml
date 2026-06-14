@@ -150,7 +150,7 @@ jobs:
           bash scripts/test-anvil-deploy-cl8y-extract.sh
           bash scripts/test-anvil-deploy-caller-scope.sh
 
-  bots-timecurve-test:
+  bots-timearena-test:
     runs-on: ubuntu-latest
     defaults:
       run:

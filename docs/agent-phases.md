@@ -118,7 +118,7 @@ Read docs/product/time-arena.md, docs/product/arena-v2.md, docs/product/primitiv
 
 ## Phase 7 — Retired: Rabbit Treasury (Arena v2)
 
-**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Historical notes: [product/rabbit-treasury.md](product/rabbit-treasury.md). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
+**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
 
 **Goal:** Do not implement or route new user flows through Rabbit Treasury / Burrow deposit-withdraw. Arena v2 prize funding uses **PodiumVaults** and **AdminSellVault** per buy routing.
 
@@ -218,15 +218,9 @@ Read docs/frontend/design.md and docs/frontend/arena-views.md. Scaffold a Vite +
 
 ## Phase 14 — Testing strategy (three stages)
 
-**Doc:** [testing/strategy.md](testing/strategy.md)
+**Docs:** [testing/strategy.md](testing/strategy.md) · [testing/ci.md](testing/ci.md) (CI vs local parity)
 
-**Goal:** Unit → devnet integration → testnet → production gates.
-
-**Agent prompt (copy-paste):**
-
-```text
-Read docs/testing/strategy.md. Add CI documentation (docs or root README) describing required checks per stage. If CI files are allowed, propose a minimal workflow that runs forge test and cargo test only (no secrets). Define exit criteria for devnet integration in checklist form.
-```
+**Goal:** Unit → devnet integration → testnet → production gates. Use **`docs/testing/ci.md`** for what runs in GitHub Actions and local parity commands — do not propose a new workflow doc here.
 
 ---
 

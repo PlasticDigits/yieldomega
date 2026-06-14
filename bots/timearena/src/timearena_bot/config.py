@@ -10,7 +10,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from timecurve_bot.addresses import (
+from timearena_bot.addresses import (
     addresses_from_registry,
     checksum_addr,
     load_registry_file,

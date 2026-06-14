@@ -10,11 +10,11 @@ import typer
 from web3 import Web3
 from web3.contract.contract import Contract
 
-from timecurve_bot.config import BotConfig, load_config
-from timecurve_bot.contracts import arena_doub_address, mock_reserve_contract, timecurve_contract
-from timecurve_bot.rpc import assert_chain_id, make_web3
-from timecurve_bot.state import fetch_sale_snapshot, format_snapshot_human
-from timecurve_bot.strategies import defender, fun, pvp, rando, seed_local, shark
+from timearena_bot.config import BotConfig, load_config
+from timearena_bot.contracts import arena_doub_address, mock_reserve_contract, timecurve_contract
+from timearena_bot.rpc import assert_chain_id, make_web3
+from timearena_bot.state import fetch_sale_snapshot, format_snapshot_human
+from timearena_bot.strategies import defender, fun, pvp, rando, seed_local, shark
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -147,7 +147,7 @@ def cmd_swarm(
 ) -> None:
     """Spawn 3× each strategy + 3 rando (Anvil 31337); one-shot ETH + CL8Y when --allow-anvil-funding."""
     cfg: BotConfig = ctx.obj
-    from timecurve_bot import swarm_runner
+    from timearena_bot import swarm_runner
 
     swarm_runner.run_swarm(skip_mint=skip_mint, cfg=cfg)
 

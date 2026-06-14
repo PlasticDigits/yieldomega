@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from timecurve_bot.config import load_config
+from timearena_bot.config import load_config
 
 
 def test_load_config_minimal(monkeypatch: pytest.MonkeyPatch) -> None:

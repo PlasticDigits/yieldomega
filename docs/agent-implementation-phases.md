@@ -135,19 +135,13 @@ Implement the TimeArena primitive per docs/product/time-arena.md, docs/product/a
 
 ## Implementation phase 3 — Retired: Rabbit Treasury (Burrow)
 
-**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Historical docs: [product/rabbit-treasury.md](product/rabbit-treasury.md). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
+**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
 
 **Goal:** Do not implement new RabbitTreasury deposit/withdraw flows. Arena v2 funds podiums via per-buy DOUB routing to **PodiumVaults** and **AdminSellVault**.
 
 **Exit criteria**
 
 - No active deploy script, indexer decode path, or frontend route for Burrow deposits.
-
-**Agent prompt (copy-paste):**
-
-```text
-Do not implement RabbitTreasury for Arena v2 unless explicitly scoped for historical review. If auditing removal, confirm no active user flow references Burrow deposit/withdraw outside archive docs and CHANGELOG. Arena prize funding is PodiumVaults + AdminSellVault per docs/product/arena-v2.md.
-```
 
 ---
 
