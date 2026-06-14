@@ -103,6 +103,7 @@ jobs:
         run: |
           npm ci
           npm run typecheck
+          npm run lint
           npm test
 
   simulations-test:
