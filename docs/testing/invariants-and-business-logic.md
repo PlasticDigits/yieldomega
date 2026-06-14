@@ -611,6 +611,12 @@ cd frontend && npm ci && npm test
 
 # Python simulations (bounded repricing / eco scenarios — not v1 launchpad sale authority)
 cd simulations && PYTHONPATH=. python3 -m unittest discover -s tests -v
+
+# TimeArena bots (CI: bots-timearena-test job)
+cd bots/timearena && pip install -e ".[dev]" && pytest tests -v
+
+# Doc anchor gate
+bash scripts/check-doc-anchors.sh
 ```
 
 Forge dependencies: [contracts/README.md](../../contracts/README.md).
