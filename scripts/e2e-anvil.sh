@@ -146,7 +146,6 @@ _e2e_start_indexer_if_requested() {
     --argjson chainId 31337 \
     --arg ta "${TA}" \
     --arg pv "${PV}" \
-    --arg av "${AV}" \
     --arg rr "${RR}" \
     --arg tcbr "${KUMBAYA_BUY_ROUTER:-}" \
     --argjson deployBlock "${DEPLOY_BLOCK}" \
@@ -154,7 +153,7 @@ _e2e_start_indexer_if_requested() {
       _comment: "scripts/e2e-anvil.sh indexer-first E2E (#322)",
       chainId: $chainId,
       contracts: (
-        { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr }
+        { TimeArena: $ta, PodiumVaults: $pv, ReferralRegistry: $rr }
         + (if $tcbr != "" then {TimeArenaBuyRouter: $tcbr} else {} end)
       ),
       deployBlock: $deployBlock
