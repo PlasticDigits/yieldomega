@@ -175,10 +175,12 @@ export function AgentFooterCard() {
             <code className="app-footer-agent__code-inline">/v1/*</code>.{" "}
             <code className="app-footer-agent__code-inline">GET /v1/status</code> returns{" "}
             <code className="app-footer-agent__code-inline">schema_version</code>,{" "}
-            <code className="app-footer-agent__code-inline">chain_pointer</code>,{" "}
-            <code className="app-footer-agent__code-inline">max_indexed_block</code>,{" "}
-            <code className="app-footer-agent__code-inline">ingestion_alive</code>, and{" "}
-            <code className="app-footer-agent__code-inline">last_indexed_at_ms</code>. Unexpected SQL failures respond
+            <code className="app-footer-agent__code-inline">max_indexed_block</code>, and{" "}
+            <code className="app-footer-agent__code-inline">ingestion_alive</code> (detailed{" "}
+            <code className="app-footer-agent__code-inline">rpc_metrics</code> on{" "}
+            <code className="app-footer-agent__code-inline">GET /v1/status/ops</code> when{" "}
+            <code className="app-footer-agent__code-inline">INDEXER_EXPOSE_OPS_METRICS=1</code>
+            ). Unexpected SQL failures respond
             with HTTP 500 and a generic <code className="app-footer-agent__code-inline">error</code> string (no raw
             Postgres text in the body — INV-INDEXER-157). Block ingestion commits per-block in a single DB transaction
             (INV-INDEXER-140). Decoded events must cover deployed emits (INV-INDEXER-112).

@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::TimecurveHeadSnapshot;
 use crate::rpc_metrics::RpcMetrics;
 
-const SCHEMA_VERSION: &str = "2.12.0";
+const SCHEMA_VERSION: &str = "2.13.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -47,10 +47,27 @@ fn clamp_limit(l: i64) -> i64 {
     l.clamp(1, 200)
 }
 
+/// When true, [`status_ops`] serves detailed metrics on `GET /v1/status/ops`.
+pub fn expose_ops_metrics() -> bool {
+    std::env::var("INDEXER_EXPOSE_OPS_METRICS")
+        .ok()
+        .is_some_and(|s| matches!(s.trim().to_lowercase().as_str(), "1" | "true" | "yes"))
+}
+
 pub fn router(state: AppState) -> Router {
-    Router::new()
-        .route("/healthz", get(healthz))
+    build_router(state, false)
+}
+
+/// HTTP router with optional per-peer rate limiting on all routes except `/healthz`.
+pub fn router_with_rate_limit(state: AppState) -> Router {
+    build_router(state, true)
+}
+
+fn build_router(state: AppState, rate_limit: bool) -> Router {
+    let health = Router::new().route("/healthz", get(healthz));
+    let mut api = Router::new()
         .route("/v1/status", get(status))
+        .route("/v1/status/ops", get(status_ops))
         .merge(crate::api_arena::arena_routes())
         .route("/v1/referrals/registrations", get(referral_registrations))
         .route("/v1/referrals/applied", get(referral_applied))
@@ -65,8 +82,19 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/referrals/wallet-charm-summary",
             get(referral_wallet_cred_summary),
-        )
-        .with_state(state)
+        );
+    if rate_limit {
+        if let Some(settings) = crate::rate_limit::RateLimitSettings::from_env() {
+            tracing::info!(
+                per_min = settings.per_min.get(),
+                burst = settings.burst.get(),
+                trust_proxy = settings.trust_proxy,
+                "indexer HTTP rate limiting enabled"
+            );
+            api = crate::rate_limit::apply_to_routes(api, settings);
+        }
+    }
+    health.merge(api).with_state(state)
 }
 
 pub(crate) fn with_schema_version(headers: axum::http::HeaderMap) -> axum::http::HeaderMap {
@@ -113,7 +141,7 @@ async fn healthz() -> impl IntoResponse {
     (StatusCode::OK, "ok")
 }
 
-async fn status(State(state): State<AppState>) -> Response {
+async fn status_common_fields(state: &AppState) -> (bool, Option<serde_json::Value>, Option<i64>) {
     let db_ok = sqlx::query_scalar::<_, i32>("SELECT 1")
         .fetch_one(&state.pool)
         .await
@@ -134,7 +162,48 @@ async fn status(State(state): State<AppState>) -> Response {
     .ok()
     .flatten();
 
+    (db_ok, chain_pointer, max_block)
+}
+
+fn rpc_metrics_json(state: &AppState) -> serde_json::Value {
     let rpc_snap = state.rpc_metrics.snapshot();
+    json!({
+        "total_calls": rpc_snap.total_calls,
+        "calls_last_1m": rpc_snap.calls_last_1m,
+        "calls_last_5m": rpc_snap.calls_last_5m,
+        "calls_per_min_1m": rpc_snap.calls_per_min_1m,
+        "calls_per_min_5m": rpc_snap.calls_per_min_5m,
+        "peak_calls_10s": rpc_snap.peak_calls_10s,
+        "by_method": rpc_snap.by_method,
+        "by_caller": rpc_snap.by_caller,
+        "by_method_caller": rpc_snap.by_method_caller,
+    })
+}
+
+/// Public operator smoke surface — trimmed; detailed metrics on [`status_ops`] only.
+async fn status(State(state): State<AppState>) -> Response {
+    let (db_ok, _, max_block) = status_common_fields(&state).await;
+    let body = json!({
+        "schema_version": SCHEMA_VERSION,
+        "database_connected": db_ok,
+        "max_indexed_block": max_block,
+        "ingestion_alive": state.ingestion_alive.load(Ordering::Acquire),
+    });
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+/// Detailed metrics for operators when `INDEXER_EXPOSE_OPS_METRICS=1`.
+async fn status_ops(State(state): State<AppState>) -> Response {
+    if !expose_ops_metrics() {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "not found" })),
+        )
+            .into_response();
+    }
+    let (db_ok, chain_pointer, max_block) = status_common_fields(&state).await;
     let body = json!({
         "schema_version": SCHEMA_VERSION,
         "database_connected": db_ok,
@@ -142,19 +211,8 @@ async fn status(State(state): State<AppState>) -> Response {
         "max_indexed_block": max_block,
         "ingestion_alive": state.ingestion_alive.load(Ordering::Acquire),
         "last_indexed_at_ms": state.last_indexed_at_ms.load(Ordering::Acquire),
-        "rpc_metrics": {
-            "total_calls": rpc_snap.total_calls,
-            "calls_last_1m": rpc_snap.calls_last_1m,
-            "calls_last_5m": rpc_snap.calls_last_5m,
-            "calls_per_min_1m": rpc_snap.calls_per_min_1m,
-            "calls_per_min_5m": rpc_snap.calls_per_min_5m,
-            "peak_calls_10s": rpc_snap.peak_calls_10s,
-            "by_method": rpc_snap.by_method,
-            "by_caller": rpc_snap.by_caller,
-            "by_method_caller": rpc_snap.by_method_caller,
-        },
+        "rpc_metrics": rpc_metrics_json(&state),
     });
-
     let mut res = Json(body).into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
@@ -597,6 +655,62 @@ async fn referral_wallet_cred_summary(
     .into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
+}
+
+#[cfg(test)]
+mod status_exposure_tests {
+    use super::*;
+    use axum::body::Body;
+    use http_body_util::BodyExt;
+    use serde_json::Value;
+    use tower::ServiceExt;
+
+    fn test_state() -> AppState {
+        AppState {
+            pool: sqlx::PgPool::connect_lazy("postgres://invalid").unwrap(),
+            chain_timer: Arc::new(RwLock::new(None)),
+            ingestion_alive: Arc::new(AtomicBool::new(true)),
+            last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+            rpc_metrics: RpcMetrics::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn public_status_omits_rpc_metrics_by_default() {
+        std::env::remove_var("INDEXER_EXPOSE_OPS_METRICS");
+        let app = router(test_state());
+        let res = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/v1/status")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert!(v.get("rpc_metrics").is_none());
+        assert!(v.get("chain_pointer").is_none());
+        assert!(v.get("ingestion_alive").is_some());
+    }
+
+    #[tokio::test]
+    async fn status_ops_not_found_without_flag() {
+        std::env::remove_var("INDEXER_EXPOSE_OPS_METRICS");
+        let app = router(test_state());
+        let res = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/v1/status/ops")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
 }
 
 #[cfg(test)]

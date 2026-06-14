@@ -15,7 +15,7 @@ The indexer records every logical JSON-RPC call at the shared transport layer ([
 | `calls_per_min_1m` / `calls_per_min_5m` | Rolling window rates |
 | `peak_calls_10s` | Max calls in any 10s window (burst) |
 
-**`GET /v1/status`** (schema **≥ 2.11.0**) includes an `rpc_metrics` object. Structured logs emit every **`INDEXER_RPC_METRICS_LOG_SEC`** seconds (default **60**) with target `indexer_rpc_metrics`.
+**`GET /v1/status`** (schema **≥ 2.13.0**) includes an `rpc_metrics` object only when **`INDEXER_EXPOSE_OPS_METRICS=1`** (on **`GET /v1/status/ops`** and optionally on public status). Structured logs emit every **`INDEXER_RPC_METRICS_LOG_SEC`** seconds (default **60**) with target `indexer_rpc_metrics`.
 
 Smoke: `bash scripts/verify-indexer-rpc-metrics.sh` (**`INV-INDEXER-306-STATUS-METRICS`**).
 

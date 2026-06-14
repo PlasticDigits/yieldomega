@@ -2,6 +2,7 @@
 
 //! Binary entrypoint — see `lib.rs` for modules.
 
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 use std::time::Duration;
@@ -138,13 +139,16 @@ async fn main() -> Result<()> {
         last_indexed_at_ms: ingestion_progress.last_indexed_at_ms.clone(),
         rpc_metrics,
     };
-    let app = api::router(state)
+    let app = api::router_with_rate_limit(state)
         .layer(cors_config::cors_layer_for_runtime()?)
         .layer(TraceLayer::new_for_http());
     let listener = tokio::net::TcpListener::bind(config.listen_addr).await?;
     tracing::info!(addr = %config.listen_addr, "API listening");
 
-    axum::serve(listener, app)
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 

@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${ANVIL_PORT:-8548}"
 INDEXER_PORT="${INDEXER_PORT:-3103}"
 RPC="http://127.0.0.1:${PORT}"
-STATUS_URL="http://127.0.0.1:${INDEXER_PORT}/v1/status"
+STATUS_URL="http://127.0.0.1:${INDEXER_PORT}/v1/status/ops"
 PG_URL="${DATABASE_URL:-postgres://yieldomega:password@127.0.0.1:5433/yieldomega_indexer}"
 SCENARIO_SEC="${BENCHMARK_SCENARIO_SEC:-120}"
 SAMPLE_SEC="${BENCHMARK_SAMPLE_SEC:-10}"
@@ -127,6 +127,7 @@ start_indexer() {
   export INGESTION_ENABLED=true
   export RPC_URL="${RPC}"
   export INDEXER_RPC_METRICS_LOG_SEC=30
+  export INDEXER_EXPOSE_OPS_METRICS=1
   cd "${ROOT}/indexer"
   cargo run --release >/tmp/yieldomega_bench306_indexer.log 2>&1 &
   INDEXER_PID=$!
