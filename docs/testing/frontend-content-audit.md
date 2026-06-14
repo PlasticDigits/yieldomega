@@ -68,7 +68,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Forbidden copy | No `\bsale\b` on play console (pre-launch + live); pre-open uses **Arena Opens In** / arena-live framing ([#318](https://gitlab.com/PlasticDigits/yieldomega/-/issues/318)) | `arenaSimplePlaySurface.test.ts`, `arenaSimplePhase.ts` |
 | Wallet profile | WarBow steal-target rival rows open **`WalletProfileModal`** via `onOpenWalletProfile` ([#318](https://gitlab.com/PlasticDigits/yieldomega/-/issues/318)) | `ArenaWarbowHeroPanel.tsx`, `arenaSimplePlaySurface.test.ts` |
 
-**E2E:** `e2e/arena.spec.ts`, `e2e/anvil-arena-*.spec.ts` · **Manual:** [manual QA §291](manual-qa-checklists.md#manual-qa-issue-291), [§292](manual-qa-checklists.md#manual-qa-issue-292)
+**E2E:** `e2e/arena.spec.ts`, `e2e/anvil-arena-*.spec.ts` · **Unit:** `ArenaSimplePage.test.tsx`, `ArenaWarbowHeroPanel.test.tsx`, `ArenaCharmCredCard.test.tsx`, `arenaSaleSessionBuyPreflight.test.ts` ([#321](https://gitlab.com/PlasticDigits/yieldomega/-/issues/321)) · **Manual:** [manual QA §291](manual-qa-checklists.md#manual-qa-issue-291), [§292](manual-qa-checklists.md#manual-qa-issue-292)
 
 ---
 
@@ -160,7 +160,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 
 | Check | Pass criteria | Doc |
 |-------|---------------|-----|
-| Modals | Dark glass; compact headings; explorer links secondary | [design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) |
+| Modals | Dark glass; compact headings; explorer links secondary; `WalletProfileModal.test.tsx` covers close label + escaped addresses ([#321](https://gitlab.com/PlasticDigits/yieldomega/-/issues/321)) | [design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) |
 | Wallet profile | Participant `AddressInline` → `WalletProfileModal` | [arena-views §258](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) |
 | Chain gate | `ChainMismatchWriteBarrier` blocks writes; switch-chain reachable | [wallet-connection §95](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) |
 | Amounts | Human-readable only; no raw wei/WAD in product UI | [design amount display](../frontend/design.md#amount-display-amountdisplay) |
