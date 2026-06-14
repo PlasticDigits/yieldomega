@@ -106,7 +106,7 @@ Integration tests in `tests/integration_stage2.rs` run only when **`YIELDOMEGA_P
 
 ### Platform usage (retired HTTP, GitLab [#231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231), [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266))
 
-Legacy **`GET /v1/timecurve/platform-usage`** is **not** served. AUDIT may read **`GET /v1/arena/timers`** until **`GET /v1/arena/platform-usage`** ships. Map: [design — platform usage](../docs/indexer/design.md#arena-platform-usage-http-gitlab-231) · [invariants §231](../docs/testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231).
+Legacy **`GET /v1/timecurve/platform-usage`** is **not** served. Use **`GET /v1/arena/platform-usage`** (schema **≥ 2.12.0**). Map: [design — platform usage](../docs/indexer/design.md#arena-platform-usage-http-gitlab-231) · **`INV-INDEXER-319-PLATFORM-USAGE`** · [invariants §319](../docs/testing/invariants-and-business-logic.md#indexer-registry-cleanup-gitlab-319).
 
 ### Live podiums (`GET /v1/arena/podiums`, GitLab [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273))
 

@@ -207,6 +207,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "/v1/arena/timers",
         "/v1/arena/podiums",
         "/v1/arena/buys?limit=2",
+        "/v1/arena/platform-usage?limit=2",
         "/v1/referrals/registrations?limit=2",
         "/v1/referrals/applied?limit=2",
         "/v1/referrals/referrer-leaderboard?limit=2",
@@ -222,6 +223,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
             j.get("items").is_some()
                 || j.get("rows").is_some()
                 || j.get("last_buy_deadline_sec").is_some()
+                || j.get("total_buys").is_some()
         );
     }
 
@@ -490,6 +492,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     api_podium_pool_donations_smoke(&pool).await;
     api_arena_buys_actual_seconds_added_smoke(&pool).await;
     api_arena_activity_smoke(&pool).await;
+    api_platform_usage_smoke(&pool).await;
+    api_buys_cursor_smoke(&pool).await;
+    api_buy_via_kumbaya_pay_kind_smoke(&pool).await;
 
     persist_decoded_log_autocommit(&pool, &logs[1])
         .await
@@ -1358,6 +1363,162 @@ async fn last_buy_epoch_global_assignment_non_resetting_participant() {
         Some(1)
     );
     assert_eq!(j.get("buy_count").and_then(|v| v.as_i64()), Some(1));
+}
+
+/// `GET /v1/arena/platform-usage` aggregates buys + WarBow ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
+async fn api_platform_usage_smoke(pool: &sqlx::PgPool) {
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/platform-usage?limit=5&velocity_window=1h")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert!(j.get("total_buys").is_some());
+    assert!(j.get("warbow").and_then(|w| w.get("steals")).is_some());
+    assert!(j.get("velocity").and_then(|v| v.get("window")).is_some());
+    assert!(j.get("wallets").and_then(|w| w.get("items")).is_some());
+}
+
+/// Cursor pagination on `GET /v1/arena/buys` ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
+async fn api_buys_cursor_smoke(pool: &sqlx::PgPool) {
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/buys?limit=1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let cursor = j
+        .get("next_cursor")
+        .and_then(|v| v.as_str())
+        .expect("next_cursor");
+    assert!(!cursor.is_empty());
+
+    let res2 = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/buys?limit=1&cursor={cursor}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+    let j2 = response_json(res2).await;
+    let first_tx = j["items"][0]["tx_hash"].as_str().unwrap();
+    let second_tx = j2["items"][0]["tx_hash"].as_str().unwrap();
+    assert_ne!(first_tx, second_tx);
+}
+
+/// `BuyViaKumbaya` annotates `idx_arena_buy.pay_kind` on the same tx ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
+async fn api_buy_via_kumbaya_pay_kind_smoke(pool: &sqlx::PgPool) {
+    let block = 319u64;
+    let tx_id = 31_900u64;
+    let alice = addr_byte(0xc3);
+
+    let buy_log = sample_log_tx(
+        block,
+        tx_id,
+        1,
+        DecodedEvent::ArenaBuy {
+            buyer: alice,
+            charm_wad: U256::from(1_000_000_000_000_000_000u128),
+            doub_paid: U256::from(DOUB_100),
+            new_deadline: U256::from(1_700_000_200u64),
+            total_doub_raised_after: U256::from(DOUB_100),
+            buy_index: U256::from(2u8),
+            actual_seconds_added: U256::from(120u64),
+            timer_hard_reset: false,
+            paid_with_cred: false,
+        },
+    );
+    persist_decoded_log_autocommit(pool, &buy_log)
+        .await
+        .expect("persist buy for kumbaya smoke");
+
+    let kumbaya_log = sample_log_tx(
+        block,
+        tx_id,
+        2,
+        DecodedEvent::ArenaBuyViaKumbaya {
+            buyer: alice,
+            charm_wad: U256::from(1_000_000_000_000_000_000u128),
+            gross_doub: U256::from(DOUB_100),
+            pay_kind: 0,
+        },
+    );
+    persist_decoded_log_autocommit(pool, &kumbaya_log)
+        .await
+        .expect("persist kumbaya for smoke");
+
+    let pay_kind: Option<i16> = sqlx::query_scalar(
+        "SELECT pay_kind FROM idx_arena_buy WHERE tx_hash = $1 AND log_index = 1",
+    )
+    .bind(format!("{:#x}", buy_log.tx_hash))
+    .fetch_one(pool)
+    .await
+    .expect("pay_kind column");
+    assert_eq!(pay_kind, Some(0));
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/buys?limit=10")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let row = j["items"]
+        .as_array()
+        .and_then(|items| {
+            items.iter().find(|r| {
+                r.get("tx_hash")
+                    .and_then(|v| v.as_str())
+                    .map(|h| h.eq_ignore_ascii_case(&format!("{:#x}", buy_log.tx_hash)))
+                    .unwrap_or(false)
+            })
+        })
+        .expect("kumbaya buy row");
+    assert_eq!(row.get("pay_kind").and_then(|v| v.as_i64()), Some(0));
 }
 
 #[tokio::test]

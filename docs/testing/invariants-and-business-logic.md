@@ -625,7 +625,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 ### Indexer emitted-event coverage (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112))
 
-**INV-INDEXER-112:** Solidity `event`s emitted by **deployed Arena v2** contracts in [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) must each map to a **`DecodedEvent` variant**, a Postgres **`idx_*` table**, and **`persist_decoded_log_conn`** / **`rollback_after`** coverage in [`reorg.rs`](../../indexer/src/reorg.rs). **ReferralRegistry** events remain first-class when deployed.
+**INV-INDEXER-112:** Solidity `event`s emitted by **deployed Arena v2** contracts in [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) must each map to a **`DecodedEvent` variant**, a Postgres **`idx_*` table**, and **`persist_decoded_log_conn`** / **`rollback_after`** coverage in [`reorg.rs`](../../indexer/src/reorg.rs). **ReferralRegistry** events remain first-class when deployed. **`DoubPresaleVesting`** was removed from the production address registry ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)); **`BuyViaKumbaya`** on **`TimeArenaBuyRouter`** annotates **`idx_arena_buy.pay_kind`** ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
 
 <a id="indexer-timearena-events-gitlab-317"></a>
 
@@ -662,6 +662,18 @@ Vault **`PodiumFunded` / `SeedFunded` / `PodiumEpochFunded` / `AdminVaultFunded`
 | **`INV-INDEXER-317-REORG`** | `rollback_after` clears new `idx_*` tables | `integration_stage2.rs` rollback assertions |
 
 Vault events and **`ReferralCodeRegistered`** remain per the table above and [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267).
+
+<a id="indexer-registry-cleanup-gitlab-319"></a>
+
+### Indexer registry cleanup, Kumbaya ingest, platform-usage API (GitLab [#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319))
+
+| ID | Check |
+|----|--------|
+| **`INV-INDEXER-319-REGISTRY-VESTING`** | **`address-registry.megaeth-mainnet.json`** has no **`DoubPresaleVesting`** entry ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)) |
+| **`INV-INDEXER-319-KUMBAYA-BUY`** | **`TimeArenaBuyRouter`** in **`index_addresses()`**; **`BuyViaKumbaya`** decoded; **`GET /v1/arena/buys`** exposes **`pay_kind`**; optional **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** fail-closed | `config.rs`, `decoder.rs`, `persist.rs`, `bash scripts/verify-time-arena-buy-router-anvil.sh` |
+| **`INV-INDEXER-319-PLATFORM-USAGE`** | **`GET /v1/arena/platform-usage`** returns documented JSON (schema **≥ 2.12.0**); frontend **`fetchArenaPlatformUsage`** wired | `integration_stage2.rs` **`api_platform_usage_smoke`**, `frontend/src/lib/indexerApi.test.ts` |
+| **`INV-INDEXER-319-CURSOR-PAGE`** | **`GET /v1/arena/buys`** and **`GET /v1/arena/activity`** accept **`cursor`** + emit **`next_cursor`** | `api_cursor.rs`, `integration_stage2.rs` **`api_buys_cursor_smoke`** |
+| **`INV-INDEXER-319-NO-SILENT-DROP`** | Referral list handlers return **500** on corrupt row projection (no **`filter_map`** drop) | `api.rs` **`pg_row_required`** |
 
 <a id="indexer-transactional-block-ingestion-gitlab-140"></a>
 
