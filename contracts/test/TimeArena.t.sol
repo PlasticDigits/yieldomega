@@ -480,6 +480,19 @@ contract TimeArenaTest is Test {
         assertEq(arena.epochCredPool(ep), poolBefore + 35e18);
     }
 
+    /// INV-TIME-ARENA-CRED-POOL-ACCRUE: each `buyWithCred` adds 35 CRED to the active epoch pool (#311).
+    function test_buyWithCred_accrues_epoch_cred_pool() public {
+        uint256 ep = arena.lastBuyEpoch();
+        assertEq(arena.epochCredPool(ep), 0);
+        vm.prank(alice);
+        arena.buyWithCred(1e18);
+        assertEq(arena.epochCredPool(ep), 35e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buyWithCred(2e18);
+        assertEq(arena.epochCredPool(ep), 70e18);
+    }
+
     /// INV-TIME-ARENA-CRED-PRO-RATA-MIXED: DOUB + CRED buyers share epoch pool fairly (#311).
     function test_cred_pro_rata_mixed_doub_and_cred_buyers() public {
         vm.prank(alice);
@@ -506,6 +519,46 @@ contract TimeArenaTest is Test {
         assertEq(cred.balanceOf(bob), 1000e18 - 200e18 + bobShare);
         assertLe(aliceShare + bobShare, 70e18);
         assertGe(aliceShare + bobShare, 70e18 - 2);
+    }
+
+    /// INV-TIME-ARENA-CRED-POOL-EPOCH-BOUNDARY: `buyWithCred` at epoch roll credits pre-roll pool (#311).
+    function test_buyWithCred_epoch_boundary_credits_correct_pool() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.epochCredPool(0), 35e18);
+
+        _endLastBuyEpoch();
+        assertEq(arena.lastBuyEpoch(), 1);
+        _warpPastBuyCooldown();
+
+        vm.prank(bob);
+        arena.buyWithCred(1e18);
+        assertEq(arena.epochCredPool(0), 35e18);
+        assertEq(arena.epochCredPool(1), 35e18);
+    }
+
+    /// INV-TIME-ARENA-CRED-NO-EXTRACT: CRED-only buyer cannot claim more than fair pro-rata share (#311).
+    function test_buyWithCred_only_fair_pro_rata_claim() public {
+        vm.prank(alice);
+        arena.buyWithCred(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buyWithCred(1e18);
+
+        uint256 ep = 0;
+        assertEq(arena.epochCredPool(ep), 70e18);
+        _endLastBuyEpoch();
+
+        vm.prank(alice);
+        arena.claimCred(ep);
+        uint256 aliceGot = cred.balanceOf(alice);
+        vm.prank(bob);
+        arena.claimCred(ep);
+        uint256 bobGot = cred.balanceOf(bob);
+
+        assertEq(aliceGot, 1000e18 - 100e18 + 35e18);
+        assertEq(bobGot, 1000e18 - 100e18 + 35e18);
+        assertEq(aliceGot - (1000e18 - 100e18) + bobGot - (1000e18 - 100e18), 70e18);
     }
 
     /// INV-TIME-ARENA-CRED-EPOCH-BOUNDARY: `buyWithCred` at hard reset credits post-reset epoch pool (#311).

@@ -345,7 +345,7 @@ Parent: [#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248) (Play C
 |----|----------|-------------------|
 | **`INV-TIME-ARENA-CRED-BURN-SCALE`** | `credBurn = mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD)`; reverts on zero burn / insufficient balance | `test_buy_with_cred`, `test_buyWithCred_10charm_burns_1000_cred`, `test_buyWithCred_min_charm_burns_scaled`, `test_buyWithCred_reverts_insufficient_cred` |
 | **`INV-TIME-ARENA-CRED-BURN-BOUNDS`** | Same **0.99–10** CHARM band as DOUB buys | `test_buyWithCred_reverts_charm_bounds` |
-| **`INV-TIME-ARENA-CRED-POOL-PARITY`** | CRED path accrues epoch CHARM weight **and** `epochCredPool += CRED_PER_BUY`; **no** DOUB routing | `test_cred_accrue_on_cred_buy`, `test_cred_pro_rata_mixed_doub_and_cred_buyers`, `test_cred_accrue_buyWithCred_at_epoch_boundary` ([#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311)) |
+| **`INV-TIME-ARENA-CRED-POOL-PARITY`** | CRED path accrues epoch CHARM weight **and** `epochCredPool += CRED_PER_BUY`; **no** DOUB routing | `test_cred_accrue_on_cred_buy`, `test_buyWithCred_accrues_epoch_cred_pool`, `test_cred_pro_rata_mixed_doub_and_cred_buyers`, `test_cred_accrue_buyWithCred_at_epoch_boundary`, `test_buyWithCred_epoch_boundary_credits_correct_pool`, `test_buyWithCred_only_fair_pro_rata_claim`, `verify-cred-buy-anvil.sh` ([#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311)) |
 | **`INV-TIME-ARENA-FIRST-BUY-SCHEDULE`** | `buyCount == 0` before increment → `epochFixedCredBonus[lastBuyEpoch+1] += 1100e18`; emits **`FirstBuyCredScheduled`** | `test_first_buy_doub_schedules_bonus`, `test_first_buy_cred_schedules_bonus_once`, `test_second_buy_no_additional_bonus`, `verify-cred-buy-anvil.sh` |
 | **`INV-TIME-ARENA-FIRST-BUY-EPOCH`** | Hard-reset in same tx uses **post-reset** `lastBuyEpoch + 1`; flag not reset on epoch roll | `test_first_buy_hard_reset_targets_post_epoch`, `test_first_buy_flag_survives_epoch_roll` |
 | **`INV-TIME-ARENA-FIRST-BUY-CLAIM`** | `pendingCred` / `claimCred` include bonus; bonus-only claim without CHARM weight; clears bonus on claim | `test_claim_cred_bonus_only_no_charm`, `test_claim_cred_pro_rata_plus_bonus`, `test_claimCred_reverts_active_epoch` |
@@ -360,9 +360,9 @@ Parent gap analysis: [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
-| **`INV-TIME-ARENA-CRED-POOL-PARITY`** | Each `buyWithCred` adds **`CRED_PER_BUY`** (35e18) to `epochCredPool[lastBuyEpoch]`; CHARM weight unchanged vs prior CRED path | `test_cred_accrue_on_cred_buy`, `test_buy_with_cred` |
-| **`INV-TIME-ARENA-CRED-PRO-RATA-MIXED`** | Mixed DOUB/CRED buyers in one epoch split pool pro-rata by CHARM; CRED-only buyer cannot over-claim | `test_cred_pro_rata_mixed_doub_and_cred_buyers` |
-| **`INV-TIME-ARENA-CRED-EPOCH-BOUNDARY`** | Hard-reset `buyWithCred` credits **post-reset** epoch pool only | `test_cred_accrue_buyWithCred_at_epoch_boundary` |
+| **`INV-TIME-ARENA-CRED-POOL-PARITY`** | Each `buyWithCred` adds **`CRED_PER_BUY`** (35e18) to `epochCredPool[lastBuyEpoch]`; CHARM weight unchanged vs prior CRED path | `test_cred_accrue_on_cred_buy`, `test_buy_with_cred`, `test_buyWithCred_accrues_epoch_cred_pool`, `verify-cred-buy-anvil.sh` |
+| **`INV-TIME-ARENA-CRED-PRO-RATA-MIXED`** | Mixed DOUB/CRED buyers in one epoch split pool pro-rata by CHARM; CRED-only buyer cannot over-claim | `test_cred_pro_rata_mixed_doub_and_cred_buyers`, `test_buyWithCred_only_fair_pro_rata_claim` |
+| **`INV-TIME-ARENA-CRED-EPOCH-BOUNDARY`** | Hard-reset `buyWithCred` credits **post-reset** epoch pool only; soft epoch roll credits prior epoch | `test_cred_accrue_buyWithCred_at_epoch_boundary`, `test_buyWithCred_epoch_boundary_credits_correct_pool` |
 
 <a id="arena-player-progression-gitlab-299"></a>
 
