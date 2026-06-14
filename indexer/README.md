@@ -37,6 +37,22 @@ When **`INDEXER_PRODUCTION`** is **`1`**, **`true`**, or **`yes`** (case-insensi
 
 Omit **`INDEXER_PRODUCTION`** for local stacks (e.g. [`scripts/start-local-anvil-stack.sh`](../scripts/start-local-anvil-stack.sh) exporting **`postgres://yieldomega:password@…`**).
 
+<a id="internet-facing-indexer-gitlab-326"></a>
+
+### Internet-facing indexer (GitLab [#326](https://gitlab.com/PlasticDigits/yieldomega/-/issues/326))
+
+Security audit **F-04** ([#325](https://gitlab.com/PlasticDigits/yieldomega/-/issues/325)): any indexer URL reachable from the public internet must use production guards so browsers only receive CORS headers for your frontend origin(s).
+
+**Operator checklist** (before exposing **`LISTEN_ADDR`** beyond loopback):
+
+1. Set **`INDEXER_PRODUCTION=1`** (or **`true`** / **`yes`**).
+2. Set **`CORS_ALLOWED_ORIGINS`** to your production frontend origin(s) only (comma-separated exact origins, e.g. `https://yieldomega.example`).
+3. Use a non-placeholder **`DATABASE_URL`** (see **`INV-INDEXER-142`** above).
+4. Provide a validated **`ADDRESS_REGISTRY`** matching **`CHAIN_ID`** when ingestion is enabled (see **`INV-INDEXER-156`** above).
+5. Prefer binding **`0.0.0.0:PORT`** only behind a reverse proxy or private network; the process logs a **warning** if **`LISTEN_ADDR`** is not loopback and **`INDEXER_PRODUCTION`** is unset — permissive CORS remains active until production mode is enabled.
+
+Local Anvil stacks keep the default **`127.0.0.1:3100`** and omit **`INDEXER_PRODUCTION`**; permissive CORS on loopback is expected. Cross-link: [deployment guide — configure the indexer](../docs/operations/deployment-guide.md#configure-the-indexer) · **`INV-INDEXER-326-PUBLIC-BIND-CORS`** in [invariants](../docs/testing/invariants-and-business-logic.md#indexer-public-bind-cors-guard-gitlab-326).
+
 ### Default address registry (MegaETH mainnet)
 
 When **`ADDRESS_REGISTRY_PATH`** is **unset** or **empty**, the binary looks for **`address-registry.megaeth-mainnet.json`** next to the `indexer/` crate (same path used at compile time via **`CARGO_MANIFEST_DIR`**). If that file exists **and** its JSON **`chain_id`** equals **`CHAIN_ID`**, it is loaded automatically. Otherwise ingestion behaves as if no registry was configured until you set **`ADDRESS_REGISTRY_PATH`** explicitly.

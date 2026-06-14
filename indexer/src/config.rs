@@ -67,6 +67,27 @@ pub fn first_forbidden_production_database_url_substring(
         .find(|sub| lowered.contains(sub))
 }
 
+/// True when the HTTP API bind address is loopback-only (`127.0.0.0/8` or `::1`).
+pub fn is_loopback_listen_addr(addr: SocketAddr) -> bool {
+    addr.ip().is_loopback()
+}
+
+/// Emit a high-visibility warning when the API binds a non-loopback address without production
+/// CORS guards ([GitLab #325](https://gitlab.com/PlasticDigits/yieldomega/-/issues/325) F-04 /
+/// [#326](https://gitlab.com/PlasticDigits/yieldomega/-/issues/326)).
+pub fn warn_public_bind_without_production(listen_addr: SocketAddr) {
+    if crate::cors_config::indexer_production_enabled() || is_loopback_listen_addr(listen_addr) {
+        return;
+    }
+    tracing::warn!(
+        listen_addr = %listen_addr,
+        "LISTEN_ADDR is not loopback but INDEXER_PRODUCTION is unset — API uses permissive CORS \
+         (Access-Control-Allow-Origin: *); third-party sites can read responses in browsers. \
+         For internet-facing deploys set INDEXER_PRODUCTION=1 and CORS_ALLOWED_ORIGINS — see \
+         indexer/README.md#internet-facing-indexer-gitlab-326 and docs/operations/deployment-guide.md"
+    );
+}
+
 /// Fail when `INDEXER_PRODUCTION` is set and `DATABASE_URL` still looks like a copy-pasted template.
 pub fn ensure_production_database_url(database_url: &str) -> Result<()> {
     if !crate::cors_config::indexer_production_enabled() {
@@ -626,5 +647,57 @@ mod production_registry_validation_tests {
         let r = reg(1, 1, filled_contracts(ADDR_A));
         let addrs = r.index_addresses();
         assert_eq!(addrs.len(), 5);
+    }
+}
+
+#[cfg(test)]
+mod public_bind_guard_tests {
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+    #[test]
+    fn loopback_ipv4_and_ipv6() {
+        assert!(is_loopback_listen_addr(
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 3100)
+        ));
+        assert!(is_loopback_listen_addr(SocketAddr::new(
+            IpAddr::V6(Ipv6Addr::LOCALHOST),
+            3100
+        )));
+    }
+
+    #[test]
+    fn non_loopback_bind_addresses() {
+        assert!(!is_loopback_listen_addr(SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+            3100
+        )));
+        assert!(!is_loopback_listen_addr(SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+            3100
+        )));
+        assert!(!is_loopback_listen_addr(SocketAddr::new(
+            IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+            3100
+        )));
+    }
+
+    #[test]
+    fn warn_skipped_on_loopback_without_production() {
+        std::env::remove_var("INDEXER_PRODUCTION");
+        warn_public_bind_without_production(SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            3100,
+        ));
+    }
+
+    #[test]
+    fn warn_skipped_when_production_on_public_bind() {
+        std::env::set_var("INDEXER_PRODUCTION", "1");
+        warn_public_bind_without_production(SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+            3100,
+        ));
+        std::env::remove_var("INDEXER_PRODUCTION");
     }
 }
