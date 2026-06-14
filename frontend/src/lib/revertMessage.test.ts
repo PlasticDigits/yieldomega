@@ -31,7 +31,7 @@ describe("friendlyRevertMessage", () => {
   it("maps TimeArena not-started to arena framing (#318)", () => {
     expect(friendlyRevertMessage("TimeArena: not started")).toBe("The arena has not opened yet.");
     expect(friendlyRevertMessage("TimeArena: timer expired")).toBe("The arena timer has expired.");
-    expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).toContain("arena is not open");
+    expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).toContain("Arena buys are not open");
     expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).not.toMatch(/\bsale\b/i);
   });
 

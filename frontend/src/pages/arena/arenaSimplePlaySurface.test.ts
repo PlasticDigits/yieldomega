@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { friendlyRevertMessage } from "@/lib/revertMessage";
-import { phaseNarrative } from "@/pages/arena/arenaSimplePhase";
+import { phaseNarrative, preLaunchBuyGateMessage } from "@/pages/arena/arenaSimplePhase";
 
 const arenaDir = path.resolve(__dirname);
 
@@ -26,7 +26,7 @@ describe("Arena play surface copy (#318 · INV-FRONTEND-298-UX-DOCS-E2E)", () =>
     expect(arenaSimplePage).not.toMatch(/The sale has not opened yet/i);
     expect(arenaSimplePage).not.toMatch(/>\s*[^<{]*\bsale\b[^<{]*</i);
     expect(arenaSimplePage).toContain("preLaunchBuyGateMessage()");
-    expect(arenaSimplePage).toContain("Buy CHARM unlocks automatically");
+    expect(preLaunchBuyGateMessage()).toContain("Buy CHARM unlocks automatically");
   });
 
   it("uses arenaSimplePhase pre-launch narrative without sale wording", () => {
