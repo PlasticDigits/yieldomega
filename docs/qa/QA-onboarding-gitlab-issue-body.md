@@ -215,7 +215,7 @@ See [arena-v2.md § DOUB prize routing](../product/arena-v2.md#doub-prize-routin
 - [ ] **A2** — Optional: `SKIP_ANVIL_RICH_STATE=1` for live arena + default swarm (see [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh)); `START_BOT_SWARM=0` to skip bots.
 - [ ] **A3** — `cd frontend && npm ci && npm run dev` — open **`/arena`**. Restart Vite if dev started **before** `frontend/.env.local` existed.
 - [ ] **A4** — `bash scripts/sync-bot-env-from-frontend.sh` — **`bots/timearena/.env.local`** aligned with `VITE_*`.
-- [ ] **A5** — `cd bots/timearena && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"` — **`timearena-bot`** / `import web3` works.
+- [ ] **A5** — `cd bots/timearena && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"` — **`timearena-bot --help`** / `import web3` works.
 - [ ] **A6** — QA wallet: add **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES=<0x...>`** to **`bots/timearena/.env.local`**; re-run swarm or stack so one-shot funding includes your wallet — same 10k ETH + DOUB mint as swarm bots (Anvil **31337** + **`--allow-anvil-funding`** only).
 - [ ] **A7** — Connect browser wallet with the **same** account as A6 — can submit buys / WarBow txs from UI.
 - [ ] **A8** — Smoke indexer: `curl -s http://127.0.0.1:<INDEXER_PORT>/v1/arena/buys?limit=5` — JSON rows after activity.
