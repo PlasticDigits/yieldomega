@@ -116,7 +116,7 @@ parity_field() {
       ;;
     block_timestamp)
       db_val="$(psql "${PG_URL}" -tAc \
-        "SELECT EXTRACT(EPOCH FROM block_timestamp)::text FROM idx_arena_buy WHERE tx_hash = '${BUY_TX}' LIMIT 1")"
+        "SELECT FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text FROM idx_arena_buy WHERE tx_hash = '${BUY_TX}' LIMIT 1")"
       ;;
     *) die "unknown parity field ${field}" ;;
   esac
