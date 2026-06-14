@@ -306,10 +306,13 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     /// @notice Gross DOUB wei for `buy` / `buyFor` at the current block — `eth_call` / `staticcall` safe (#315).
     /// @dev When Last Buy is in the hard-reset band (`remaining < podiumResetBelowRemainingSec[0]`),
-    ///      samples the same TWAP/spot anchor as `_reanchorEpochCharmPrice` **without** writing state.
-    ///      Otherwise uses `effectiveCharmPriceWad()` (epoch anchor + 10%/day growth).
-    ///      External reads only: Anvil Kumbaya `quoteExactOutput` or MegaETH `ArenaCharmPriceTwap.compute` (#303).
-    ///      Integrators: prefer this over `effectiveCharmPriceWad` for swap sizing at the reset boundary.
+    ///      samples the same anchor as `_reanchorEpochCharmPrice` **before** the buy writes state:
+    ///      Anvil spot via `setCharmAnchorOracle`, MegaETH **4326** Kumbaya V3 TWAP (`ArenaCharmPriceTwap`),
+    ///      or falls back to stored `epochCharmAnchorWad` / `charmPriceWad`. Otherwise uses
+    ///      `effectiveCharmPriceWad()` (epoch anchor + 10%/day growth). External pool/oracle reads
+    ///      are view-only — no state writes on this path. Integrators: prefer this over
+    ///      `effectiveCharmPriceWad` for swap sizing at the reset boundary. TWAP re-anchor is sampled
+    ///      at tx time, so same-block sandwich cannot underpay vs the executed buy (#315).
     function doubOwedForBuy(uint256 charmWad) external view returns (uint256) {
         if (_willLastBuyHardReset()) {
             (uint256 anchorWad,) = _sampleCharmAnchor();
@@ -865,6 +868,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         charmPriceWad = wad;
     }
 
+    /// @dev Read-only anchor sample for hard-reset re-anchor and `doubOwedForBuy` preview (#315).
     function _sampleCharmAnchor() internal view returns (uint256 anchorWad, uint256 doubUsdWad) {
         if (charmAnchorKumbayaRouter != address(0) && charmAnchorCl8y != address(0)) {
             return AnvilKumbayaPools.charmPriceWadFromSpot(
