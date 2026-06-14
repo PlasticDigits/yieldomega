@@ -19,8 +19,9 @@ This document describes **Playwright E2E tests that exercise the frontend agains
 
 | Mode | Indexer | Arena display | Typical script |
 |------|---------|---------------|----------------|
-| **Minimal** | Omitted (`VITE_INDEXER_URL` unset) | Degraded banner; podiums/timers/sale head empty — **no** hidden browser RPC polling | `bash scripts/e2e-anvil.sh` (mock wallet + contract writes still PASS) |
-| **Full stack** | Running + URL in `frontend/.env.local` | Live podiums, timers, buy hub from `GET /v1/arena/*` | `bash scripts/start-qa-local-full-stack.sh` · `bash scripts/verify-podium-live-anvil.sh` |
+| **Minimal** | Omitted (`VITE_INDEXER_URL` unset) | Degraded banner; podiums/timers/sale head empty — **no** hidden browser RPC polling | `bash scripts/e2e-anvil.sh` (mock wallet + contract writes still PASS; includes `anvil-referrals.spec.ts`) |
+| **Indexer-first E2E** | Spawned by script; URL inlined at build | Live podiums, timers, buy hub from `GET /v1/arena/*`; Playwright [`anvil-indexer-first.spec.ts`](../../frontend/e2e/anvil-indexer-first.spec.ts) | `YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh` (requires host Postgres — [AGENTS.md § Postgres](../../AGENTS.md)) |
+| **Full stack** | Running + URL in `frontend/.env.local` | Same as indexer-first; manual QA + dev server | `bash scripts/start-qa-local-full-stack.sh` · `bash scripts/verify-podium-live-anvil.sh` |
 
 Production requires **`VITE_INDEXER_URL`**. E2E minimal mode documents the degraded path; it is not a substitute for full-stack Arena display QA. Policy: [arena-views §301](../frontend/arena-views.md#indexer-first-display-gitlab-301).
 
@@ -135,7 +136,15 @@ From the repository root (requires Foundry: `anvil`, `forge`, `cast` on `PATH`; 
 bash scripts/e2e-anvil.sh
 ```
 
-This starts Anvil, deploys with `DeployDev`, builds the frontend with the right `VITE_*` values, sets `ANVIL_E2E=1`, and runs Playwright against the Anvil-backed tests.
+This starts Anvil, deploys with `DeployDev`, builds the frontend with the right `VITE_*` values, sets `ANVIL_E2E=1`, and runs Playwright against **`e2e/anvil-arena-*.spec.ts`** and **`e2e/anvil-referrals.spec.ts`**.
+
+**Indexer-first mode** (optional — GitLab [#322](https://gitlab.com/PlasticDigits/yieldomega/-/issues/322)):
+
+```bash
+YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh
+```
+
+Requires native Postgres on **`127.0.0.1:5433`** ([`bootstrap-cloud-postgres-native.sh`](../../scripts/bootstrap-cloud-postgres-native.sh)). The script resets the indexer DB, starts the Rust indexer on **`127.0.0.1:3104`** (override with **`INDEXER_PORT`**), inlines **`VITE_INDEXER_URL`**, and adds [`anvil-indexer-first.spec.ts`](../../frontend/e2e/anvil-indexer-first.spec.ts). Static indexer-first policy is also covered by Vitest [`indexerFirstDisplay.test.ts`](../../frontend/src/pages/arena/indexerFirstDisplay.test.ts).
 
 <a id="anvil-dev-wallet-seed-gitlab-281"></a>
 

@@ -8,6 +8,15 @@
  * `yieldomega.myrefcode.v1.*` directly (that cache backs the panel — see `referralStorage.ts`, GitLab #85).
  */
 import { expect, test } from "@playwright/test";
+import { ARENA_E2E_TIMEOUT_MS } from "./arenaE2eHelpers";
+
+async function connectMockWallet(page: import("@playwright/test").Page): Promise<void> {
+  const connectButton = page.getByRole("button", { name: /connect/i });
+  if (await connectButton.isVisible().catch(() => false)) {
+    await connectButton.first().click();
+    await page.getByRole("button", { name: /Mock Connector/i }).click();
+  }
+}
 
 test.describe("Anvil referrals surface", () => {
   test.skip(
@@ -24,12 +33,14 @@ test.describe("Anvil referrals surface", () => {
   });
 
   test("connected wallet: register code, share links, copy to clipboard", async ({ page }) => {
+    test.setTimeout(240_000);
     await page.goto("/referrals");
     await expect(page.getByTestId("referrals-surface")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("heading", { name: "Referrals", level: 1 })).toBeVisible();
+    await connectMockWallet(page);
 
     await expect(page.getByRole("heading", { name: /Claim your guide code/i, level: 2 })).toBeVisible({
-      timeout: 120_000,
+      timeout: ARENA_E2E_TIMEOUT_MS,
     });
 
     const newCodeField = page.getByLabel(/New code/i);
@@ -38,11 +49,16 @@ test.describe("Anvil referrals surface", () => {
     }
 
     await expect(page.getByText("Connect a wallet.", { exact: false })).not.toBeVisible();
-    await expect(page.getByText(/Burn per registration/i)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("button", { name: /^Register code$/i })).toBeVisible({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+    await expect(page.getByText(/One-time burn/i)).toBeVisible({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
 
     const code = `r${Date.now().toString(36).slice(-10)}`.toLowerCase();
     await newCodeField.fill(code);
-    await page.getByRole("button", { name: /Register & burn CL8Y/i }).click();
+    await page.getByRole("button", { name: /^Register code$/i }).click();
 
     await expect(page.getByText(/Could not register/i)).toHaveCount(0, { timeout: 180_000 });
     await expect(page.getByRole("heading", { name: "Your share links", level: 4 })).toBeVisible({

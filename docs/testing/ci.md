@@ -2,11 +2,27 @@
 
 This document maps **[testing stages](strategy.md)** to **what runs in GitHub Actions** and what remains **manual or optional** locally. Authoritative testing strategy: [strategy.md](strategy.md). **Business logic and invariant ↔ test matrix:** [invariants-and-business-logic.md](invariants-and-business-logic.md).
 
+## GitLab vs GitHub CI
+
+The canonical Git repository is hosted on **GitLab** (issues, merge requests, PlasticDigits workflow). There is **no** [`.gitlab-ci.yml`](../../.gitlab-ci.yml) by design ([#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309), [#322](https://gitlab.com/PlasticDigits/yieldomega/-/issues/322)): GitLab runners do **not** duplicate heavy merge-gate jobs (Anvil + Postgres + full stack).
+
+**GitHub Actions** ([`.github/workflows/`](../../.github/workflows/)) runs the **merge gate** on push and pull request:
+
+| Workflow | Merge gate? | Notes |
+|----------|-------------|-------|
+| **`unit-tests.yml`** | **Yes** | Foundry, Rust (`cargo clippy -D warnings` + Postgres-backed tests), frontend **typecheck + lint + Vitest**, Playwright UI smoke (no chain), doc/script gates |
+| **`slither.yml`** | Contract changesets | High-severity static analysis |
+| **`gitleaks.yml`** | Yes | Secret scanning |
+| **`e2e-anvil.yml`** | **No** | `workflow_dispatch` only — full Anvil Playwright via [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) |
+| **`contract-fork-smoke.yml`** | **No** | `workflow_dispatch` only — live RPC fork smoke |
+
+Local parity with the frontend job: `cd frontend && npm ci && npm run typecheck && npm run lint && npm test`. Optional indexer-first Anvil E2E: `YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh` — see [e2e-anvil.md §301](e2e-anvil.md#indexer-first-vs-minimal-e2e-gitlab-301).
+
 ## Workflows
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| **Unit tests** | [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml) | **`check-megaevm-contract-sizes.sh`** (MegaEVM 512 KiB gate on `src/` artifacts) + `forge test` (contracts), **`cargo clippy --all-targets -- -D warnings`** then `cargo test` (indexer + Postgres: `integration_stage2` includes persist/reorg + **HTTP API** smoke), `npm test` (Vitest), **`npm run test:e2e`** (Playwright **UI smoke** on production build + preview — **no chain**), Python `unittest` in `simulations/`. **`scripts-smoke`** job runs **`check-doc-anchors.sh`** + **`check-doc-retired-terms.sh`** ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)) + **`check-doc-satellite-retired-count.sh`** ([#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276)) + **`check-doc-timecurve-satellite.sh`** ([#284](https://gitlab.com/PlasticDigits/yieldomega/-/issues/284)) + **`check-arena-naming.sh`** ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) + **`check-art-readme-consumers.sh`** ([#286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286)). **No repository secrets** — only `actions/checkout` and public toolchains. Anvil-backed Playwright is **not** part of this job; see [e2e-anvil.md](e2e-anvil.md). || **Slither** | [`.github/workflows/slither.yml`](../../.github/workflows/slither.yml) | Static analysis on `contracts/` after `forge build`; `fail-on: high`. Complements (does not replace) audit. |
+| **Unit tests** | [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml) | **`check-megaevm-contract-sizes.sh`** (MegaEVM 512 KiB gate on `src/` artifacts) + `forge test` (contracts), **`cargo clippy --all-targets -- -D warnings`** then `cargo test` (indexer + Postgres: `integration_stage2` includes persist/reorg + **HTTP API** smoke), frontend **`npm run typecheck`**, **`npm run lint`**, **`npm test`** (Vitest), **`npm run test:e2e`** (Playwright **UI smoke** on production build + preview — **no chain**), Python `unittest` in `simulations/`. **`scripts-smoke`** job runs **`check-doc-anchors.sh`** + **`check-doc-retired-terms.sh`** ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)) + **`check-doc-satellite-retired-count.sh`** ([#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276)) + **`check-doc-timecurve-satellite.sh`** ([#284](https://gitlab.com/PlasticDigits/yieldomega/-/issues/284)) + **`check-arena-naming.sh`** ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) + **`check-art-readme-consumers.sh`** ([#286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286)). **No repository secrets** — only `actions/checkout` and public toolchains. Anvil-backed Playwright is **not** part of this job; see [e2e-anvil.md](e2e-anvil.md). || **Slither** | [`.github/workflows/slither.yml`](../../.github/workflows/slither.yml) | Static analysis on `contracts/` after `forge build`; `fail-on: high`. Complements (does not replace) audit. |
 | **Secret scanning** | [`.github/workflows/gitleaks.yml`](../../.github/workflows/gitleaks.yml) | Gitleaks on push/PR. Uses the default `GITHUB_TOKEN` for the action only; not part of the “unit” gate. |
 | **Anvil E2E (optional)** | [`.github/workflows/e2e-anvil.yml`](../../.github/workflows/e2e-anvil.yml) | **`workflow_dispatch` only** — Foundry + [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) (Anvil, `DeployDev`, Playwright `e2e/anvil-*.spec.ts`). **Not** required for merge; use for manual validation. See [e2e-anvil.md](e2e-anvil.md). |
 | **Contract fork smoke (optional)** | [`.github/workflows/contract-fork-smoke.yml`](../../.github/workflows/contract-fork-smoke.yml) | **`workflow_dispatch` only** — `forge test --match-contract TimeArenaForkTest` with live RPC via input or secret `FORK_URL`. Default **`unit-tests`** job does **not** set `FORK_URL` (fork smoke tests no-op). Policy and runbook: [contract-fork-smoke.md](contract-fork-smoke.md). |
@@ -17,7 +33,7 @@ Forge dependencies are installed in CI per [contracts/README.md](../../contracts
 
 | Stage | What “green” means in CI | Other expectations (not all automated) |
 |-------|---------------------------|----------------------------------------|
-| **1 — Unit tests** | `unit-tests` workflow succeeds: **Foundry**, **Rust** (`cargo clippy -D warnings` then Postgres-backed `integration_stage2`), **Vitest**, **Playwright** (`npx playwright install --with-deps chromium` then `npm run test:e2e`), **Python** simulations. **`slither`** workflow green for contract changesets (high-severity gate). | **Postgres:** unset `YIELDOMEGA_PG_TEST_URL` locally → `integration_stage2` skips DB work but passes; set a URL for full coverage. **Foundry fork smoke:** Arena fork tests (for example `TimeArenaFork.t.sol`) skip unless `FORK_URL` is set — CI leaves it unset. Optional live RPC: [contract-fork-smoke.md](contract-fork-smoke.md) and **`contract-fork-smoke`** workflow. **Playwright (CI):** install browsers with `npx playwright install chromium` (and `chromium-headless-shell` if your Playwright version defaults to the shell build). **Anvil E2E** (`scripts/e2e-anvil.sh`) is **local** or via the optional **`e2e-anvil`** workflow (`workflow_dispatch`); not a merge gate — chain-touching specs skip unless `ANVIL_E2E=1`. See [e2e-anvil.md](e2e-anvil.md). Gitleaks on every push/PR. |
+| **1 — Unit tests** | `unit-tests` workflow succeeds: **Foundry**, **Rust** (`cargo clippy -D warnings` then Postgres-backed `integration_stage2`), frontend **typecheck + lint + Vitest**, **Playwright** (`npx playwright install --with-deps chromium` then `npm run test:e2e`), **Python** simulations. **`slither`** workflow green for contract changesets (high-severity gate). | **Postgres:** unset `YIELDOMEGA_PG_TEST_URL` locally → `integration_stage2` skips DB work but passes; set a URL for full coverage. **Foundry fork smoke:** Arena fork tests (for example `TimeArenaFork.t.sol`) skip unless `FORK_URL` is set — CI leaves it unset. Optional live RPC: [contract-fork-smoke.md](contract-fork-smoke.md) and **`contract-fork-smoke`** workflow. **Playwright (CI):** install browsers with `npx playwright install chromium` (and `chromium-headless-shell` if your Playwright version defaults to the shell build). **Anvil E2E** (`scripts/e2e-anvil.sh`) is **local** or via the optional **`e2e-anvil`** workflow (`workflow_dispatch`); not a merge gate — chain-touching specs skip unless `ANVIL_E2E=1`. See [e2e-anvil.md](e2e-anvil.md). Gitleaks on every push/PR. |
 | **2 — Devnet integration** | No dedicated workflow yet (needs chain, DB, wallet). Stage 1 must stay green; use the **devnet exit checklist** in [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration). | Deploy to local or MegaETH dev, fresh indexer DB, smoke E2E paths. |
 | **3 — Testnet → mainnet** | Same as Stage 1 for merge hygiene; add soak, monitoring, and deployment checks per [strategy.md](strategy.md) and [operations/deployment-stages.md](../operations/deployment-stages.md). | Not covered by the minimal unit-test workflow. |
 
@@ -39,13 +55,15 @@ export YIELDOMEGA_PG_TEST_URL='postgres://user:pass@localhost:5432/yieldomega_te
 cd indexer && cargo clippy --all-targets -- -D warnings && cargo test
 
 # Frontend
-cd frontend && npm ci && npm test
+cd frontend && npm ci && npm run typecheck && npm run lint && npm test
 
 # Playwright — UI smoke (install browsers once per machine / CI image)
 cd frontend && npx playwright install --with-deps && npm run build && npm run test:e2e
 
 # Optional — Anvil-backed E2E (Foundry + deploy + Vite build with VITE_*); see e2e-anvil.md
 # bash scripts/e2e-anvil.sh
+# Optional — indexer-first Anvil E2E (Postgres + indexer + VITE_INDEXER_URL); GitLab #322
+# YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh
 
 # Optional — arena buys row parity + wallet stats smoke (Foundry + Postgres + indexer; #282, #283)
 # export PATH="$HOME/.foundry/bin:$PATH" && source /usr/local/cargo/env 2>/dev/null || true
