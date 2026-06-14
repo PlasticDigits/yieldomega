@@ -138,6 +138,16 @@ From the repository root (requires Foundry: `anvil`, `forge`, `cast` on `PATH`; 
 bash scripts/e2e-anvil.sh
 ```
 
+Default Playwright specs: `e2e/anvil-arena-*.spec.ts` and `e2e/anvil-referrals.spec.ts` ([#322](https://gitlab.com/PlasticDigits/yieldomega/-/issues/322)).
+
+**Indexer-first mode** (Postgres + indexer + `VITE_INDEXER_URL` at build time):
+
+```bash
+YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh
+```
+
+Runs the default suite plus [`anvil-indexer-first.spec.ts`](../../frontend/e2e/anvil-indexer-first.spec.ts) (live indexer status + protocol podiums + timer epoch). Requires host Postgres ([`bootstrap-cloud-postgres-native.sh`](../../scripts/bootstrap-cloud-postgres-native.sh) on Cloud VMs) or Docker `yieldomega-pg`. Override indexer port with `INDEXER_PORT` (default **3100**).
+
 This starts Anvil, deploys with `DeployDev`, builds the frontend with the right `VITE_*` values, sets `ANVIL_E2E=1`, and runs Playwright against the Anvil-backed tests.
 
 <a id="anvil-dev-wallet-seed-gitlab-281"></a>
@@ -214,7 +224,7 @@ npm run test:e2e:anvil
 2. Deploy: `cd contracts && forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url http://127.0.0.1:8545 --code-size-limit 524288` (optional **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** for short per-wallet buy cooldown — [§ Buy cooldown](#anvil-deploydev-buy-cooldown-gitlab-88))
 3. Copy logged addresses into env (or export `VITE_*` in the shell).
 4. `cd frontend && npm ci && npm run build` with those variables set.
-5. `ANVIL_E2E=1 VITE_E2E_MOCK_WALLET=1 npm run test:e2e -- e2e/anvil-*.spec.ts` (or `bash scripts/e2e-anvil.sh`)
+5. `ANVIL_E2E=1 VITE_E2E_MOCK_WALLET=1 npm run test:e2e -- e2e/anvil-arena-*.spec.ts e2e/anvil-referrals.spec.ts` (or `bash scripts/e2e-anvil.sh`)
 
 ## Relationship to CI
 
