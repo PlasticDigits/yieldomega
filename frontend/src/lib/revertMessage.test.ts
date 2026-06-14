@@ -24,6 +24,15 @@ describe("friendlyRevertMessage", () => {
     expect(friendlyRevertMessage("TimeArenaBuyRouter__CharmBounds()")).toContain("min–max band");
     expect(friendlyRevertMessage("0xa8130f38")).toContain("min–max band");
     expect(friendlyRevertMessage("0x817275ab")).toContain("slippage");
+    expect(friendlyRevertMessage("TimeArena: not started")).toBe("The arena has not opened yet.");
+    expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).not.toMatch(/\bsale\b/i);
+  });
+
+  it("maps TimeArena not-started to arena framing (#318)", () => {
+    expect(friendlyRevertMessage("TimeArena: not started")).toBe("The arena has not opened yet.");
+    expect(friendlyRevertMessage("TimeArena: timer expired")).toBe("The arena timer has expired.");
+    expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).toContain("Arena buys are not open");
+    expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).not.toMatch(/\bsale\b/i);
   });
 
   it("maps common WarBow eligibility failures", () => {

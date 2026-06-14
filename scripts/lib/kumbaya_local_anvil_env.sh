@@ -89,9 +89,8 @@ yieldomega_frontend_merge_anvil_stack_env() {
   local rpc_url="$2"
   local ta="$3"
   local pv="$4"
-  local av="$5"
-  local rr="$6"
-  local indexer_port="$7"
+  local rr="$5"
+  local indexer_port="$6"
   if [[ ! -f "${env_local}" ]]; then
     cat >"${env_local}" <<EOF
 # Local Anvil + indexer — stack-managed VITE_* keys are merged below.
@@ -101,7 +100,6 @@ EOF
   _yieldomega_env_set_line "${env_local}" "VITE_RPC_URL" "${rpc_url}" "${_yieldomega_env_anvil_stack_marker}"
   _yieldomega_env_set_line "${env_local}" "VITE_TIME_ARENA_ADDRESS" "${ta}" "${_yieldomega_env_anvil_stack_marker}"
   _yieldomega_env_set_line "${env_local}" "VITE_PODIUM_VAULTS_ADDRESS" "${pv}" "${_yieldomega_env_anvil_stack_marker}"
-  _yieldomega_env_set_line "${env_local}" "VITE_ADMIN_SELL_VAULT_ADDRESS" "${av}" "${_yieldomega_env_anvil_stack_marker}"
   _yieldomega_env_set_line "${env_local}" "VITE_REFERRAL_REGISTRY_ADDRESS" "${rr}" "${_yieldomega_env_anvil_stack_marker}"
   _yieldomega_env_set_line "${env_local}" "VITE_INDEXER_URL" "http://127.0.0.1:${indexer_port}" "${_yieldomega_env_anvil_stack_marker}"
 }

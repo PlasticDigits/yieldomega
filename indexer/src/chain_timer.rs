@@ -12,13 +12,21 @@ use eyre::{Result, WrapErr};
 use tokio::sync::RwLock;
 use tokio::time::Duration;
 
+use crate::multicall::{aggregate3_at_block, MulticallBatch};
 use crate::rpc_http::{
     build_reqwest_providers, error_chain_transport_http_status, parse_http_rpc_urls,
     rpc_first_ok_instrumented,
 };
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
+use crate::chain_timer_poll::{
+    chain_timer_poll_mode, chain_timer_sleep_after_cycle, deadline_proximity_sec_from_env,
+    head_block_number_unchanged, idle_poll_ms_from_env, idle_short_circuit_applicable,
+    refresh_snapshot_polled_at_ms, ChainTimerPollMode,
+};
 use crate::rpc_poll_health::RpcPollHealth;
-use crate::sale_state::TimecurveSaleStateSnapshot;
+use crate::sale_state::{
+    sale_state_from_returns, SEL_PAUSED, SEL_TOTAL_DOUB_RAISED, TimecurveSaleStateSnapshot,
+};
 
 pub const SEL_ARENA_START: [u8; 4] = [0x07, 0xf2, 0x87, 0x15];
 pub const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
@@ -230,12 +238,71 @@ pub async fn run_poll_loop(
         }
     };
 
+    let idle_poll_ms = idle_poll_ms_from_env();
+    let deadline_proximity_sec = deadline_proximity_sec_from_env();
     let mut health = RpcPollHealth::new();
+    let mut previous: Option<TimecurveHeadSnapshot> = None;
+    let mut last_mode: Option<ChainTimerPollMode> = None;
+
     loop {
-        match poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await {
+        let now_wall_sec = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        let poll_result = if idle_short_circuit_applicable(
+            &health,
+            previous.as_ref(),
+            now_wall_sec,
+            deadline_proximity_sec,
+        ) {
+            match rpc_first_ok_instrumented(
+                &providers,
+                Some(&rpc_metrics),
+                RpcMethod::BlockNumber,
+                RpcCaller::ChainTimer,
+                |p| p.get_block_number(),
+            )
+            .await
+            {
+                Ok(bn) if previous
+                    .as_ref()
+                    .is_some_and(|p| head_block_number_unchanged(p, bn)) =>
+                {
+                    health.report_success();
+                    let mut snap = previous.clone().expect("short-circuit requires previous");
+                    refresh_snapshot_polled_at_ms(&mut snap);
+                    Ok(snap)
+                }
+                Ok(_) => poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await,
+                Err(_) => poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await,
+            }
+        } else {
+            poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await
+        };
+
+        let poll_succeeded = poll_result.is_ok();
+        let mode = match poll_result {
             Ok(snap) => {
                 health.report_success();
-                *cache.write().await = Some(snap);
+                let mode = chain_timer_poll_mode(
+                    previous.as_ref(),
+                    &snap,
+                    now_wall_sec,
+                    deadline_proximity_sec,
+                );
+                if last_mode != Some(mode) {
+                    tracing::debug!(
+                        mode = mode.as_str(),
+                        idle_poll_ms,
+                        deadline_proximity_sec,
+                        "chain_timer: poll spacing mode"
+                    );
+                    last_mode = Some(mode);
+                }
+                *cache.write().await = Some(snap.clone());
+                previous = Some(snap);
+                mode
             }
             Err(e) => {
                 tracing::debug!(?e, "chain_timer: poll failed");
@@ -244,9 +311,12 @@ pub async fn run_poll_loop(
                 } else {
                     health.report_failure_debounced();
                 }
+                ChainTimerPollMode::Fast
             }
-        }
-        tokio::time::sleep(health.backoff_sleep()).await;
+        };
+
+        let sleep = chain_timer_sleep_after_cycle(&health, poll_succeeded, mode, idle_poll_ms);
+        tokio::time::sleep(sleep).await;
     }
 }
 
@@ -306,6 +376,170 @@ async fn poll_once(
     podium_vaults: Option<Address>,
     metrics: &RpcMetrics,
 ) -> Result<TimecurveHeadSnapshot> {
+    match poll_once_multicall(providers, arena, podium_vaults, metrics).await {
+        Ok(snap) => Ok(snap),
+        Err(e) => {
+            tracing::debug!(
+                ?e,
+                "chain_timer: Multicall3 batch failed; falling back to sequential eth_call"
+            );
+            poll_once_sequential(providers, arena, podium_vaults, metrics).await
+        }
+    }
+}
+
+async fn poll_once_multicall(
+    providers: &[ReqwestProvider],
+    arena: Address,
+    podium_vaults: Option<Address>,
+    metrics: &RpcMetrics,
+) -> Result<TimecurveHeadSnapshot> {
+    let (bn, block_ts, block_id) = fetch_head_block(providers, metrics).await?;
+
+    let mut batch = MulticallBatch::new();
+    let i_arena_start = batch.push_selector(arena, SEL_ARENA_START);
+    let i_deadline = batch.push_selector(arena, SEL_DEADLINE);
+    let i_cap = batch.push_selector(arena, SEL_TIMER_CAP);
+    let i_podium_dl: [usize; 4] = std::array::from_fn(|cat| {
+        batch.push_u8_arg(arena, SEL_PODIUM_DEADLINE, cat as u8)
+    });
+    let i_last_buy_epoch = batch.push_selector(arena, SEL_LAST_BUY_EPOCH);
+    let i_podium_ep: [usize; 4] = std::array::from_fn(|cat| {
+        batch.push_u8_arg(arena, SEL_PODIUM_EPOCH, cat as u8)
+    });
+    let i_podium: [usize; 4] =
+        std::array::from_fn(|cat| batch.push_u8_arg(arena, SEL_PODIUM, cat as u8));
+    let pv = podium_vaults.filter(|a| *a != Address::ZERO);
+    let i_active_pool: [Option<usize>; 4] = std::array::from_fn(|cat| {
+        pv.map(|vault| batch.push_u8_arg(vault, SEL_ACTIVE_POOL_BALANCE, cat as u8))
+    });
+    let i_total_doub = batch.push_selector(arena, SEL_TOTAL_DOUB_RAISED);
+    let i_paused = batch.push_selector(arena, SEL_PAUSED);
+    let i_eff_charm = batch.push_selector(arena, SEL_EFFECTIVE_CHARM_PRICE_WAD);
+    let i_epoch_anchor_wad = batch.push_selector(arena, SEL_EPOCH_CHARM_ANCHOR_WAD);
+    let i_epoch_anchor_ts = batch.push_selector(arena, SEL_EPOCH_ANCHOR_TIMESTAMP);
+    let i_doub = batch.push_selector(arena, SEL_DOUB);
+    let i_referral_registry = batch.push_selector(arena, SEL_REFERRAL_REGISTRY);
+    let i_buy_cooldown = batch.push_selector(arena, SEL_BUY_COOLDOWN_SEC);
+    let i_timer_extension = batch.push_selector(arena, SEL_TIMER_EXTENSION_SEC);
+    let i_buy_router = batch.push_selector(arena, SEL_TIME_ARENA_BUY_ROUTER);
+    let i_referral_cred = batch.push_selector(arena, SEL_REFERRAL_CRED_FLAT_WAD);
+
+    let results = aggregate3_at_block(
+        providers,
+        block_id,
+        &batch,
+        metrics,
+        RpcCaller::ChainTimer,
+    )
+    .await?;
+
+    let polled_at_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
+    let arena_start = decode_return_u256(&results[i_arena_start]).wrap_err("arenaStart")?;
+    let deadline = decode_return_u256(&results[i_deadline]).wrap_err("deadline")?;
+    let cap = decode_return_u256(&results[i_cap]).wrap_err("timerCapSec")?;
+
+    let mut podium_deadlines = std::array::from_fn(|_| String::new());
+    for cat in 0..4 {
+        let dl = decode_return_u256(&results[i_podium_dl[cat]])
+            .wrap_err_with(|| format!("podiumDeadline({cat})"))?;
+        podium_deadlines[cat] = u256_to_decimal_string(dl);
+    }
+
+    let last_buy_epoch =
+        decode_return_u256(&results[i_last_buy_epoch]).wrap_err("lastBuyEpoch")?;
+
+    let mut podium_epochs = std::array::from_fn(|_| String::new());
+    for cat in 0..4 {
+        let ep = decode_return_u256(&results[i_podium_ep[cat]])
+            .wrap_err_with(|| format!("podiumEpoch({cat})"))?;
+        podium_epochs[cat] = u256_to_decimal_string(ep);
+    }
+
+    let mut podium_rows = std::array::from_fn(|_| empty_podium_row());
+    for cat in 0..4 {
+        podium_rows[cat] = decode_podium_return(&results[i_podium[cat]])
+            .wrap_err_with(|| format!("podium({cat})"))?;
+    }
+
+    let mut active_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
+    for cat in 0..4 {
+        if let Some(idx) = i_active_pool[cat] {
+            let bal = decode_return_u256(&results[idx])
+                .wrap_err_with(|| format!("activePoolBalance({cat})"))?;
+            active_pool_balance_doub_wad[cat] = u256_to_decimal_string(bal);
+        }
+    }
+
+    let timer = ChainTimerSnapshot {
+        sale_start_sec: u256_to_decimal_string(arena_start),
+        deadline_sec: u256_to_decimal_string(deadline),
+        block_timestamp_sec: block_ts.to_string(),
+        timer_cap_sec: u256_to_decimal_string(cap),
+        read_block_number: bn.to_string(),
+        polled_at_ms,
+        last_buy_epoch: u256_to_decimal_string(last_buy_epoch),
+        podium_epochs,
+        podium_deadlines_sec: podium_deadlines,
+    };
+
+    let sale_state = sale_state_from_returns(
+        &results[i_deadline],
+        &results[i_total_doub],
+        &results[i_paused],
+        block_ts,
+        bn,
+        polled_at_ms,
+    )?;
+
+    let sale_head = ArenaSaleHeadFields {
+        charm_price_wad: u256_to_decimal_string(
+            decode_return_u256(&results[i_eff_charm]).wrap_err("effectiveCharmPriceWad")?,
+        ),
+        epoch_charm_anchor_wad: u256_to_decimal_string(
+            decode_return_u256(&results[i_epoch_anchor_wad]).wrap_err("epochCharmAnchorWad")?,
+        ),
+        epoch_anchor_timestamp_sec: u256_to_decimal_string(
+            decode_return_u256(&results[i_epoch_anchor_ts]).wrap_err("epochAnchorTimestamp")?,
+        ),
+        doub: addr_word_hex(
+            decode_return_address(&results[i_doub]).wrap_err("doub")?,
+        ),
+        referral_registry: addr_word_hex(
+            decode_return_address(&results[i_referral_registry]).wrap_err("referralRegistry")?,
+        ),
+        buy_cooldown_sec: u256_to_decimal_string(
+            decode_return_u256(&results[i_buy_cooldown]).wrap_err("buyCooldownSec")?,
+        ),
+        timer_extension_sec: u256_to_decimal_string(
+            decode_return_u256(&results[i_timer_extension]).wrap_err("timerExtensionSec")?,
+        ),
+        time_arena_buy_router: addr_word_hex(
+            decode_return_address(&results[i_buy_router]).wrap_err("timeArenaBuyRouter")?,
+        ),
+        referral_cred_flat_wad: u256_to_decimal_string(
+            decode_return_u256(&results[i_referral_cred]).wrap_err("REFERRAL_CRED_FLAT_WAD")?,
+        ),
+    };
+
+    Ok(TimecurveHeadSnapshot {
+        timer,
+        sale_ended: false,
+        podium_contract: podium_rows,
+        active_pool_balance_doub_wad,
+        sale_state,
+        sale_head,
+    })
+}
+
+async fn fetch_head_block(
+    providers: &[ReqwestProvider],
+    metrics: &RpcMetrics,
+) -> Result<(u64, u64, BlockId)> {
     let bn = rpc_first_ok_instrumented(
         providers,
         Some(metrics),
@@ -323,9 +557,16 @@ async fn poll_once(
     )
     .await?
     .ok_or_else(|| eyre::eyre!("chain_timer: missing block {bn}"))?;
+    Ok((bn, block.header.timestamp, BlockId::Number(bn.into())))
+}
 
-    let block_ts = block.header.timestamp;
-    let block_id = BlockId::Number(bn.into());
+async fn poll_once_sequential(
+    providers: &[ReqwestProvider],
+    arena: Address,
+    podium_vaults: Option<Address>,
+    metrics: &RpcMetrics,
+) -> Result<TimecurveHeadSnapshot> {
+    let (bn, block_ts, block_id) = fetch_head_block(providers, metrics).await?;
 
     let arena_start = eth_call_u256(
         providers,
@@ -549,3 +790,21 @@ async fn poll_once(
         sale_head,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decode_podium_return_parses_six_words() {
+        let mut data = vec![0u8; 192];
+        data[31] = 1;
+        data[63] = 2;
+        data[95] = 3;
+        data[96 + 31] = 9;
+        let row = decode_podium_return(&data).unwrap();
+        assert_eq!(row.values[0], "9");
+        assert!(row.winners[0].ends_with("01"));
+    }
+}
+

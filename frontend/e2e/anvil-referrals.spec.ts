@@ -49,6 +49,8 @@ test.describe("Anvil referrals surface", () => {
     }
 
     await expect(page.getByText("Connect a wallet.", { exact: false })).not.toBeVisible();
+    await expect(page.getByTestId("referrals-register-cost-amount")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/Claim cost/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /^Register code$/i })).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
