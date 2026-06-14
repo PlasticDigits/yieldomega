@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { friendlyRevertMessage } from "@/lib/revertMessage";
-import { phaseNarrative } from "@/pages/arena/arenaSimplePhase";
+import { phaseNarrative, preLaunchBuyGateMessage } from "@/pages/arena/arenaSimplePhase";
 
 const arenaDir = path.resolve(__dirname);
 
@@ -25,8 +25,8 @@ describe("Arena play surface copy (#318 · INV-FRONTEND-298-UX-DOCS-E2E)", () =>
   it("keeps forbidden sale framing out of ArenaSimplePage user-visible strings", () => {
     expect(arenaSimplePage).not.toMatch(/The sale has not opened yet/i);
     expect(arenaSimplePage).not.toMatch(/>\s*[^<{]*\bsale\b[^<{]*</i);
-    expect(arenaSimplePage).toContain("phaseNarrative(session.phase)");
-    expect(arenaSimplePage).toContain("Buy CHARM unlocks automatically");
+    expect(arenaSimplePage).toContain("preLaunchBuyGateMessage()");
+    expect(preLaunchBuyGateMessage()).toContain("Buy CHARM unlocks automatically");
   });
 
   it("uses arenaSimplePhase pre-launch narrative without sale wording", () => {
@@ -37,7 +37,7 @@ describe("Arena play surface copy (#318 · INV-FRONTEND-298-UX-DOCS-E2E)", () =>
   it("avoids sale wording in play-surface buy guard errors", () => {
     const preflight = readArena("arenaSaleSessionBuyPreflight.ts");
     expect(saleSession).not.toMatch(/setBuyError\([^)]*\bsale\b/i);
-    expect(preflight).toContain("wait for sale state (indexer or contract reads)");
+    expect(preflight).toContain("wait for arena state (indexer or contract reads)");
   });
 
   it("maps TimeArena revert copy without sale framing on the play console", () => {

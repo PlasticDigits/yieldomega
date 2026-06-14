@@ -22,7 +22,7 @@ describe("arena play surface copy (GitLab #318)", () => {
 
   it("forbids sale framing on the play console pre-launch copy", () => {
     expect(arenaSimplePage).not.toMatch(/\bsale\b/i);
-    expect(arenaSimplePage).toContain("phaseNarrative(session.phase)");
+    expect(arenaSimplePage).toContain("preLaunchBuyGateMessage()");
   });
 
   it("wires WarBow rival rows to wallet profile modal (#258)", () => {
@@ -37,7 +37,7 @@ describe("arena play surface copy (GitLab #318)", () => {
 
   it("maps TimeArena revert copy without sale framing", () => {
     expect(friendlyRevertMessage("timearena: not started")).toBe("The arena has not opened yet.");
-    expect(friendlyRevertMessage("timearena: timer expired")).toBe("The round timer has expired.");
+    expect(friendlyRevertMessage("timearena: timer expired")).toBe("The arena timer has expired.");
     expect(friendlyRevertMessage("timearenabuyrouter__badphase")).toBe(
       "Arena buys are not open right now (pre-launch, paused, or past the timer).",
     );

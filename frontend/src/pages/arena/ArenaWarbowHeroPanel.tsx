@@ -34,7 +34,7 @@ type Props = {
   phase: SaleSessionPhase;
   playerLevel?: bigint | number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
-  /** Opens wallet profile modal instead of explorer (#258, #318). */
+  /** Opens wallet profile modal on rival identity click ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258) · [#318](https://gitlab.com/PlasticDigits/yieldomega/-/issues/318)). */
   onOpenWalletProfile?: (address: string) => void;
   warbowTargets?: readonly WarbowTarget[];
   /** Indexer-sourced viewer BP when `VITE_INDEXER_URL` is set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
@@ -96,7 +96,7 @@ export function ArenaWarbowHeroPanel({
     playerLevel !== undefined && isFeatureUnlocked(playerLevel, "warbow_flag");
   const [targetFilter, setTargetFilter] = useState<TargetFilter>("eligible");
   const [targetSort, setTargetSort] = useState<TargetSort>("bp-desc");
-  const targetOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const targetOptionRefs = useRef<Array<HTMLDivElement | null>>([]);
   const selectedTarget = w.stealVictimInput.trim();
   const visibleTargets = useMemo(() => {
     const filtered = warbowTargets.filter((target) => {
@@ -249,12 +249,11 @@ export function ArenaWarbowHeroPanel({
                 const targetBp = parseBp(target.battlePoints);
                 const rovingTabIndex = selected || (!selectedTarget && index === 0) ? 0 : -1;
                 return (
-                  <button
+                  <div
                     key={`${target.source}-${target.address}`}
                     ref={(el) => {
                       targetOptionRefs.current[index] = el;
                     }}
-                    type="button"
                     role="option"
                     aria-selected={selected}
                     tabIndex={rovingTabIndex}
@@ -262,7 +261,7 @@ export function ArenaWarbowHeroPanel({
                       "warbow-target-row",
                       selected ? "warbow-target-row--selected" : "",
                     ].filter(Boolean).join(" ")}
-                    onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                    onClick={(event: MouseEvent<HTMLDivElement>) => {
                       if (targetIsInsideAddressAction(event.target)) return;
                       w.setStealVictimInput(target.address);
                     }}
@@ -291,7 +290,7 @@ export function ArenaWarbowHeroPanel({
                         ? `${formatLocaleInteger(targetBp)} BP`
                         : "BP read on click"}
                     </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>

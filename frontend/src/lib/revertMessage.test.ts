@@ -28,6 +28,13 @@ describe("friendlyRevertMessage", () => {
     expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).not.toMatch(/\bsale\b/i);
   });
 
+  it("maps TimeArena not-started to arena framing (#318)", () => {
+    expect(friendlyRevertMessage("TimeArena: not started")).toBe("The arena has not opened yet.");
+    expect(friendlyRevertMessage("TimeArena: timer expired")).toBe("The arena timer has expired.");
+    expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).toContain("Arena buys are not open");
+    expect(friendlyRevertMessage("TimeArenaBuyRouter__BadPhase()")).not.toMatch(/\bsale\b/i);
+  });
+
   it("maps common WarBow eligibility failures", () => {
     expect(friendlyRevertMessage("TimeArena: steal band")).toBe(
       "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",

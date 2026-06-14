@@ -30,7 +30,7 @@ import { CHARM_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { formatUnits, isAddress, zeroAddress } from "viem";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
-import { phaseNarrative } from "@/pages/arena/arenaSimplePhase";
+import { phaseNarrative, preLaunchBuyGateMessage } from "@/pages/arena/arenaSimplePhase";
 import { FeatureMechanicModal } from "@/components/FeatureMechanicModal";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import {
@@ -1136,10 +1136,7 @@ export function ArenaSimplePage({
           )}
 
           {session.phase === "saleStartPending" && (
-            <StatusMessage variant="muted">
-              {phaseNarrative(session.phase)} Buy CHARM unlocks automatically when the countdown
-              above reaches zero.
-            </StatusMessage>
+            <StatusMessage variant="muted">{preLaunchBuyGateMessage()}</StatusMessage>
           )}
 
           </ChainMismatchWriteBarrier>

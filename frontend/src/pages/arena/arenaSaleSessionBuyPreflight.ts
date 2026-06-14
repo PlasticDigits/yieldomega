@@ -43,7 +43,7 @@ export function arenaSaleSessionBuyPreflight(
   const netErr = chainMismatchWriteMessage(input.chainId);
   if (netErr) return netErr;
   if (!input.address || !input.timeArenaAddress || !input.acceptedAsset) {
-    return "Connect a wallet and wait for sale state (indexer or contract reads).";
+    return "Connect a wallet and wait for arena state (indexer or contract reads).";
   }
   if (input.arenaPaused === true) {
     return "Time Arena is paused — buys and WarBow DOUB spend are disabled until operators unpause.";
