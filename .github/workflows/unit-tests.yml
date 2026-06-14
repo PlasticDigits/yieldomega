@@ -106,6 +106,22 @@ jobs:
           npm run lint
           npm test
 
+      - name: Production mock-wallet build gate (GitLab #327)
+        run: |
+          set +e
+          VITE_CHAIN_ID=31337 \
+          VITE_RPC_URL=http://127.0.0.1:8545 \
+          VITE_TIME_ARENA_ADDRESS=0x0000000000000000000000000000000000000001 \
+          VITE_PODIUM_VAULTS_ADDRESS=0x0000000000000000000000000000000000000002 \
+          VITE_REFERRAL_REGISTRY_ADDRESS=0x0000000000000000000000000000000000000003 \
+          VITE_E2E_MOCK_WALLET=1 npm run build
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::Expected production build to fail when VITE_E2E_MOCK_WALLET=1"
+            exit 1
+          fi
+
   simulations-test:
     runs-on: ubuntu-latest
     defaults:

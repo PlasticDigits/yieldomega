@@ -66,7 +66,7 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 | `VITE_PODIUM_VAULTS_ADDRESS` | Podium vaults proxy |
 | `VITE_ADMIN_SELL_VAULT_ADDRESS` | Admin sell vault proxy |
 | `VITE_REFERRAL_REGISTRY_ADDRESS` | Referral registry proxy |
-| `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector) |
+| `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector). **`npm run build` refuses this flag** unless `ANVIL_E2E=1` ([GitLab #327](https://gitlab.com/PlasticDigits/yieldomega/-/issues/327)); `vite dev` is unaffected. |
 | `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Optional — set when Kumbaya fixtures run ([#41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41)) |
 | `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | ETH pay-mode E2E; must match onchain `timeArenaBuyRouter` ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). **`e2e-anvil.sh` defaults `YIELDOMEGA_DEPLOY_KUMBAYA=1`** ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); set `YIELDOMEGA_DEPLOY_KUMBAYA=0` to skip fixtures (ETH test skipped). Also sets legacy `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`. |
 | **`DeployDev` buy cooldown ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88))** | Default **300** s on **`TimeArena`**. For multi-buy QA: **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** and/or **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** (**&gt; 0**). See [§ Buy cooldown](#anvil-deploydev-buy-cooldown-gitlab-88) and [`manual-qa-checklists.md#manual-qa-issue-88`](manual-qa-checklists.md#manual-qa-issue-88). |
@@ -231,6 +231,19 @@ npm run test:e2e:anvil
 The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml) runs `npm run build && npm run test:e2e` **without** a chain. That job is a **fast UI smoke** (routes, nav).
 
 **Anvil-backed** specs are **skipped** unless `ANVIL_E2E=1` is set, so default PR CI stays green without Foundry + Anvil.
+
+<a id="production-mock-wallet-build-gate-gitlab-327"></a>
+
+### Production mock-wallet build gate ([GitLab #327](https://gitlab.com/PlasticDigits/yieldomega/-/issues/327))
+
+`frontend/vite.config.ts` aborts **`vite build`** / **`npm run build`** when `VITE_E2E_MOCK_WALLET=1` would be inlined, with a clear error — unless **`ANVIL_E2E=1`** (set by [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) before its production build). **`vite dev`** and the Anvil dev auto-mock path (`useAnvilDevMockWallet` without `VITE_E2E_MOCK_WALLET`) are unchanged.
+
+| Check | Command |
+|-------|---------|
+| Gate (expect fail) | `cd frontend && VITE_E2E_MOCK_WALLET=1 npm run build` |
+| Deploy script guard | `bash scripts/check-frontend-vite-env.sh --production` |
+| Rabby / CDN build | `bash scripts/qa/build-frontend-for-rabby.sh` (no mock in `dist`) |
+| CI regression | `unit-tests` → **`frontend-test`** job — mock-wallet build step |
 
 **Optional workflow:** [`.github/workflows/e2e-anvil.yml`](../../.github/workflows/e2e-anvil.yml) — `workflow_dispatch` only; runs `scripts/e2e-anvil.sh` (Foundry + Anvil + Playwright). **Not** a merge blocker; use for release candidates or infra validation.
 

@@ -4,13 +4,35 @@
 # Merges frontend/.env then frontend/.env.local (local wins),
 # matching Vite’s usual precedence for dev.
 #
-# Usage (repo root): bash scripts/check-frontend-vite-env.sh
+# Usage (repo root):
+#   bash scripts/check-frontend-vite-env.sh
+#   bash scripts/check-frontend-vite-env.sh --production
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FE="${ROOT}/frontend"
 ENV_MAIN="${FE}/.env"
 ENV_LOCAL="${FE}/.env.local"
+
+die() {
+  echo "[check-frontend-vite-env] $*" >&2
+  exit 1
+}
+
+PRODUCTION_MODE=0
+for arg in "$@"; do
+  case "$arg" in
+    --production) PRODUCTION_MODE=1 ;;
+    -h | --help)
+      echo "Usage: bash scripts/check-frontend-vite-env.sh [--production]" >&2
+      echo "  --production  Also reject VITE_E2E_MOCK_WALLET=1 (CDN / deploy guard; GitLab #327)" >&2
+      exit 0
+      ;;
+    *)
+      die "Unknown argument: $arg (try --production)"
+      ;;
+  esac
+done
 
 declare -A VALS
 
@@ -39,13 +61,21 @@ load_file() {
   done <"$f"
 }
 
-die() {
-  echo "[check-frontend-vite-env] $*" >&2
-  exit 1
-}
-
 load_file "$ENV_MAIN"
 load_file "$ENV_LOCAL"
+
+if [[ "$PRODUCTION_MODE" == 1 ]]; then
+  load_file "${FE}/.env.production"
+  load_file "${FE}/.env.production.local"
+  mock="${VALS[VITE_E2E_MOCK_WALLET]:-}"
+  mock="${mock//[[:space:]]/}"
+  if [[ -z "$mock" && -n "${VITE_E2E_MOCK_WALLET:-}" ]]; then
+    mock="${VITE_E2E_MOCK_WALLET//[[:space:]]/}"
+  fi
+  if [[ "$mock" == "1" ]]; then
+    die "VITE_E2E_MOCK_WALLET=1 is forbidden for production deploy builds (GitLab #327). Unset it and rebuild, or use scripts/e2e-anvil.sh only for Playwright Anvil E2E."
+  fi
+fi
 
 ADDR_HEX='^0x[0-9a-fA-F]{40}$'
 
@@ -98,3 +128,6 @@ if [[ "$ok" != 1 ]]; then
 fi
 
 echo "[check-frontend-vite-env] OK — ${ENV_LOCAL} (merged with .env if present) has required VITE_* for Arena v2."
+if [[ "$PRODUCTION_MODE" == 1 ]]; then
+  echo "[check-frontend-vite-env] Production guard OK — VITE_E2E_MOCK_WALLET is not set to 1."
+fi
