@@ -64,11 +64,11 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 | Step | Pass criteria |
 |------|----------------|
 | `bash scripts/check-arena-naming.sh` | Exit 0 |
-| Open **`/arena`** (Simple) | Podium category icons load; timer hero scene visible; no broken image icons in podium grid |
+| Open **`/`** (play) | Podium category icons load; timer hero scene visible; no broken image icons in podium carousel |
 | Open **`/arena/protocol`** | Protocol scene backdrop; donate pools card renders |
 | Footer agent panel | `data-testid="arena-simple-agent-card"` opens; site links visible below agent card |
-| Deep link **`/timecurve`** | Still redirects to **`/arena`** (unchanged) |
-| Mobile **390×844** on **`/arena`** | Layout unchanged; backgrounds not blank |
+| Deep link **`/timecurve`** | Still redirects to **`/`** ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)) |
+| Mobile **390×844** on **`/`** | Layout unchanged; backgrounds not blank |
 | Production assets | `curl -sfI http://127.0.0.1:5173/art/icons/arena-podium-last-buy.png` (or built `dist/`) returns 200; old `/art/icons/timecurve-podium-last-buy.png` returns 404 |
 
 <a id="manual-qa-issue-260"></a>
@@ -86,7 +86,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 
 | Step | Pass criteria |
 |------|----------------|
-| Open **`/arena`** | `arena-timer-chips` shows four labels (Last Buy, Time Booster, Streak, WarBow); `arena-charm-cred-card` visible. |
+| Open **`/`** | `arena-timer-chips` shows four labels (Last Buy, Time Booster, Streak, WarBow); `arena-charm-cred-card` visible. |
 | Indexer running | Timer chips show non-`—` deadlines from `GET /v1/arena/timers` (four `podium_deadlines_sec`). |
 | DOUB buy | Connect wallet; slider + **Buy** succeeds; vault balances move per 100% podium routing (25% × 4 · 70/20/10 epoch tranches; Forge / explorer). |
 | CRED | After DOUB buy, epoch pool accrues; **claim** prior epoch when eligible. |
@@ -101,16 +101,16 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 
 ## Arena command console (GitLab #291)
 
-**Scope:** Frontend `/arena` production surface. Product specs: [`time-arena.md`](../product/time-arena.md), [`arena-v2.md`](../product/arena-v2.md). Frontend contract: [`arena-views.md#arena-command-console-gitlab-291`](../frontend/arena-views.md#arena-command-console-gitlab-291). Rabby setup: [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md), [`.cursor/skills/rabby-cloud-verification`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
+**Scope:** Frontend **`/`** play surface. Product specs: [`time-arena.md`](../product/time-arena.md), [`arena-v2.md`](../product/arena-v2.md). Frontend contract: [`arena-views.md#arena-command-console-gitlab-291`](../frontend/arena-views.md#arena-command-console-gitlab-291). Rabby setup: [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md), [`.cursor/skills/rabby-cloud-verification`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
 
 ### Checklist
 
 | Step | Pass criteria |
 |------|---------------|
-| Open **`/arena`** | Exactly one `arena-command-console` surface; no `.arena-final-concept` static mock stacked above the production page. |
+| Open **`/`** | Exactly one `arena-command-console` surface; no `.arena-final-concept` static mock stacked above the production page. |
 | Last Buy priority | **Last Buy** is the largest/primary countdown in the primary column; secondary timer chips sit in the operations rail. |
 | Inline buy | CHARM amount text field, slider, min/max/advanced controls, pay picker, and **Buy CHARM** CTA are visible without opening a modal. |
-| Decision row | Visible compact tiles show live **CHARM Price** in DOUB, **0.99–10 CHARM** range, and DOUB-buy **CRED yield**. |
+| Buy hub metrics | CHARM price, **0.99–10 CHARM** range, and DOUB-buy **CRED yield** in buy panel / projected-effects pills (**no** separate decision-row strip or `ArenaSubnav` — [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)) |
 | Characters/branding | User-facing copy says **Yield Omega**; bunny/sniper-shark accents are recognizable but low-opacity cyberminimalist treatments. |
 | Wallet/Rabby | With Rabby on the configured chain, connect wallet and confirm the buy controls remain available; wrong-chain overlay still blocks writes when applicable. |
 | Responsive | 390×844 mobile viewport has no horizontal overflow; primary → operations → podiums order remains usable. |
@@ -121,13 +121,13 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 
 ## Arena production components (GitLab #292)
 
-**Scope:** Live `/arena` and `/arena/protocol` production components. Product specs: [`time-arena.md`](../product/time-arena.md), [`arena-v2.md`](../product/arena-v2.md). Frontend contract: [`arena-views.md#arena-production-components-gitlab-292`](../frontend/arena-views.md#arena-production-components-gitlab-292). Rabby setup: [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md), [`.cursor/skills/rabby-cloud-verification`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
+**Scope:** Live **`/`** (play) and **`/arena/protocol`** (AUDIT) production components. Product specs: [`time-arena.md`](../product/time-arena.md), [`arena-v2.md`](../product/arena-v2.md). Frontend contract: [`arena-views.md#arena-production-components-gitlab-292`](../frontend/arena-views.md#arena-production-components-gitlab-292). Rabby setup: [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md), [`.cursor/skills/rabby-cloud-verification`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
 
 ### Checklist
 
 | Step | Pass criteria |
 |------|---------------|
-| `/arena` podiums | Four cards render Last Buy, WarBow, Defended Streak, Time Booster; each shows current epoch when available and 1st/2nd/3rd prize rows in **DOUB** plus USD equivalent. |
+| `/arena/protocol` podiums | Four-card **`arena-simple-podiums`** grid renders Last Buy, WarBow, Defended Streak, Time Booster; each shows current epoch when available and 1st/2nd/3rd prize rows in **DOUB** plus USD equivalent. Play **`/`** uses podium carousel only ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)). |
 | Address treatment | Podium, live-buy, and activity addresses show blockie + last six hex digits (no `0x…` truncation); clicking participant rows opens wallet profile where wired. |
 | CHARM/CRED | Card labels read as epoch yield state (Epoch, CHARM weight, Accruing/Claimable CRED); no leaderboard or launchpad-price framing. |
 | WarBow actions | Operations rail groups **Steal**, **Guard**, **Revenge**, and **Flag** with DOUB cost pills (Flag 0 DOUB). |
@@ -839,17 +839,17 @@ Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`*
 
 1. Global chrome uses `--yo-*` glass/console tokens from [`frontend/src/index.css`](../../frontend/src/index.css).
 2. RainbowKit wallet chrome is dark and cyan-accented through [`AppProviders`](../../frontend/src/providers/AppProviders.tsx).
-3. Time Arena route decisions stay compact: visible sub-nav labels are **BUY** and **AUDIT**; extra mechanics are in tooltips / aria labels and action-adjacent states.
+3. Time Arena play surface (**`/`**) has **no** in-page `ArenaSubnav` BUY/AUDIT row; header nav exposes **AUDIT** (`/arena/protocol`) and **Referrals** only ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)); extra mechanics are in tooltips / aria labels and action-adjacent states.
 4. Shell/home/footer copy references current TimeArena mechanics (DOUB / Play CRED buys, podiums, WarBow, AUDIT reads) and does not frame the route as retired TimeCurve, PvE, or sale-end/redemption UX.
 
 ### Checklist
 
 - [ ] Desktop (`≥1024px`): header, home cards, PageHero/PageSection panels, and footer cards read as dark glass surfaces with crisp hierarchy.
 - [ ] Mobile (`≤720px`): bottom header dock keeps the same dark glass treatment; labels and focus rings remain visible.
-- [ ] `/arena`: visible route choices are **BUY** and **AUDIT**; hover/focus reveals concise mechanics via title / aria-label; no default ABOUT paragraph.
+- [ ] `/`: header **AUDIT** link → `/arena/protocol`; **no** in-page BUY/AUDIT sub-nav; hover/focus reveals concise mechanics via title / aria-label; no default ABOUT paragraph.
 - [ ] Wallet modal / connect button palette matches the cyan-on-dark shell.
-- [ ] Keyboard Tab: focus rings remain high-contrast in header, sub-nav, and primary CTA controls.
-- [ ] Optional visual pass: compare `/`, `/arena`, `/arena/protocol`, `/referrals`, `/kumbaya`, `/sir` at desktop and phone widths for consistent surface language.
+- [ ] Keyboard Tab: focus rings remain high-contrast in header nav and primary CTA controls.
+- [ ] Optional visual pass: compare `/`, `/arena/protocol`, `/referrals`, `/kumbaya`, `/sir` at desktop and phone widths for consistent surface language.
 - [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`.
 
 **Doc map:** [frontend design §290](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) · [invariants — #290](invariants-and-business-logic.md#frontend-cyberminimalist-glass-shell-gitlab-290)
@@ -1120,12 +1120,12 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
 ### Full stack (indexer healthy)
 
 - [ ] `bash scripts/start-qa-local-full-stack.sh --no-swarm` (or reuse stack); confirm `VITE_INDEXER_URL` in `frontend/.env.local`.
-- [ ] Open `/arena`: podiums, hero timer, secondary timer chips, and buy hub populated.
+- [ ] Open `/`: podium carousel, hero timer, secondary timer chips, and buy hub populated.
 - [ ] With `VITE_RPC_DEBUG=1`, DevTools network: **no** recurring `eth_call` multicalls for `podium`, `podiumDeadline`, `deadline`, or sale-head getters (~1 Hz).
 
 ### Indexer down (URL still set)
 
-- [ ] Stop indexer process; reload `/arena`.
+- [ ] Stop indexer process; reload `/`.
 - [ ] `IndexerStatusBar` shows offline/retrying; podiums do **not** repopulate via browser RPC.
 
 ### Indexer URL unset (dev/E2E)
