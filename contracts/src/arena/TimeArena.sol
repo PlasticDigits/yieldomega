@@ -970,7 +970,9 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             }
         }
         for (uint8 r; r < 3; ++r) {
-            if (o.winners[r] == address(0) || value > o.values[r]) {
+            bool beats = value > o.values[r];
+            bool tieLowerAddr = value == o.values[r] && uint160(entrant) < uint160(o.winners[r]);
+            if (o.winners[r] == address(0) || beats || tieLowerAddr) {
                 o.winners[r] = entrant;
                 o.values[r] = value;
                 _sortOffWarbowPodium();

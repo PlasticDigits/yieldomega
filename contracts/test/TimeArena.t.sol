@@ -694,6 +694,21 @@ contract TimeArenaTest is Test {
         _warpPastBuyCooldown();
     }
 
+    /// Level to 4 with exactly one WarBow BP grant (the level-up buy).
+    function _reachLevel4OneWarbowBuy(address user) internal {
+        while (arena.level(user) < 3) {
+            _warpPastBuyCooldown();
+            vm.prank(user);
+            arena.buy(CHARM_MAX);
+        }
+        while (arena.level(user) < 4) {
+            _warpPastBuyCooldown();
+            vm.prank(user);
+            arena.buy(CHARM_MAX);
+        }
+        assertEq(arena.level(user), 4);
+    }
+
     /// INV-TIME-ARENA-XP-GAS: incremental onchain state matches lifetime reference after buys.
     function test_xp_incremental_matches_reference_many_buys() public {
         uint256 charm = 10e18;
@@ -1168,6 +1183,108 @@ contract TimeArenaTest is Test {
         assertLt(arena.battlePoints(charlie), arena.battlePoints(eve));
         (address[3] memory afterSteal,) = arena.podium(arena.CAT_WARBOW());
         assertEq(afterSteal[2], eve, "eve promoted after charlie BP drain");
+    }
+
+    /// Security: equal-BP off-podium challenger with better tie-break must reach global top-3.
+    function test_warbow_off_podium_tie_break_promotes_to_global() public {
+        address carol = address(0x300);
+        address d = address(0xD001);
+        address e = address(0xE001);
+        address f = address(0xF001);
+        address greg = address(0x100);
+        address[5] memory extras = [carol, d, e, f, greg];
+        for (uint256 i; i < extras.length; ++i) {
+            doub.mint(extras[i], 1_000_000e18);
+            vm.prank(extras[i]);
+            doub.approve(address(arena), type(uint256).max);
+        }
+
+        _ensureLevel(alice, 4);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(bob, 4);
+        for (uint256 i; i < 4; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(bob);
+            arena.buy(CHARM_MIN);
+        }
+
+        _reachLevel4OneWarbowBuy(carol);
+        _reachLevel4OneWarbowBuy(d);
+        _reachLevel4OneWarbowBuy(e);
+        _reachLevel4OneWarbowBuy(f);
+
+        uint256 sharedBp = arena.battlePoints(carol);
+        assertEq(arena.battlePoints(d), sharedBp);
+        assertEq(arena.battlePoints(e), sharedBp);
+        assertEq(arena.battlePoints(f), sharedBp);
+        assertGt(uint160(carol), uint160(greg), "greg wins tie-break over carol");
+
+        (address[3] memory before,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(before[2], carol, "carol on global podium before greg");
+        assertEq(arena.battlePoints(greg), 0, "greg untracked before first WarBow buy");
+
+        _reachLevel4OneWarbowBuy(greg);
+
+        assertEq(arena.battlePoints(greg), sharedBp);
+        (address[3] memory afterBuy,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(afterBuy[2], greg, "greg promoted via off-podium tie-break merge");
+    }
+
+    /// WarBow ≤6 tracking: a buy with BP above the worst podium slot must enter the merge set.
+    function test_warbow_higher_bp_buy_enters_podium() public {
+        address carol = address(0xC0FFEE);
+        address david = address(0xDA11);
+        doub.mint(carol, 1_000_000e18);
+        doub.mint(david, 1_000_000e18);
+        vm.prank(carol);
+        doub.approve(address(arena), type(uint256).max);
+        vm.prank(david);
+        doub.approve(address(arena), type(uint256).max);
+
+        _ensureLevel(alice, 4);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(bob, 4);
+        for (uint256 i; i < 4; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(bob);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(carol, 4);
+        vm.prank(carol);
+        arena.buy(CHARM_MIN);
+
+        uint256 carolBp = arena.battlePoints(carol);
+        (address[3] memory before,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(before[2], carol);
+
+        _warpPastBuyCooldown();
+        _ensureLevel(david, 4);
+        for (uint256 i; i < 2; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(david);
+            arena.buy(CHARM_MIN);
+        }
+
+        assertGt(arena.battlePoints(david), carolBp);
+        (address[3] memory afterBuy,) = arena.podium(arena.CAT_WARBOW());
+        assertTrue(
+            afterBuy[0] == david || afterBuy[1] == david || afterBuy[2] == david,
+            "higher-BP buy must land on podium"
+        );
     }
 
     /// GitLab #312: equal BP tie-break favors lower address.

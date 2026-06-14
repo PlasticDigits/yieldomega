@@ -96,6 +96,8 @@ Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`Podiu
 
 BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses, steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity.
 
+**On-chain podium ranking ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** WarBow top-3 is maintained incrementally via a global top-3 plus an off-podium top-3 buffer (≤6 addresses merged per BP update). Tie-break: equal BP ranks lower address higher. See [WarBow ranking benchmark § tradeoff](../testing/warbow-ranking-benchmark-312.md#6-address-tracking-tradeoff-gas-vs-accuracy) for gas/accuracy limits.
+
 ## Retired surfaces
 
 - Collectible NFT layer — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)
