@@ -29,7 +29,6 @@ fi
 declare -a PAIRS=(
   "TimeArena.sol:TimeArena"
   "PodiumVaults.sol:PodiumVaults"
-  "AdminSellVault.sol:AdminSellVault"
   "TimeArenaBuyRouter.sol:TimeArenaBuyRouter"
   "Doubloon.sol:Doubloon"
   "PlayCred.sol:PlayCred"

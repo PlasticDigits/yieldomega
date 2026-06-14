@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from timecurve_bot.addresses import addresses_from_registry, checksum_addr, load_registry_file
+from timearena_bot.addresses import addresses_from_registry, checksum_addr, load_registry_file
 
 
 def test_checksum_addr() -> None:

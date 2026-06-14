@@ -93,11 +93,12 @@ contract TimeArenaBuyRouter is ReentrancyGuard, Ownable2Step {
         bytes calldata path
     ) external payable nonReentrant {
         TimeArena ta = timeArena;
-        if (ta.arenaStart() == 0 || ta.paused() || block.timestamp > ta.deadline()) {
+        if (ta.arenaStart() == 0 || ta.paused()) {
             revert TimeArenaBuyRouter__BadPhase();
         }
         if (charmWad < 99e16 || charmWad > 10e18) revert TimeArenaBuyRouter__CharmBounds();
 
+        // Gross DOUB from TimeArena.doubOwedForBuy (view; hard-reset TWAP preview — #315).
         uint256 grossDoub = ta.doubOwedForBuy(charmWad);
         if (grossDoub == 0) revert TimeArenaBuyRouter__BadPhase();
         if (block.timestamp > swapDeadline) revert TimeArenaBuyRouter__SwapExpired();

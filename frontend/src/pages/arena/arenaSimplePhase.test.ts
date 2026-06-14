@@ -8,6 +8,7 @@ import {
   phaseBadge,
   phaseFlags,
   phaseNarrative,
+  preLaunchBuyGateMessage,
   arenaHeroDisplaySecondsRemaining,
 } from "./arenaSimplePhase";
 
@@ -92,6 +93,11 @@ describe("arenaSimplePhase (Arena v2)", () => {
   it("phaseNarrative mentions CHARM / DOUB for arena", () => {
     expect(phaseNarrative("saleStartPending")).toMatch(/CHARM/);
     expect(phaseNarrative("saleActive")).toMatch(/win/i);
+  });
+
+  it("preLaunchBuyGateMessage avoids forbidden sale framing (#318)", () => {
+    expect(preLaunchBuyGateMessage()).toMatch(/arena opens|arena has not opened/i);
+    expect(preLaunchBuyGateMessage()).not.toMatch(/\bsale\b/i);
   });
 
   it("formatTimerSectionTitle uses pre-open copy or Last Buy 1st-prize hook", () => {
