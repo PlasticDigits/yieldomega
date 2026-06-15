@@ -253,6 +253,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     assert_eq!(res.status(), StatusCode::OK);
 
     let res = app
+        .clone()
         .oneshot(
             Request::builder()
                 .uri("/v1/arena/wallet/0xbad/stats")
@@ -262,6 +263,19 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/wallet/0xgggggggggggggggggggggggggggggggggggggggg/stats")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    let j = response_json(res).await;
+    assert_eq!(j.get("error").and_then(|v| v.as_str()), Some("invalid_address"));
 }
 
 #[tokio::test]

@@ -59,4 +59,32 @@ contract ReferralRegistryTest is Test {
         reg.registerCode("second");
         vm.stopPrank();
     }
+
+    function test_ownable2step_transfer_requires_accept() public {
+        address newOwner = makeAddr("newOwner");
+        reg.transferOwnership(newOwner);
+        assertEq(reg.owner(), address(this));
+        assertEq(reg.pendingOwner(), newOwner);
+
+        vm.prank(newOwner);
+        reg.acceptOwnership();
+        assertEq(reg.owner(), newOwner);
+        assertEq(reg.pendingOwner(), address(0));
+    }
+
+    function test_ownable2step_pending_owner_cannot_upgrade() public {
+        address pending = makeAddr("pending");
+        reg.transferOwnership(pending);
+        ReferralRegistry impl2 = new ReferralRegistry();
+        vm.prank(pending);
+        vm.expectRevert();
+        reg.upgradeToAndCall(address(impl2), "");
+    }
+
+    function test_uups_upgrade_blocked_for_non_owner() public {
+        ReferralRegistry impl2 = new ReferralRegistry();
+        vm.prank(alice);
+        vm.expectRevert();
+        reg.upgradeToAndCall(address(impl2), "");
+    }
 }

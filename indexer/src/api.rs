@@ -17,6 +17,7 @@ use serde_json::json;
 use sqlx::{PgPool, Row};
 use tokio::sync::RwLock;
 
+use crate::api_validate::valid_0x_address20;
 use crate::chain_timer::TimecurveHeadSnapshot;
 use crate::rpc_metrics::RpcMetrics;
 
@@ -158,10 +159,6 @@ async fn status(State(state): State<AppState>) -> Response {
     let mut res = Json(body).into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
-}
-
-fn valid_0x_address20(s: &str) -> bool {
-    s.starts_with("0x") && s.len() == 42 && s[2..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -617,20 +614,3 @@ mod internal_db_error_response_tests {
     }
 }
 
-#[cfg(test)]
-mod address_validation_tests {
-    use super::valid_0x_address20;
-
-    #[test]
-    fn valid_0x_address20_accepts_20_byte_hex() {
-        assert!(valid_0x_address20(
-            "0xdddddddddddddddddddddddddddddddddddddddd"
-        ));
-    }
-
-    #[test]
-    fn valid_0x_address20_rejects_invalid() {
-        assert!(!valid_0x_address20("0xbad"));
-        assert!(!valid_0x_address20("not-an-address"));
-    }
-}

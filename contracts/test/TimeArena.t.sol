@@ -2051,4 +2051,32 @@ contract TimeArenaTest is Test {
         vm.expectRevert("TimeArena: bad victim");
         arena.warbowSteal(alice, false);
     }
+
+    function test_ownable2step_transfer_requires_accept() public {
+        address newOwner = makeAddr("newOwner");
+        arena.transferOwnership(newOwner);
+        assertEq(arena.owner(), admin);
+        assertEq(arena.pendingOwner(), newOwner);
+
+        vm.prank(newOwner);
+        arena.acceptOwnership();
+        assertEq(arena.owner(), newOwner);
+        assertEq(arena.pendingOwner(), address(0));
+    }
+
+    function test_ownable2step_pending_owner_cannot_upgrade() public {
+        address pending = makeAddr("pending");
+        arena.transferOwnership(pending);
+        TimeArena impl2 = new TimeArena();
+        vm.prank(pending);
+        vm.expectRevert();
+        arena.upgradeToAndCall(address(impl2), "");
+    }
+
+    function test_uups_upgrade_blocked_for_non_owner() public {
+        TimeArena impl2 = new TimeArena();
+        vm.prank(alice);
+        vm.expectRevert();
+        arena.upgradeToAndCall(address(impl2), "");
+    }
 }

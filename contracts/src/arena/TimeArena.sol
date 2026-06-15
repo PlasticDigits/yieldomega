@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -22,7 +22,7 @@ import {IReferralRegistry} from "../interfaces/IReferralRegistry.sol";
 import {IPlayCred} from "../interfaces/IPlayCred.sol";
 
 /// @title TimeArena — persistent PvP timer arena (Arena v2)
-contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
+contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     uint8 public constant CAT_LAST_BUYERS = 0;
@@ -218,6 +218,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         address upgradeAdmin
     ) external initializer {
         __Ownable_init(upgradeAdmin);
+        __Ownable2Step_init();
         require(address(_doub) != address(0), "TimeArena: zero doub");
         require(address(_podiumVaults) != address(0), "TimeArena: zero vaults");
         require(_charmPriceWad > 0, "TimeArena: zero price");

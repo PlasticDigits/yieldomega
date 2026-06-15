@@ -4,6 +4,7 @@
 
 pub mod api;
 pub mod api_arena;
+pub mod api_validate;
 pub mod api_cursor;
 pub mod arena_platform_usage;
 pub mod arena_podium_live;
