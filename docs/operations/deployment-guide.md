@@ -131,6 +131,8 @@ Publish the written JSON as the canonical artifact; use it as the source of trut
 
 Copy the registry to the indexer host or publish it at a path available to the process. The indexer uses the registry for log filters and production safety checks.
 
+**Internet-facing deploys:** follow the [indexer internet-facing checklist](../../indexer/README.md#internet-facing-indexer-gitlab-326) — set **`INDEXER_PRODUCTION=1`**, restrict **`CORS_ALLOWED_ORIGINS`**, use a real **`DATABASE_URL`**, and validate **`ADDRESS_REGISTRY`** before binding a non-loopback **`LISTEN_ADDR`**.
+
 **Complete production-style exports** (adjust hostnames / passwords; `DATABASE_URL` must **not** contain the placeholder substrings rejected when `INDEXER_PRODUCTION=1` — see [`indexer/src/config.rs`](../../indexer/src/config.rs) / [`indexer/README.md`](../../indexer/README.md)):
 
 ```bash

@@ -888,6 +888,12 @@ Cross-links: [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmar
 
 **INV-INDEXER-156:** With **`INDEXER_PRODUCTION`**, registry must include **`TimeArena`**, **`PodiumVaults`**, **`ReferralRegistry`**, valid **`chain_id`**, and **`deploy_block > 0`** (except Anvil **31337**). Legacy **`AdminSellVault`** key is optional ([#314](https://gitlab.com/PlasticDigits/yieldomega/-/issues/314)).
 
+<a id="indexer-public-bind-cors-guard-gitlab-326"></a>
+
+### Indexer public bind + CORS guard (GitLab [#326](https://gitlab.com/PlasticDigits/yieldomega/-/issues/326))
+
+**INV-INDEXER-326-PUBLIC-BIND-CORS:** When **`LISTEN_ADDR`** is not loopback and **`INDEXER_PRODUCTION`** is unset, startup logs a high-visibility warning naming permissive CORS risk (audit **F-04**, parent [#325](https://gitlab.com/PlasticDigits/yieldomega/-/issues/325)). Internet-facing operators must set **`INDEXER_PRODUCTION=1`** and **`CORS_ALLOWED_ORIGINS`**. Loopback local stacks (`127.0.0.1:3100`, Anvil) unchanged. Implementation: [`warn_public_bind_without_production`](../../indexer/src/config.rs) · [`indexer/README.md` § internet-facing](../../indexer/README.md#internet-facing-indexer-gitlab-326) · unit tests `public_bind_guard_tests` in [`config.rs`](../../indexer/src/config.rs).
+
 <a id="retired-v1-reserve-removal-gitlab-242"></a>
 
 ### Retired v1 player reserve removal (GitLab [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242))

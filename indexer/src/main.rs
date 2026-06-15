@@ -23,6 +23,7 @@ async fn main() -> Result<()> {
         .init();
 
     let config = config::Config::from_env()?;
+    config::warn_public_bind_without_production(config.listen_addr);
     tracing::info!(
         chain_id = config.chain_id,
         rpc_endpoints = config.rpc_urls.len(),
