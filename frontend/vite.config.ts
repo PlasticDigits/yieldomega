@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import { assertProductionBuildEnv } from "./src/lib/viteProductionEnvGuard";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -114,32 +115,49 @@ function injectSocialMeta(mode: string) {
   };
 }
 
-export default defineConfig(({ mode }) => ({
-  plugins: [react(), injectSocialMeta(mode)],
-  build: {
-    // Rainbow/wagmi/WalletConnect pull large minified chunks; splitting further is a separate optimization.
-    chunkSizeWarningLimit: 1200,
-    rollupOptions: {
-      onwarn(warning, defaultHandler) {
-        // Upstream `ox` (via Coinbase, Reown, etc.) places `/*#__PURE__*/` where Rollup ignores it; behavior is safe.
-        if (
-          warning.code === "INVALID_ANNOTATION" &&
-          typeof warning.id === "string" &&
-          warning.id.includes("node_modules")
-        ) {
-          return;
-        }
-        defaultHandler(warning);
+function effectiveViteEnv(mode: string, key: string): string | undefined {
+  if (process.env[key] !== undefined) {
+    return process.env[key];
+  }
+  return loadEnv(mode, process.cwd(), "VITE")[key];
+}
+
+export default defineConfig(({ command, mode }) => {
+  assertProductionBuildEnv(
+    { VITE_E2E_MOCK_WALLET: effectiveViteEnv(mode, "VITE_E2E_MOCK_WALLET") },
+    {
+      command,
+      allowE2EMockWallet: process.env.ANVIL_E2E === "1",
+    },
+  );
+
+  return {
+    plugins: [react(), injectSocialMeta(mode)],
+    build: {
+      // Rainbow/wagmi/WalletConnect pull large minified chunks; splitting further is a separate optimization.
+      chunkSizeWarningLimit: 1200,
+      rollupOptions: {
+        onwarn(warning, defaultHandler) {
+          // Upstream `ox` (via Coinbase, Reown, etc.) places `/*#__PURE__*/` where Rollup ignores it; behavior is safe.
+          if (
+            warning.code === "INVALID_ANNOTATION" &&
+            typeof warning.id === "string" &&
+            warning.id.includes("node_modules")
+          ) {
+            return;
+          }
+          defaultHandler(warning);
+        },
       },
     },
-  },
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+      },
     },
-  },
-  test: {
-    environment: "node",
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
-  },
-}));
+    test: {
+      environment: "node",
+      include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    },
+  };
+});

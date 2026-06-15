@@ -48,7 +48,8 @@ EOF
 # Intentionally omit VITE_E2E_MOCK_WALLET — Rabby must drive chainId for #95 path 7.
 
 cd "${ROOT}/frontend"
-unset VITE_E2E_MOCK_WALLET || true
+# Empty export beats frontend/.env.local mock flag (Vite loadEnv precedence; GitLab #327).
+export VITE_E2E_MOCK_WALLET=
 npm run build
 
 echo "==> Rabby build ready (no mock wallet). Preview:"
