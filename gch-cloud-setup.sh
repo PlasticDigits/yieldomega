@@ -16,7 +16,7 @@ GCH_GOLDEN_IMAGE_MODEL="${GCH_GOLDEN_IMAGE_MODEL:-composer-2.5}"
 FINALIZE_PROMPT="${SCRIPT_DIR}/gch-golden-image-finalize.md"
 
 _agent_sh() {
-  sudo -u "${AGENT_USER}" env PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 "$@"
+  sudo -u "${AGENT_USER}" "$@"
 }
 
 echo "==> Base packages"
@@ -101,13 +101,6 @@ EOF
 chown -R "${AGENT_USER}:${AGENT_USER}" "${AGENT_HOME}/.cursor"
 chmod 600 "${AGENT_HOME}/.cursor/cli-config.json"
 
-echo "==> GCH agent env (system + agent shell)"
-cat >/etc/profile.d/gch-agent.sh <<'EOF'
-# Playwright: no ubuntu26.04-x64 build yet; use 24.04 userspace on golden images.
-export PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64
-EOF
-chmod 644 /etc/profile.d/gch-agent.sh
-
 touch "${AGENT_HOME}/.bashrc"
 if ! grep -q 'GCH job secrets' "${AGENT_HOME}/.bashrc"; then
   cat >>"${AGENT_HOME}/.bashrc" <<'EOF'
@@ -182,6 +175,18 @@ fi
 
 # Postgres is started by bootstrap-cloud-vm-toolchain.sh (do not run bootstrap-cloud-postgres-native.sh again as root — psql defaults to 5432 after port is moved to 5433).
 
+if [[ -d "${WORKSPACE}/indexer" ]]; then
+  echo "==> Indexer prebuild (cargo registry + target cache for job VMs)"
+  _agent_sh bash -lc "
+    set -euo pipefail
+    source /usr/local/cargo/env 2>/dev/null || true
+    cd '${WORKSPACE}/indexer'
+    cargo fetch
+    cargo clippy --all-targets -- -D warnings
+    cargo test --no-run
+  "
+fi
+
 if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-agent.sh" ]]; then
   echo "==> Playwright + Rabby"
   if ! pgrep -x Xvfb >/dev/null 2>&1; then
@@ -213,7 +218,6 @@ fi
 sudo -u "${AGENT_USER}" env \
   CURSOR_API_KEY="${CURSOR_API_KEY}" \
   DISPLAY=:99 \
-  PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 \
   bash -lc "
     set -euo pipefail
     cd '${WORKSPACE}'

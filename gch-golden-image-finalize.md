@@ -14,7 +14,6 @@ Complete all verification below and write the golden-image report. Use passwordl
      mkdir -p /home/agent/.gch
      export PATH="$HOME/.foundry/bin:$PATH"
      export YIELDOMEGA_GOLDEN_IMAGE=1
-     export PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64
      cd /home/agent/workspace
      unset KEY_EVM_1 KEY_EVM_2 KEY_EVM_3 ADDR_EVM_1 ADDR_EVM_2 ADDR_EVM_3 EVM_DEV_ADDRS \
        VITE_TIME_ARENA_ADDRESS VITE_INDEXER_URL || true
@@ -38,11 +37,20 @@ Complete all verification below and write the golden-image report. Use passwordl
 3. **Toolchain**
    - `forge --version`, `anvil --version`, `rustc --version`, `node --version`, `agent about`, `glab --version`
    - `bash scripts/verify-cloud-postgres.sh` (indexer Postgres :5433)
+   - **Indexer prebuild** (warm `~/.cargo/registry` and `indexer/target/` so `agent:verify` skips cold compile):
+     ```bash
+     source /usr/local/cargo/env 2>/dev/null || true
+     cd /home/agent/workspace/indexer
+     cargo fetch
+     cargo clippy --all-targets -- -D warnings
+     cargo test --no-run
+     ```
+     Append **`indexer-prebuild: PASS`** or **`indexer-prebuild: FAIL`** to the verify log.
    - Optional: `FOUNDRY_PROFILE=ci forge test` in `contracts/` — five known failures (DoubAirdropMegaethFork missing `doub.csv`, DevStackIntegration env flake) are **not** golden-image blockers; record pass/fail counts only.
 
 4. **Write report**
    - Append all results to `/home/agent/.gch/golden-image-verify.log`
-   - End with `OVERALL: PASS` only if **e2e-anvil.sh** + Rabby smoke + postgres pass; else `OVERALL: FAIL` with blockers
+   - End with `OVERALL: PASS` only if **e2e-anvil.sh** + Rabby smoke + postgres + indexer prebuild pass; else `OVERALL: FAIL` with blockers
    - Confirm: `test -f /home/agent/.gch/golden-image-verify.log && wc -l /home/agent/.gch/golden-image-verify.log`
 
 ## Constraints

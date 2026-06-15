@@ -13,7 +13,7 @@ import time
 
 
 def classify_line(line: bytes) -> str:
-    """Return 'thinking_done' or 'activity'."""
+    """Return 'short_idle_arm' or 'activity'."""
     stripped = line.strip()
     if not stripped:
         return "activity"
@@ -21,10 +21,14 @@ def classify_line(line: bytes) -> str:
         obj = json.loads(stripped)
     except json.JSONDecodeError:
         if b'"type":"thinking"' in stripped and b'"subtype":"completed"' in stripped:
-            return "thinking_done"
+            return "short_idle_arm"
+        if b'"type":"tool_call"' in stripped and b'"subtype":"completed"' in stripped:
+            return "short_idle_arm"
         return "activity"
     if obj.get("type") == "thinking" and obj.get("subtype") == "completed":
-        return "thinking_done"
+        return "short_idle_arm"
+    if obj.get("type") == "tool_call" and obj.get("subtype") == "completed":
+        return "short_idle_arm"
     return "activity"
 
 
@@ -87,7 +91,7 @@ def main() -> int:
             if chunk:
                 line_buf, kinds = feed_lines(line_buf, chunk)
                 if kinds:
-                    if kinds[-1] == "thinking_done":
+                    if kinds[-1] == "short_idle_arm":
                         use_short_idle = True
                     else:
                         use_short_idle = False
@@ -99,7 +103,7 @@ def main() -> int:
             elif proc.poll() is not None:
                 break
         elif saw_output and (time.monotonic() - last_output) >= idle_limit:
-            label = "after thinking" if use_short_idle else "long idle"
+            label = "short idle" if use_short_idle else "long idle"
             print(
                 f"gch-agent-idle-wrap: no output for {idle_limit}s ({label}); stopping agent",
                 file=sys.stderr,
