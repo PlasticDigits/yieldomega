@@ -21,6 +21,7 @@ pub mod last_buy_epoch_head;
 pub mod multicall;
 pub mod persist;
 pub mod reorg;
+pub mod rate_limit;
 pub mod rpc_http;
 pub mod rpc_metrics;
 pub mod sale_state;

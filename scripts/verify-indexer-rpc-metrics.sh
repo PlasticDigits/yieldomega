@@ -36,17 +36,23 @@ trap cleanup EXIT
 
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 export INDEXER_RPC_METRICS_LOG_SEC=15
+export INDEXER_EXPOSE_OPS_METRICS=1
 yieldomega_verify_boot_indexer_stack "${ROOT}"
 
 [[ -n "${TA:-}" ]] || die "TimeArena missing after deploy"
 
-STATUS_URL="http://127.0.0.1:${INDEXER_PORT}/v1/status"
+STATUS_URL="http://127.0.0.1:${INDEXER_PORT}/v1/status/ops"
+PUBLIC_STATUS_URL="http://127.0.0.1:${INDEXER_PORT}/v1/status"
 
 # Allow chain-timer ~1 Hz polls to accumulate metrics.
 sleep 35
 
+PUBLIC_RESP="$(curl -sf "${PUBLIC_STATUS_URL}")"
+echo "${PUBLIC_RESP}" | jq -e '.rpc_metrics | not' >/dev/null \
+  || die "public /v1/status must not expose rpc_metrics (set INDEXER_EXPOSE_OPS_METRICS only for ops)"
+
 RESP="$(curl -sf "${STATUS_URL}")"
-echo "${RESP}" | jq -e '.rpc_metrics' >/dev/null || die "rpc_metrics missing from /v1/status"
+echo "${RESP}" | jq -e '.rpc_metrics' >/dev/null || die "rpc_metrics missing from /v1/status/ops"
 echo "${RESP}" | jq -e '.rpc_metrics.total_calls > 0' >/dev/null \
   || die "rpc_metrics.total_calls still zero after warm-up"
 echo "${RESP}" | jq -e '.rpc_metrics.by_caller.chain_timer != null' >/dev/null \

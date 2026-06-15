@@ -846,9 +846,18 @@ Cross-links: [`docs/indexer/design.md` §237](../indexer/design.md#megaeth-wss-r
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-INDEXER-306-STATUS-METRICS`** | **`GET /v1/status`** (schema **≥ 2.11.0**) exposes **`rpc_metrics`** with **`calls_per_min_1m`**, **`peak_calls_10s`**, **`by_method`**, **`by_caller`** after warm-up | `bash scripts/verify-indexer-rpc-metrics.sh` · [`api.rs`](../../indexer/src/api.rs) · [`rpc_metrics.rs`](../../indexer/src/rpc_metrics.rs) |
+| **`INV-INDEXER-306-STATUS-METRICS`** | With **`INDEXER_EXPOSE_OPS_METRICS=1`**, **`GET /v1/status/ops`** (schema **≥ 2.13.0**) exposes **`rpc_metrics`** with **`calls_per_min_1m`**, **`peak_calls_10s`**, **`by_method`**, **`by_caller`** after warm-up; public **`GET /v1/status`** always omits **`rpc_metrics`** ([#328](https://gitlab.com/PlasticDigits/yieldomega/-/issues/328)) | `bash scripts/verify-indexer-rpc-metrics.sh` · [`api.rs`](../../indexer/src/api.rs) · [`rpc_metrics.rs`](../../indexer/src/rpc_metrics.rs) |
 | **`INV-INDEXER-306-BENCHMARK-HARNESS`** | Reproducible localnet scenario script (idle, catch-up, active arena) samples status metrics | `bash scripts/benchmark-indexer-rpc-anvil.sh` · [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) |
 | **`INV-INDEXER-306-NO-REGRESSION`** | Ingestion liveness ([#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)) and arena head APIs ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254), [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) unchanged | `bash scripts/verify-podium-live-anvil.sh` · `cd indexer && cargo test` |
+
+<a id="indexer-http-rate-limiting-gitlab-328"></a>
+
+### Indexer HTTP rate limiting (GitLab [#328](https://gitlab.com/PlasticDigits/yieldomega/-/issues/328))
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-328-RATE-LIMIT`** | Per-peer in-process limits via **`tower_governor`**; **`GET /healthz`** exempt; burst abuse returns **429** | `bash scripts/verify-indexer-rate-limit.sh` · [`rate_limit.rs`](../../indexer/src/rate_limit.rs) · [`main.rs`](../../indexer/src/main.rs) |
+| **`INV-INDEXER-328-STATUS-TRIM`** | Public **`GET /v1/status`** omits **`rpc_metrics`** / **`chain_pointer`** by default; ops detail on **`GET /v1/status/ops`** when **`INDEXER_EXPOSE_OPS_METRICS=1`** | `bash scripts/verify-indexer-rpc-metrics.sh` · [`api.rs`](../../indexer/src/api.rs) |
 
 <a id="indexer-adaptive-chain-timer-poll-gitlab-308"></a>
 
