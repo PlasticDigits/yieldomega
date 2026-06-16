@@ -12,12 +12,13 @@ export type AmountTripleStackRow = {
 
 type AmountTripleStackProps = {
   rows: readonly AmountTripleStackRow[];
+  className?: string;
 };
 
 /** Label/value rows using only `span` so the block is valid inside `<p>` (see GitLab #9). */
-export function AmountTripleStack({ rows }: AmountTripleStackProps) {
+export function AmountTripleStack({ rows, className }: AmountTripleStackProps) {
   return (
-    <span className="amount-triple">
+    <span className={["amount-triple", className].filter(Boolean).join(" ")}>
       {rows.map((row, i) => (
         <span key={row.label?.trim() ? row.label : `row-${i}`} className="amount-triple__row">
           {row.label?.trim() ? <span className="amount-triple__label">{row.label}</span> : null}

@@ -1673,10 +1673,9 @@ contract TimeArenaTest is Test {
     /// @dev Fresh arena + ReferralRegistry for GitLab #253 referral CRED tests.
     function _arenaWithReferrals()
         internal
-        returns (TimeArena ar, ReferralRegistry reg, MockCL8Y reserve)
+        returns (TimeArena ar, ReferralRegistry reg)
     {
-        reserve = new MockCL8Y();
-        reg = UUPSDeployLib.deployReferralRegistry(IERC20(address(reserve)), 1e18, admin);
+        reg = UUPSDeployLib.deployReferralRegistry(admin);
         PodiumVaults v = new PodiumVaults(doub, admin);
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
@@ -1698,19 +1697,20 @@ contract TimeArenaTest is Test {
         );
         ar = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(ar));
+        reg.setTimeArena(address(ar));
         cred.grantRole(cred.MINTER_ROLE(), address(ar));
         ar.startArena();
     }
 
     /// GitLab #253 / #272: referred buy mints flat Play CRED per side, not CHARM weight.
     function test_referred_buy_mints_cred_not_charm() public {
-        (TimeArena ar, ReferralRegistry reg, MockCL8Y reserve) = _arenaWithReferrals();
+        (TimeArena ar, ReferralRegistry reg) = _arenaWithReferrals();
         address referrer = makeAddr("referrer");
         address buyer = makeAddr("buyer");
 
-        reserve.mint(referrer, 10e18);
+        doub.mint(referrer, 10_000e18);
         vm.startPrank(referrer);
-        reserve.approve(address(reg), type(uint256).max);
+        doub.approve(address(reg), type(uint256).max);
         reg.registerCode("refcode");
         vm.stopPrank();
 
@@ -1754,13 +1754,12 @@ contract TimeArenaTest is Test {
 
     /// GitLab #253: self-referral still reverts.
     function test_self_referral_reverts() public {
-        (TimeArena ar, ReferralRegistry reg, MockCL8Y reserve) = _arenaWithReferrals();
+        (TimeArena ar, ReferralRegistry reg) = _arenaWithReferrals();
         address referrer = makeAddr("selfref");
 
-        reserve.mint(referrer, 10e18);
         doub.mint(referrer, 1_000_000e18);
         vm.startPrank(referrer);
-        reserve.approve(address(reg), type(uint256).max);
+        doub.approve(address(reg), type(uint256).max);
         reg.registerCode("selfref");
         bytes32 codeHash = reg.hashCode("selfref");
         doub.approve(address(ar), type(uint256).max);

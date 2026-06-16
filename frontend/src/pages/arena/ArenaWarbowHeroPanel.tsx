@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useAccount } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PlayerIdentity } from "@/components/arena";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -8,8 +9,9 @@ import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrie
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatWarbowViewerBattlePointsDisplay } from "@/lib/arenaPageHelpers";
-import { formatLocaleInteger } from "@/lib/formatAmount";
+import { formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
+import { useArenaPendingRevengeTargets } from "@/hooks/useArenaPendingRevengeTargets";
 import { ArenaLevelGate } from "@/components/ArenaLevelGate";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import {
@@ -88,7 +90,10 @@ export function ArenaWarbowHeroPanel({
   onPlantWarBowFlagChange,
   plantFlagDisabled = true,
 }: Props) {
+  const { address } = useAccount();
   const w = useArenaWarbowHero(phase, { indexerViewerBattlePoints, indexerWarbowHead });
+  const { pendingRevengeTargets, hasRevengeOpen, revengeIndexerConfigured } =
+    useArenaPendingRevengeTargets(address, w.chainNowSec);
   const viewerBattlePointsDisplay = formatWarbowViewerBattlePointsDisplay(
     parseBp(w.viewerBattlePoints),
   );
@@ -369,17 +374,58 @@ export function ArenaWarbowHeroPanel({
               {revengeCost} DOUB
             </span>
           </div>
-          <p className="muted">Counter the selected stealer window.</p>
-          {w.isConnected && w.saleActive && (
+          {!w.isConnected ? (
+            <p className="muted">Connect a wallet to see open revenge windows.</p>
+          ) : !revengeIndexerConfigured ? (
+            <p className="muted">
+              Set <span className="mono">VITE_INDEXER_URL</span> for pending revenge windows.
+            </p>
+          ) : hasRevengeOpen ? (
+            <ul className="warbow-hero-revenge-list" data-testid="warbow-hero-revenge-list">
+              {pendingRevengeTargets.map((row) => {
+                const expirySec = Number(row.expiry_exclusive);
+                const nowSec = w.chainNowSec ?? Math.floor(Date.now() / 1000);
+                const remainingSec = Math.max(0, expirySec - nowSec);
+                return (
+                  <li key={`${row.stealer}-${row.steal_seq}`}>
+                    <PlayerIdentity
+                      address={row.stealer as `0x${string}`}
+                      onOpenProfile={onOpenWalletProfile}
+                      size={16}
+                    />
+                    <span className="mono muted" title={formatUnixSecIsoUtc(BigInt(row.expiry_exclusive))}>
+                      {formatMmSsCountdown(remainingSec)}
+                    </span>
+                    {w.isConnected && w.saleActive && (
+                      <ChainMismatchWriteBarrier>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={!w.canPress}
+                          onClick={() => void w.runWarBowRevenge(row.stealer as `0x${string}`)}
+                          data-testid={`warbow-hero-revenge-${row.stealer.toLowerCase()}`}
+                        >
+                          Revenge
+                        </button>
+                      </ChainMismatchWriteBarrier>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="muted">No open revenge windows for this wallet.</p>
+          )}
+          {w.isConnected && w.saleActive && hasRevengeOpen && w.stealVictim && (
             <ChainMismatchWriteBarrier>
               <button
                 type="button"
                 className="btn-secondary"
-                disabled={!w.canPress || !w.stealVictim}
-                onClick={() => w.stealVictim && void w.runWarBowRevenge(w.stealVictim)}
-                data-testid="warbow-hero-revenge-submit"
+                disabled={!w.canPress}
+                onClick={() => void w.runWarBowRevenge(w.stealVictim!)}
+                data-testid="warbow-hero-revenge-selected-target"
               >
-                Revenge stealer
+                Revenge selected steal target
               </button>
             </ChainMismatchWriteBarrier>
           )}

@@ -29,11 +29,8 @@ import {
   timeArenaReadAbi,
 } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
-import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
-import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatAmountTriple, parseBigIntString } from "@/lib/formatAmount";
-import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import { buyTokenOnKumbayaUrl } from "@/lib/kumbayaSwapUrl";
 import { normalizeReferralCode } from "@/lib/referralCode";
 import { validateCodeClientSide } from "@/lib/referralCodeValidation";
@@ -54,7 +51,6 @@ import {
   assertWalletBuySessionUnchanged,
   captureWalletBuySession,
 } from "@/lib/walletBuySessionGuard";
-import { CL8Y_USD_PRICE_PLACEHOLDER } from "@/lib/arenaPageHelpers";
 import { wagmiConfig } from "@/wagmi-config";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import {
@@ -127,20 +123,6 @@ export function ReferralRegisterSection({ className }: Props) {
   }, []);
 
   const tc = addresses.timeArena;
-  const priceQuery = useReadContract({
-    address: tc,
-    abi: timeArenaReadAbi,
-    functionName: "charmPriceWad",
-    query: { enabled: Boolean(tc), refetchInterval: () => getRpcBackoffPollMs(20_000) },
-  });
-  const pricePerCharmWad = priceQuery.data;
-  useRpcQueryHealthForRefetch({
-    isFetched: priceQuery.isFetched,
-    isFetching: priceQuery.isFetching,
-    isError: priceQuery.isError,
-    isSuccess: priceQuery.isSuccess,
-    error: priceQuery.error,
-  });
   const { data: regFromTimeArena } = useReadContract({
     address: tc,
     abi: timeArenaReadAbi,
@@ -168,7 +150,7 @@ export function ReferralRegisterSection({ className }: Props) {
           {
             address: registry,
             abi: referralRegistryReadAbi,
-            functionName: "cl8yToken",
+            functionName: "doubToken",
           },
           {
             address: registry,
@@ -188,7 +170,7 @@ export function ReferralRegisterSection({ className }: Props) {
     error: bundleQuery.error,
   });
 
-  const cl8yToken =
+  const payToken =
     bundle?.[0]?.status === "success"
       ? (bundle[0].result as `0x${string}`)
       : undefined;
@@ -202,29 +184,15 @@ export function ReferralRegisterSection({ className }: Props) {
     title: string;
   } | null => {
     if (burnWad === undefined) return null;
-    const raw = pricePerCharmWad;
-    const p = raw == null ? undefined : BigInt(raw);
-    const hasArenaPriceRead = p !== undefined && p > 0n;
-    if (hasArenaPriceRead) {
-      const usdmWei = fallbackPayTokenWeiForCl8y(burnWad, "usdm");
-      const compact = formatCompactFromRaw(usdmWei.toString(), 18, {
-        sigfigs: 3,
-      });
-      return {
-        text: `≈ $${compact} USD`,
-        title: SIMPLE_PODIUM_USD_EQUIV_TITLE,
-      };
-    }
     const human = Number(
       formatAmountTriple(parseBigIntString(burnWad.toString()), 18).decimal,
     );
-    const usd = (human * CL8Y_USD_PRICE_PLACEHOLDER).toFixed(2);
     return {
-      text: `≈ $${usd} USD`,
+      text: `≈ ${human.toLocaleString(undefined, { maximumFractionDigits: 4 })} DOUB`,
       title:
-        "USD shows 1 CL8Y = 1 USD when Time Arena `charmPriceWad` is unavailable; not a live oracle. The CL8Y line above is the onchain registration burn.",
+        "Burn equals TimeArena `epochCharmAnchorWad` — DOUB per 1 CHARM at the start of the current Last Buy epoch. Updates when the epoch rolls.",
     };
-  }, [burnWad, pricePerCharmWad]);
+  }, [burnWad]);
 
   const { data: ownerCodeHash, refetch: refetchOwner } = useReadContract({
     address: registry,
@@ -386,7 +354,7 @@ export function ReferralRegisterSection({ className }: Props) {
       setFormErr(netErr);
       return;
     }
-    if (!registry || !address || !cl8yToken || !burnWad) {
+    if (!registry || !address || !payToken || !burnWad) {
       setFormErr("Referral registry is not available on this build.");
       return;
     }
@@ -418,7 +386,7 @@ export function ReferralRegisterSection({ className }: Props) {
 
       const need = burnWad;
       const allow = await readContract(wagmiConfig, {
-        address: cl8yToken,
+        address: payToken,
         abi: erc20Abi,
         functionName: "allowance",
         args: [sessionSnapshot.address, registry],
@@ -430,7 +398,7 @@ export function ReferralRegisterSection({ className }: Props) {
           writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
           account: address as `0x${string}`,
           chainId,
-          address: cl8yToken,
+          address: payToken,
           abi: erc20Abi,
           functionName: "approve",
           args: [registry, need],
@@ -461,7 +429,7 @@ export function ReferralRegisterSection({ className }: Props) {
     address,
     burnWad,
     chainId,
-    cl8yToken,
+    payToken,
     codeInput,
     refetchOwner,
     registry,
@@ -685,12 +653,12 @@ export function ReferralRegisterSection({ className }: Props) {
 
           {isConnected && !hasRegistered && (
             <div className="referrals-register-write-stack">
-              {burnWad !== undefined && cl8yToken && (
+              {burnWad !== undefined && payToken && (
                 <div
                   className="referrals-register-cost"
                   aria-label="Referral registration cost"
                 >
-                  <span title="ReferralRegistry burns this CL8Y amount only after registerCode succeeds.">Claim cost</span>
+                  <span title="ReferralRegistry burns this DOUB amount (Last Buy epoch anchor) only after registerCode succeeds.">Claim cost</span>
                   <strong data-testid="referrals-register-cost-amount">
                     {
                       formatAmountTriple(
@@ -698,7 +666,7 @@ export function ReferralRegisterSection({ className }: Props) {
                         18,
                       ).decimal
                     }{" "}
-                    CL8Y
+                    DOUB
                   </strong>
                   {registerCostUsdHint ? (
                     <small
@@ -712,15 +680,15 @@ export function ReferralRegisterSection({ className }: Props) {
                   <small title="The burn happens only when registerCode succeeds onchain.">One-time burn</small>
 
                   <a
-                    href={buyTokenOnKumbayaUrl(cl8yToken)}
+                    href={buyTokenOnKumbayaUrl(payToken)}
                     target="_blank"
                     rel="noreferrer noopener"
                     className="external-text-link cursor-external-link"
-                    data-testid="referrals-register-buy-cl8y-link"
-                    aria-label="Buy CL8Y on Kumbaya (opens in new tab)"
+                    data-testid="referrals-register-buy-doub-link"
+                    aria-label="Buy DOUB on Kumbaya (opens in new tab)"
                   >
                     <span className="external-text-link__label">
-                      Buy CL8Y on Kumbaya
+                      Buy DOUB on Kumbaya
                     </span>
                     <svg
                       className="external-text-link__icon"

@@ -171,7 +171,7 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).not.toContain("Prizes loading");
   });
 
-  it("shows zero DOUB prizes when preview places are zero wad strings", () => {
+  it("omits zero USD equivalent when podium prize preview is zero", () => {
     const html = renderSimplePodiums({
       podiumPayoutPreview: [
         { places: ["0", "0", "0"] },
@@ -180,7 +180,8 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
         { places: ["0", "0", "0"] },
       ],
     });
-    expect(html).toContain("≈ $0 USD");
+    expect(html).toContain("0");
+    expect(html).not.toContain("≈ $0 USD");
     expect(html).not.toContain("Prizes loading");
   });
 });

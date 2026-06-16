@@ -7,7 +7,6 @@ import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {ArenaCharmPriceTwap} from "../src/oracle/ArenaCharmPriceTwap.sol";
@@ -19,17 +18,14 @@ import {ArenaCharmPriceTwap} from "../src/oracle/ArenaCharmPriceTwap.sol";
 contract DeployProduction is Script {
     uint256 internal constant CHAIN_MEGAETH_MAINNET = 4326;
     uint256 internal constant DEFAULT_BUY_COOLDOWN_SEC = 300;
-    uint256 internal constant DEFAULT_REFERRAL_BURN_WAD = 1e18;
 
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
         address admin = vm.envOr("DEPLOY_ADMIN_ADDRESS", deployer);
-        address reserveAsset = vm.envAddress("RESERVE_ASSET_ADDRESS");
 
         uint256 charmPriceWad = _resolveCharmPriceWad();
         uint256 buyCooldownSec = vm.envOr("ARENA_BUY_COOLDOWN_SEC", DEFAULT_BUY_COOLDOWN_SEC);
-        uint256 referralBurnWad = vm.envOr("REFERRAL_REGISTRATION_BURN_WAD", DEFAULT_REFERRAL_BURN_WAD);
         bool startArenaNow = vm.envOr("START_ARENA", uint256(0)) == 1;
 
         (
@@ -58,8 +54,7 @@ contract DeployProduction is Script {
         Doubloon doub = new Doubloon(admin);
         PodiumVaults podiumVaults = new PodiumVaults(doub, admin);
 
-        ReferralRegistry referralRegistry =
-            UUPSDeployLib.deployReferralRegistry(IERC20(reserveAsset), referralBurnWad, admin);
+        ReferralRegistry referralRegistry = UUPSDeployLib.deployReferralRegistry(admin);
 
         PlayCred playCred = UUPSDeployLib.deployPlayCred(admin);
 
@@ -78,6 +73,7 @@ contract DeployProduction is Script {
             admin
         );
         podiumVaults.setArena(address(arena));
+        referralRegistry.setTimeArena(address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), address(arena));
 
         if (startArenaNow) {

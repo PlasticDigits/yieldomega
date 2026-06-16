@@ -36,7 +36,7 @@ contract DevStackIntegrationTest is Test {
 
         doub = new Doubloon(deployer);
         podiumVaults = new PodiumVaults(doub, deployer);
-        referralRegistry = UUPSDeployLib.deployReferralRegistry(IERC20(address(reserve)), 1e18, deployer);
+        referralRegistry = UUPSDeployLib.deployReferralRegistry(deployer);
         playCred = UUPSDeployLib.deployPlayCred(deployer);
 
         uint256 buyCooldownSec = DeployDevBuyCooldown.readBuyCooldownSec(vm);
@@ -51,6 +51,7 @@ contract DevStackIntegrationTest is Test {
         );
 
         podiumVaults.setArena(address(arena));
+        referralRegistry.setTimeArena(address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), deployer);
         arena.startArena();
@@ -73,8 +74,10 @@ contract DevStackIntegrationTest is Test {
         assertFalse(arena.paused());
     }
 
-    function test_deployDev_wiring_referral_registry_reserve() public view {
-        assertEq(address(referralRegistry.cl8yToken()), address(reserve));
+    function test_deployDev_wiring_referral_registry_doub() public view {
+        assertEq(referralRegistry.doubToken(), address(doub));
+        assertEq(referralRegistry.timeArena(), address(arena));
+        assertEq(referralRegistry.registrationBurnAmount(), arena.epochCharmAnchorWad());
     }
 
     function test_deployDev_wiring_buyCooldown_default_300() public view {

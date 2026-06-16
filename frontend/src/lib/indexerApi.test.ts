@@ -14,6 +14,7 @@ import {
   arenaBuyerStatsApiPath,
   arenaActivityApiPath,
   arenaPlatformUsageApiPath,
+  arenaWarbowPendingRevengePath,
   arenaPrizeDistributionsApiPath,
   arenaPrizePayoutsApiPath,
 } from "./indexerApi";
@@ -35,6 +36,18 @@ describe("arenaActivityApiPath", () => {
   it("includes limit and offset for recent player actions (#292)", () => {
     expect(arenaActivityApiPath()).toBe("/v1/arena/activity?limit=25&offset=0");
     expect(arenaActivityApiPath(10, 30)).toBe("/v1/arena/activity?limit=10&offset=30");
+  });
+});
+
+describe("arenaWarbowPendingRevengePath", () => {
+  it("targets pending-revenge route for victim wallet (#135)", () => {
+    const victim = "0xdddddddddddddddddddddddddddddddddddddddd";
+    expect(arenaWarbowPendingRevengePath(victim)).toBe(
+      `/v1/arena/warbow/pending-revenge/${victim.toLowerCase()}`,
+    );
+    expect(arenaWarbowPendingRevengePath(victim, 1_700_000_000)).toBe(
+      `/v1/arena/warbow/pending-revenge/${victim.toLowerCase()}?now_sec=1700000000`,
+    );
   });
 });
 

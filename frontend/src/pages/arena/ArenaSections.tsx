@@ -5,21 +5,25 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { AddressInline } from "@/components/AddressInline";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { TxHash } from "@/components/TxHash";
-import { PageBadge } from "@/components/ui/PageBadge";
+import { AccordionPanel } from "@/components/ui/AccordionPanel";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import type { SerializableContractRead } from "@/lib/serializeContractRead";
-import { formatBpsAsPercent, formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
+import { formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
+import { formatDdHhMmSsCountdown } from "@/pages/arena/formatTimer";
+import { ProtocolDoubBuyRoutingCard } from "@/pages/arena/ProtocolDoubBuyRoutingCard";
+import { ProtocolPodiumParamsCards } from "@/pages/arena/ProtocolPodiumParamsCards";
+import type { ProtocolPodiumAuditRow } from "@/pages/arena/useArenaProtocolPodiumAudit";
+import type { ArenaBuyRoutingSummary } from "@/lib/indexerApi";
 import type {
   BattlePointBreakdownRow,
   BuyHistoryPoint,
   FeedNarrative,
   WarbowPreflightNarrative,
 } from "@/lib/timeArenaUx";
-import { ARENA_DOUB_ROUTING_BPS } from "@/lib/timeArenaPodiumMath";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 import type {
   BuyItem,
@@ -400,8 +404,8 @@ export function WarbowSection(props: {
             )
           ) : (
             <StatusMessage variant="muted">
-              Set <span className="mono">VITE_INDEXER_URL</span> to list every pending stealer (per-slot windows; GitLab
-              #135).
+              Set <span className="mono">VITE_INDEXER_URL</span> to list every pending stealer via{" "}
+              <span className="mono">GET /v1/arena/warbow/pending-revenge</span> (per-slot windows; GitLab #135).
             </StatusMessage>
           )}
           {(gasWarbowGuard !== undefined || gasWarbowFlag !== undefined || gasWarbowRevenge !== undefined) && (
@@ -673,10 +677,10 @@ export function RawDataAccordion(props: {
   pendingRevengeTargets: readonly WarbowPendingRevengeItem[];
   revengeIndexerConfigured: boolean;
   buyerStats: ArenaBuyerStats | null;
-  timerExtensionSecResult: SerializableContractRead | undefined;
-  initialTimerSecResult: SerializableContractRead | undefined;
-  timerCapSecResult: SerializableContractRead | undefined;
-  sinkReads: readonly SerializableContractRead[] | undefined;
+  podiumAuditRows: readonly ProtocolPodiumAuditRow[];
+  podiumAuditEpochPlus1: (epoch: string | undefined) => string | undefined;
+  podiumAuditEpochPlus2: (epoch: string | undefined) => string | undefined;
+  buyRouting: ArenaBuyRoutingSummary | null | undefined;
   decimals: number;
   formatWallet: WalletFormatShort;
 }) {
@@ -697,26 +701,21 @@ export function RawDataAccordion(props: {
     pendingRevengeTargets,
     revengeIndexerConfigured,
     buyerStats,
-    timerExtensionSecResult,
-    initialTimerSecResult,
-    timerCapSecResult,
-    sinkReads,
+    podiumAuditRows,
+    podiumAuditEpochPlus1,
+    podiumAuditEpochPlus2,
+    buyRouting,
     decimals,
     formatWallet,
   } = props;
 
   return (
-    <details className="data-panel accordion-panel">
-      <summary>
-        <div className="section-heading__copy">
-          <PageBadge label="Protocol detail" tone="info" />
-          <h2>Raw contract context</h2>
-          <div className="section-heading__lede">
-            Open for getter mirrors, wallet stats, and DOUB routing bps.
-          </div>
-        </div>
-      </summary>
-      <div className="accordion-panel__content">
+    <AccordionPanel
+      badgeLabel="Protocol detail"
+      badgeTone="info"
+      title="Raw contract context"
+      lede="Open for getter mirrors, wallet stats, and indexer buy routing."
+    >
         <div className="split-layout">
           <div className="podium-block">
             <h3>Onchain snapshot</h3>
@@ -725,7 +724,7 @@ export function RawDataAccordion(props: {
                 <dt>Arena start</dt>
                 <dd>
                   {saleStart?.status === "success" && saleStart.result !== undefined ? (
-                    <UnixTimestampDisplay raw={saleStart.result} />
+                    <UnixTimestampDisplay raw={saleStart.result} compact />
                   ) : (
                     "—"
                   )}
@@ -733,7 +732,7 @@ export function RawDataAccordion(props: {
                 <dt>{humanizeKvLabel("deadline")}</dt>
                 <dd>
                   {deadline?.status === "success" && deadline.result !== undefined ? (
-                    <UnixTimestampDisplay raw={deadline.result} />
+                    <UnixTimestampDisplay raw={deadline.result} compact />
                   ) : (
                     "—"
                   )}
@@ -742,12 +741,14 @@ export function RawDataAccordion(props: {
                   {countdownSecondsContext === "untilOpen"
                     ? "Seconds until Time Arena opens (hero clock)"
                     : countdownSecondsContext === "untilRoundDeadline"
-                      ? "Seconds until Last Buy deadline"
+                      ? "LB deadline"
                       : "seconds remaining"}
                 </dt>
                 <dd>
                   {secondsRemaining !== undefined
-                    ? `${formatLocaleInteger(Math.floor(secondsRemaining))}s`
+                    ? countdownSecondsContext === "untilRoundDeadline"
+                      ? formatDdHhMmSsCountdown(secondsRemaining)
+                      : `${formatLocaleInteger(Math.floor(secondsRemaining))}s`
                     : "—"}
                 </dd>
                 <dt>{humanizeKvLabel("totalRaised")}</dt>
@@ -781,10 +782,10 @@ export function RawDataAccordion(props: {
                       ? formatLocaleInteger(BigInt(buyCountResult.result))
                       : "—"}
                   </dd>
-                  <dt>timer added</dt>
+                  <dt>{humanizeKvLabel("totalEffectiveTimerSecAdded")}</dt>
                   <dd>
                     {timerAddedResult?.status === "success" && timerAddedResult.result !== undefined
-                      ? `${formatLocaleInteger(BigInt(timerAddedResult.result))} s`
+                      ? formatDdHhMmSsCountdown(Number(timerAddedResult.result))
                       : "—"}
                   </dd>
                   <dt>{humanizeKvLabel("battlePoints")}</dt>
@@ -811,7 +812,8 @@ export function RawDataAccordion(props: {
                       "—"
                     ) : !revengeIndexerConfigured ? (
                       <span className="muted">
-                        Indexer URL not set — per-stealer list unavailable (GitLab #135).
+                        Indexer URL not set — open revenge windows require{" "}
+                        <span className="mono">GET /v1/arena/warbow/pending-revenge</span>.
                       </span>
                     ) : pendingRevengeTargets.length === 0 ? (
                       "—"
@@ -832,65 +834,25 @@ export function RawDataAccordion(props: {
                 </dl>
                 {buyerStats && (
                   <StatusMessage variant="muted">
-                    Indexer mirror: charm weight {formatCompactFromRaw(buyerStats.indexed_charm_weight, 18)} · buys{" "}
-                    {formatLocaleInteger(buyerStats.indexed_buy_count)}
+                    Indexer mirror: epoch charm{" "}
+                    <AmountDisplay raw={buyerStats.indexed_epoch_charm_wad} decimals={18} /> · buys{" "}
+                    {formatLocaleInteger(buyerStats.indexed_buy_count)} · best defended streak{" "}
+                    {formatLocaleInteger(buyerStats.indexed_longest_defended_streak)}
                   </StatusMessage>
                 )}
               </>
             )}
           </div>
-          <div className="podium-block">
-            <h3>Last Buy timer parameters</h3>
-            {coreTcData && (
-              <dl className="kv">
-                <dt>{humanizeKvLabel("timerExtensionSec")}</dt>
-                <dd>
-                  {timerExtensionSecResult?.status === "success" && timerExtensionSecResult.result !== undefined
-                    ? formatLocaleInteger(BigInt(timerExtensionSecResult.result))
-                    : "—"}
-                </dd>
-                <dt>{humanizeKvLabel("initialTimerSec")}</dt>
-                <dd>
-                  {initialTimerSecResult?.status === "success" && initialTimerSecResult.result !== undefined
-                    ? formatLocaleInteger(BigInt(initialTimerSecResult.result))
-                    : "—"}
-                </dd>
-                <dt>{humanizeKvLabel("timerCapSec")}</dt>
-                <dd>
-                  {timerCapSecResult?.status === "success" && timerCapSecResult.result !== undefined
-                    ? formatLocaleInteger(BigInt(timerCapSecResult.result))
-                    : "—"}
-                </dd>
-              </dl>
-            )}
-          </div>
-          <div className="podium-block">
-            <h3>DOUB buy routing</h3>
-            <ul className="event-list">
-              {(
-                [
-                  ["Active podium vault", ARENA_DOUB_ROUTING_BPS.activePodium],
-                  ["Seed podium vault", ARENA_DOUB_ROUTING_BPS.seedPodium],
-                  ["Admin sell vault", ARENA_DOUB_ROUTING_BPS.adminVault],
-                ] as const
-              ).map(([label, bps], index) => {
-                const row = sinkReads?.[index];
-                const onchain =
-                  row?.status === "success" && row.result
-                    ? Number((JSON.parse(row.result) as readonly [unknown, number])[1])
-                    : null;
-                return (
-                  <li key={label}>
-                    <strong>{label}</strong> · policy {formatBpsAsPercent(bps)}
-                    {onchain !== null ? ` · onchain ${formatBpsAsPercent(onchain)}` : ""}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          <ProtocolPodiumParamsCards
+            rows={podiumAuditRows}
+            decimals={decimals}
+            formatWallet={formatWallet}
+            epochPlus1Label={podiumAuditEpochPlus1}
+            epochPlus2Label={podiumAuditEpochPlus2}
+          />
+          <ProtocolDoubBuyRoutingCard buyRouting={buyRouting} />
         </div>
-      </div>
-    </details>
+    </AccordionPanel>
   );
 }
 

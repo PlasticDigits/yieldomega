@@ -8,7 +8,7 @@ type Props = {
   onFeatureHelp: (feature: ArenaFeatureKey) => void;
 };
 
-/** Bottom-left feature tutorial trigger on the command-console timer bay — out of document flow. */
+/** Top-right feature tutorial trigger beside the podium epoch stamp. */
 export function ArenaTimerPanelHelpCorner({ podiumLabel, feature, onFeatureHelp }: Props) {
   return (
     <button

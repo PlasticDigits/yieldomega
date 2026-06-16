@@ -7,9 +7,12 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
+import {ITimeArenaReferralBurn} from "./interfaces/ITimeArenaReferralBurn.sol";
 
-/// @title ReferralRegistry — short codes registered by burning CL8Y
-/// @notice See docs/product/referrals.md for code rules and economics.
+/// @title ReferralRegistry — short codes registered by burning DOUB
+/// @notice Registration burn = `epochCharmAnchorWad` from linked `TimeArena` (DOUB wei per 1e18 CHARM
+///         at the start of the current Last Buy epoch). Re-anchors when the epoch rolls.
+///         See docs/product/referrals.md for code rules and economics.
 ///         Production: UUPS proxy; **proxy address** is canonical (GitLab #54).
 contract ReferralRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgradeable, IReferralRegistry {
     using SafeERC20 for IERC20;
@@ -17,31 +20,53 @@ contract ReferralRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgrade
     /// @dev Irreversible burn sink (not EOA-controlled).
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
-    IERC20 public cl8yToken;
-    uint256 public registrationBurnAmount;
+    /// @dev Linked `TimeArena` proxy — set once after deploy (`setTimeArena`).
+    address public timeArena;
+    /// @dev Deprecated fixed CL8Y burn slot (v1). Retained for UUPS layout; amount is dynamic from `timeArena`.
+    uint256 private __deprecatedRegistrationBurnAmount;
 
     mapping(bytes32 codeHash => address owner) public codeOwner;
     mapping(address owner => bytes32 codeHash) public ownerCode;
 
     event ReferralCodeRegistered(address indexed owner, bytes32 indexed codeHash, string normalizedCode);
+    event TimeArenaLinked(address indexed arena);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(IERC20 _cl8yToken, uint256 _registrationBurnAmount, address initialOwner) external initializer {
-        require(address(_cl8yToken) != address(0), "ReferralRegistry: zero CL8Y");
-        require(_registrationBurnAmount > 0, "ReferralRegistry: zero burn");
+    function initialize(address initialOwner) external initializer {
         __Ownable_init(initialOwner);
         __Ownable2Step_init();
-        cl8yToken = _cl8yToken;
-        registrationBurnAmount = _registrationBurnAmount;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    /// @notice Hash used by `TimeCurve.buy(charmWad, codeHash, plantWarBowFlag)`; same as `keccak256(bytes(normalized))`.
+    /// @notice Wire the canonical `TimeArena` proxy once (DeployDev / DeployProduction).
+    function setTimeArena(address arena) external onlyOwner {
+        require(arena != address(0), "ReferralRegistry: zero arena");
+        require(timeArena == address(0), "ReferralRegistry: arena set");
+        timeArena = arena;
+        emit TimeArenaLinked(arena);
+    }
+
+    /// @notice DOUB token burned on `registerCode` (from `TimeArena.doub()`).
+    function doubToken() external view returns (address) {
+        return address(_doub());
+    }
+
+    /// @notice Legacy ABI alias — returns `doubToken()` for older clients.
+    function cl8yToken() external view returns (address) {
+        return address(_doub());
+    }
+
+    /// @notice Current registration burn in DOUB wei (= Last Buy epoch `epochCharmAnchorWad`).
+    function registrationBurnAmount() external view returns (uint256) {
+        return _registrationBurnDoub();
+    }
+
+    /// @notice Hash used by `TimeArena.buy(charmWad, codeHash)`; same as `keccak256(bytes(normalized))`.
     function hashCode(string calldata code) external pure returns (bytes32) {
         return _hashNormalized(_normalizeToBytes(code));
     }
@@ -51,10 +76,10 @@ contract ReferralRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgrade
         return codeOwner[codeHash];
     }
 
-    /// @notice Register a unique code; burns `registrationBurnAmount` of CL8Y from the caller on success only.
+    /// @notice Register a unique code; burns `_registrationBurnDoub()` DOUB from the caller on success only.
     /// @dev Code ownership follows the **first successful inclusion** among competing `registerCode` calls—there is no
     ///      mempool FIFO or offchain reservation. The normalized string is plain calldata **before execution**, so
-    ///      public observers may race the same slug; the fixed CL8Y burn (paid only after uniqueness checks pass)
+    ///      public observers may race the same slug; the DOUB burn (paid only after uniqueness checks pass)
     ///      is the deliberate economic deterrent to casual squatting. Product disclosure: docs/product/referrals.md —
     ///      Registration ordering (#121).
     function registerCode(string calldata code) external {
@@ -64,17 +89,30 @@ contract ReferralRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgrade
         require(codeOwner[h] == address(0), "ReferralRegistry: code taken");
         require(ownerCode[msg.sender] == bytes32(0), "ReferralRegistry: already registered");
 
-        uint256 burnSinkBefore = cl8yToken.balanceOf(BURN_ADDRESS);
-        cl8yToken.safeTransferFrom(msg.sender, BURN_ADDRESS, registrationBurnAmount);
-        require(
-            cl8yToken.balanceOf(BURN_ADDRESS) - burnSinkBefore == registrationBurnAmount,
-            "ReferralRegistry: ERC20 parity"
-        );
+        uint256 burnAmt = _registrationBurnDoub();
+        IERC20 doub = _doub();
+        uint256 burnSinkBefore = doub.balanceOf(BURN_ADDRESS);
+        doub.safeTransferFrom(msg.sender, BURN_ADDRESS, burnAmt);
+        require(doub.balanceOf(BURN_ADDRESS) - burnSinkBefore == burnAmt, "ReferralRegistry: ERC20 parity");
 
         codeOwner[h] = msg.sender;
         ownerCode[msg.sender] = h;
 
         emit ReferralCodeRegistered(msg.sender, h, string(norm));
+    }
+
+    function _registrationBurnDoub() internal view returns (uint256) {
+        require(timeArena != address(0), "ReferralRegistry: arena unset");
+        ITimeArenaReferralBurn arena = ITimeArenaReferralBurn(timeArena);
+        uint256 anchor = arena.epochCharmAnchorWad();
+        if (anchor == 0) anchor = arena.charmPriceWad();
+        require(anchor > 0, "ReferralRegistry: zero burn");
+        return anchor;
+    }
+
+    function _doub() internal view returns (IERC20) {
+        require(timeArena != address(0), "ReferralRegistry: arena unset");
+        return ITimeArenaReferralBurn(timeArena).doub();
     }
 
     function _hashNormalized(bytes memory norm) internal pure returns (bytes32) {
@@ -96,5 +134,5 @@ contract ReferralRegistry is Initializable, Ownable2StepUpgradeable, UUPSUpgrade
         }
     }
 
-    uint256[50] private __gap;
+    uint256[49] private __gap;
 }

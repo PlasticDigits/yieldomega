@@ -919,6 +919,12 @@ export function ArenaSimplePage({
         onFeatureHelp={openFeatureHelp}
       />
     ) : null;
+  const timerTopCorner = (
+    <div className="arena-simple__timer-panel-top-corner">
+      {timerEpochCorner}
+      {timerHelpCorner}
+    </div>
+  );
   const timerCarousel =
     session.phase === "saleActive" && podiumReads.data ? (
       <ArenaTimerPodiumCarousel
@@ -978,7 +984,7 @@ export function ArenaSimplePage({
                 <h2>{timerSectionTitle}</h2>
               </div>
             </div>
-            {timerEpochCorner}
+            {timerTopCorner}
             {timerStack}
           </div>
         </LockedUntilLevel>
@@ -994,13 +1000,11 @@ export function ArenaSimplePage({
           </div>
         </div>
       </div>
-      {timerHelpCorner}
     </>
   ) : (
     <>
-      {timerEpochCorner}
+      {timerTopCorner}
       {timerStack}
-      {timerHelpCorner}
     </>
   );
 

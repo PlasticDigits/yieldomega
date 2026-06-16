@@ -25,6 +25,7 @@ import { WalletProfileModal } from "@/components/WalletProfileModal";
 import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/arena/arenaSimplePhase";
 import { useArenaProtocolLiveBuys } from "@/pages/arena/useArenaProtocolLiveBuys";
 import { useArenaProtocolRawAccordion } from "@/pages/arena/useArenaProtocolRawAccordion";
+import { useArenaProtocolPodiumAudit } from "@/pages/arena/useArenaProtocolPodiumAudit";
 import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
 import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
 import { cl8yWeiToUsdDisplay } from "@/lib/cl8ySpotUsdPrice";
@@ -36,6 +37,7 @@ import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { useArenaProtocolData } from "@/pages/arena/ArenaProtocolDataContext";
 import { ArenaSimplePodiumSection } from "@/pages/arena/ArenaSimplePodiumSection";
 import { usePodiumReads } from "@/pages/arena/usePodiumReads";
+import { ARENA_V2_ADVANCED_CORE_ROW_INDICES as CORE } from "@/pages/arena/arenaV2AdvancedSessionBridge";
 
 const ARENA_VAULT_LABELS = [
   "100% podium prize vaults",
@@ -44,25 +46,6 @@ const ARENA_VAULT_LABELS = [
 ] as const;
 
 const WAD = 10n ** 18n;
-
-/** Indices into {@link mapArenaV2AdvancedCoreRows} output. */
-const CORE = {
-  arenaStart: 0,
-  deadline: 1,
-  totalDoubRaised: 2,
-  minCharmWad: 4,
-  maxCharmWad: 5,
-  charmPriceWad: 7,
-  doub: 8,
-  referralRegistry: 10,
-  timerExtensionSec: 13,
-  timerCapSec: 15,
-  paused: 19,
-  podiumVaults: 21,
-  buyCooldownSec: 23,
-  timeArenaBuyRouter: 24,
-  owner: 26,
-} as const;
 
 export function ArenaProtocolPage() {
   const [profileAddress, setProfileAddress] = useState<string | null>(null);
@@ -133,6 +116,12 @@ export function ArenaProtocolPage() {
   }, [reading]);
 
   const protocolRawAccordion = useArenaProtocolRawAccordion();
+  const podiumAudit = useArenaProtocolPodiumAudit(
+    tc ?? undefined,
+    podiumReads.data,
+    podiumReads.indexerRows,
+    heroChainNowSec,
+  );
   const liveBuysPollLastOk = liveBuys.buys === null ? null : liveBuys.indexerNote === null;
 
   if (!tc) {
@@ -150,10 +139,10 @@ export function ArenaProtocolPage() {
     );
   }
 
-  const renderUnix = (i: number) => {
+  const renderUnix = (i: number, compact = false) => {
     const r = get(i);
     if (r?.status === "success" && r.result !== undefined) {
-      return <UnixTimestampDisplay raw={String(r.result as bigint)} />;
+      return <UnixTimestampDisplay raw={String(r.result as bigint)} compact={compact} />;
     }
     return "—";
   };
@@ -200,12 +189,12 @@ export function ArenaProtocolPage() {
   const stateCards = [
     {
       label: "Arena start",
-      value: renderUnix(CORE.arenaStart),
+      value: renderUnix(CORE.arenaStart, true),
       title: "Start timestamp. Arena remains live when unpaused; no sale-end redemption flow.",
     },
     {
       label: "Last Buy deadline",
-      value: renderUnix(CORE.deadline),
+      value: renderUnix(CORE.deadline, true),
       title: "Primary Last Buy timer deadline.",
     },
     {
@@ -217,9 +206,13 @@ export function ArenaProtocolPage() {
     {
       label: "CHARM band",
       value: (
-        <>
-          {renderAmount(CORE.minCharmWad, 18)} - {renderAmount(CORE.maxCharmWad, 18)}
-        </>
+        <span className="arena-protocol__stat-range">
+          {renderAmount(CORE.minCharmWad, 18)}
+          <span className="arena-protocol__stat-range-sep" aria-hidden="true">
+            –
+          </span>
+          {renderAmount(CORE.maxCharmWad, 18)}
+        </span>
       ),
       title: "Minimum and maximum CHARM weight per buy.",
     },
@@ -231,7 +224,7 @@ export function ArenaProtocolPage() {
   ];
 
   return (
-    <div className="page arena-protocol-page">
+    <div className="page arena-protocol-page yga-secondary-page">
       <header className="page-hero">
         <PageHeroHeading
           title="AUDIT"
@@ -289,7 +282,7 @@ export function ArenaProtocolPage() {
           {stateCards.map((card) => (
             <article className="arena-protocol__stat-card" key={card.label} title={card.title}>
               <span className="arena-protocol__stat-kicker">{card.label}</span>
-              <strong>{card.value}</strong>
+              <div className="arena-protocol__stat-value">{card.value}</div>
             </article>
           ))}
         </div>
@@ -364,7 +357,13 @@ export function ArenaProtocolPage() {
         <ArenaVaultAddressesPanel />
       </PageSection>
 
-      <RawDataAccordion {...protocolRawAccordion} />
+      <RawDataAccordion
+        {...protocolRawAccordion}
+        podiumAuditRows={podiumAudit.rows}
+        podiumAuditEpochPlus1={podiumAudit.epochPlus1Label}
+        podiumAuditEpochPlus2={podiumAudit.epochPlus2Label}
+        buyRouting={podiumReads.buyRouting}
+      />
 
       <WalletProfileModal address={profileAddress} onClose={() => setProfileAddress(null)} />
       <FeatureMechanicModal feature={featureModal} onClose={() => setFeatureModal(null)} />

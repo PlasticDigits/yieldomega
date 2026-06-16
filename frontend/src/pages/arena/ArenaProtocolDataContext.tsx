@@ -160,7 +160,16 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
       ? [
           { address: tc, abi: timeArenaReadAbi, functionName: "battlePoints" as const, args: [address] },
           { address: tc, abi: timeArenaReadAbi, functionName: "warbowGuardUntil" as const, args: [address] },
-          { address: tc, abi: timeArenaReadAbi, functionName: "nextBuyAllowedAt" as const, args: [address] },
+          { address: tc, abi: timeArenaReadAbi, functionName: "charmWeight" as const, args: [address] },
+          { address: tc, abi: timeArenaReadAbi, functionName: "buyCount" as const, args: [address] },
+          {
+            address: tc,
+            abi: timeArenaReadAbi,
+            functionName: "totalEffectiveTimerSecAdded" as const,
+            args: [address],
+          },
+          { address: tc, abi: timeArenaReadAbi, functionName: "activeDefendedStreak" as const, args: [address] },
+          { address: tc, abi: timeArenaReadAbi, functionName: "bestDefendedStreak" as const, args: [address] },
         ]
       : [];
 

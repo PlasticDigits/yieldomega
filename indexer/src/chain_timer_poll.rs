@@ -191,6 +191,8 @@ mod tests {
                 values: std::array::from_fn(|_| "0".into()),
             }),
             active_pool_balance_doub_wad: std::array::from_fn(|_| "0".into()),
+            seed_pool_balance_doub_wad: std::array::from_fn(|_| "0".into()),
+            future_pool_balance_doub_wad: std::array::from_fn(|_| "0".into()),
             sale_state: TimecurveSaleStateSnapshot {
                 read_block_number: block.into(),
                 block_timestamp_sec: "0".into(),

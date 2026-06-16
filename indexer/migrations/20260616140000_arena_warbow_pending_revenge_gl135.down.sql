@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_arena_warbow_revenge_avenger_stealer_block;
+DROP INDEX IF EXISTS idx_arena_warbow_steal_victim_block;

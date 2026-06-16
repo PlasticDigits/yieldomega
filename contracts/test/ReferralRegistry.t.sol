@@ -4,32 +4,74 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
-import {MockCL8Y} from "../src/tokens/MockCL8Y.sol";
+import {Doubloon} from "../src/tokens/Doubloon.sol";
+import {ITimeArenaReferralBurn} from "../src/interfaces/ITimeArenaReferralBurn.sol";
 import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
+/// @dev Minimal `TimeArena` stand-in for referral burn reads.
+contract MockArenaReferralBurn is ITimeArenaReferralBurn {
+    IERC20 public doub;
+    uint256 public epochCharmAnchorWad;
+    uint256 public charmPriceWad;
+
+    constructor(IERC20 _doub, uint256 anchorWad) {
+        doub = _doub;
+        epochCharmAnchorWad = anchorWad;
+        charmPriceWad = anchorWad;
+    }
+
+    function setAnchor(uint256 anchorWad) external {
+        epochCharmAnchorWad = anchorWad;
+        charmPriceWad = anchorWad;
+    }
+}
+
 contract ReferralRegistryTest is Test {
-    MockCL8Y internal cl8y;
+    Doubloon internal doub;
+    MockArenaReferralBurn internal arena;
     ReferralRegistry internal reg;
 
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
 
+    uint256 internal constant ANCHOR_WAD = 1000e18;
+
     function setUp() public {
-        cl8y = new MockCL8Y();
-        reg = UUPSDeployLib.deployReferralRegistry(IERC20(address(cl8y)), 1e18, address(this));
-        cl8y.mint(alice, 100e18);
-        cl8y.mint(bob, 100e18);
+        doub = new Doubloon(address(this));
+        doub.grantRole(doub.MINTER_ROLE(), address(this));
+        arena = new MockArenaReferralBurn(IERC20(address(doub)), ANCHOR_WAD);
+        reg = UUPSDeployLib.deployReferralRegistry(address(this));
+        reg.setTimeArena(address(arena));
+        doub.mint(alice, 100_000e18);
+        doub.mint(bob, 100_000e18);
     }
 
-    function test_registerCode_burns_and_sets_owner() public {
+    function test_registrationBurnAmount_matches_epoch_anchor() public view {
+        assertEq(reg.registrationBurnAmount(), ANCHOR_WAD);
+        assertEq(reg.doubToken(), address(doub));
+        assertEq(reg.cl8yToken(), address(doub));
+    }
+
+    function test_registerCode_burns_doub_and_sets_owner() public {
         bytes32 h = reg.hashCode("alice");
         vm.startPrank(alice);
-        cl8y.approve(address(reg), type(uint256).max);
+        doub.approve(address(reg), type(uint256).max);
         reg.registerCode("alice");
         vm.stopPrank();
         assertEq(reg.ownerOfCode(h), alice);
         assertEq(reg.ownerCode(alice), h);
-        assertEq(cl8y.balanceOf(reg.BURN_ADDRESS()), 1e18);
+        assertEq(doub.balanceOf(reg.BURN_ADDRESS()), ANCHOR_WAD);
+    }
+
+    function test_registerCode_burn_tracks_epoch_anchor_roll() public {
+        arena.setAnchor(1500e18);
+        assertEq(reg.registrationBurnAmount(), 1500e18);
+
+        vm.startPrank(alice);
+        doub.approve(address(reg), type(uint256).max);
+        reg.registerCode("alice");
+        vm.stopPrank();
+        assertEq(doub.balanceOf(reg.BURN_ADDRESS()), 1500e18);
     }
 
     function test_registerCode_case_insensitive_hash() public {
@@ -40,12 +82,12 @@ contract ReferralRegistryTest is Test {
 
     function test_registerCode_duplicate_reverts() public {
         vm.startPrank(alice);
-        cl8y.approve(address(reg), type(uint256).max);
+        doub.approve(address(reg), type(uint256).max);
         reg.registerCode("one");
         vm.stopPrank();
 
         vm.startPrank(bob);
-        cl8y.approve(address(reg), type(uint256).max);
+        doub.approve(address(reg), type(uint256).max);
         vm.expectRevert("ReferralRegistry: code taken");
         reg.registerCode("one");
         vm.stopPrank();
@@ -53,11 +95,16 @@ contract ReferralRegistryTest is Test {
 
     function test_registerCode_twice_same_user_reverts() public {
         vm.startPrank(alice);
-        cl8y.approve(address(reg), type(uint256).max);
+        doub.approve(address(reg), type(uint256).max);
         reg.registerCode("first");
         vm.expectRevert("ReferralRegistry: already registered");
         reg.registerCode("second");
         vm.stopPrank();
+    }
+
+    function test_setTimeArena_only_once() public {
+        vm.expectRevert("ReferralRegistry: arena set");
+        reg.setTimeArena(address(arena));
     }
 
     function test_ownable2step_transfer_requires_accept() public {

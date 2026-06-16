@@ -61,8 +61,17 @@ describe("UnixTimestampDisplay (DOM nesting / SSR)", () => {
     );
     assertPhrasingSafeUnderP(html);
     expect(html).toContain("amount-triple");
-    expect(html).toContain("utc");
-    expect(html).toMatch(/2023-11-14T22:13:20\.000Z/);
+    expect(html).toContain('title="2023-11-14T22:13:20.000Z"');
+    expect(html).toContain("UTC");
+    expect(html).toContain("Nov 14, 2023");
     expect(html).not.toContain("1700000000");
+  });
+
+  it("supports compact layout for protocol stat cards", () => {
+    const html = renderToStaticMarkup(
+      createElement(UnixTimestampDisplay, { raw: "1700000000", compact: true }),
+    );
+    expect(html).toContain("unix-timestamp--compact");
+    expect(html).not.toContain("amount-triple__label");
   });
 });

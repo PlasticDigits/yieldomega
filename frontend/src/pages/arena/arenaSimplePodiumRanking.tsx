@@ -73,10 +73,15 @@ export function rankingRowsForPodium(
       ) : (
         <EmptyDataPlaceholder>Prizes loading</EmptyDataPlaceholder>
       );
+    const prizeWei =
+      prizeRaw !== undefined ? rawToBigIntForFormat(prizeRaw) : null;
     const usdLabel =
-      includeUsdPrize && prizeRaw !== undefined
+      includeUsdPrize &&
+      winnerReady &&
+      prizeWei !== null &&
+      prizeWei > 0n
         ? formatCompactFromRaw(
-            fallbackPayTokenWeiForCl8y(rawToBigIntForFormat(prizeRaw), "usdm"),
+            fallbackPayTokenWeiForCl8y(prizeWei, "usdm"),
             18,
             { sigfigs: 3 },
           )
@@ -101,16 +106,16 @@ export function rankingRowsForPodium(
         >
           <span className="arena-simple__podium-prize-main">
             <span>{prizeLabel}</span>
-            <small>DOUB</small>
+            {prizeWei !== null && prizeWei > 0n ? <small>DOUB</small> : null}
           </span>
-          {usdLabel !== undefined && (
+          {usdLabel !== undefined ? (
             <span
               className="arena-simple__podium-prize-usd"
               title={SIMPLE_PODIUM_USD_EQUIV_TITLE}
             >
               ≈ ${usdLabel} USD
             </span>
-          )}
+          ) : null}
         </span>
       ),
       meta: (

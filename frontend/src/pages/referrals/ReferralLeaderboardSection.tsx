@@ -18,10 +18,7 @@ import {
   referralLeaderboardPageIndex,
   referralLeaderboardTotalPages,
 } from "@/lib/referralLeaderboardPagination";
-import { PLACEHOLDER_CUTOUTS_BY_SLUG } from "@/lib/surfaceContent";
 import { ReferralLeaderboardPagination } from "@/pages/referrals/ReferralLeaderboardPagination";
-
-const REF_CUT = PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
 
 type Props = { className?: string };
 
@@ -128,12 +125,6 @@ export function ReferralLeaderboardSection({ className }: Props) {
       title="Guide leaderboard"
       badgeLabel="Guides"
       badgeTone="live"
-      cutout={{
-        src: REF_CUT.tertiary,
-        width: 108,
-        height: 108,
-        className: "referrals-leaderboard__cutout cutout-decoration--bob",
-      }}
     >
       {err ? <StatusMessage variant="error">{err}</StatusMessage> : null}
       {initialLoading ? (

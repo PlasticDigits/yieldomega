@@ -10,7 +10,7 @@ import {
 } from "@/lib/abis";
 import { ARENA_WALLET_STATS_QUERY_KEY } from "@/hooks/useWalletStats";
 import { indexerBaseUrl } from "@/lib/addresses";
-import { fetchArenaPodiums, type ArenaPodiumApiRow } from "@/lib/indexerApi";
+import { fetchArenaPodiums, type ArenaBuyRoutingSummary, type ArenaPodiumApiRow } from "@/lib/indexerApi";
 import {
   INDEXER_EVENT_COALESCE_MS,
   getIndexerBackoffPollMs,
@@ -218,9 +218,21 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     return buildPayoutPreviewFromIndexerRows(indexerQuery.data?.rows ?? []);
   }, [indexerOn, indexerQuery.data, indexerQuery.isLoading]);
 
+  const buyRouting: ArenaBuyRoutingSummary | null | undefined = useMemo(() => {
+    if (!indexerOn) {
+      return null;
+    }
+    if (indexerQuery.isLoading && !indexerQuery.data) {
+      return undefined;
+    }
+    return indexerQuery.data?.buy_routing ?? null;
+  }, [indexerOn, indexerQuery.data, indexerQuery.isLoading]);
+
   if (indexerOn) {
     return {
       data: rows,
+      indexerRows: indexerQuery.data?.rows ?? [],
+      buyRouting,
       podiumPayoutPreview,
       isLoading: indexerQuery.isLoading,
       isFetching: indexerQuery.isFetching,
@@ -231,6 +243,8 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
 
   return {
     data: rows,
+    indexerRows: [] as ArenaPodiumApiRow[],
+    buyRouting: null,
     podiumPayoutPreview: null,
     isLoading: false,
     isFetching: false,

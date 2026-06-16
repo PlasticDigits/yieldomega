@@ -46,7 +46,7 @@ contract DeployDev is Script {
         PodiumVaults podiumVaults = new PodiumVaults(doub, deployer);
         console.log("PodiumVaults:", address(podiumVaults));
 
-        ReferralRegistry referralRegistry = UUPSDeployLib.deployReferralRegistry(IERC20(reserveAsset), 1e18, deployer);
+        ReferralRegistry referralRegistry = UUPSDeployLib.deployReferralRegistry(deployer);
         console.log("ReferralRegistry:", address(referralRegistry));
 
         PlayCred playCred = UUPSDeployLib.deployPlayCred(deployer);
@@ -63,6 +63,7 @@ contract DeployDev is Script {
             deployer
         );
         podiumVaults.setArena(address(arena));
+        referralRegistry.setTimeArena(address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), deployer);
         playCred.mint(E2E_MOCK_WALLET, 1000e18);

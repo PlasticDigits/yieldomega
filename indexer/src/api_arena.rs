@@ -22,8 +22,11 @@ use crate::arena_podium_live::{
     fetch_live_podium_conn, last_buy_winner_buy_sec_pool, live_row_has_entrant,
     warbow_top3_from_scores_conn, LivePodiumRow, PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
 };
+use crate::arena_buy_routing;
 use crate::arena_podium_prize;
+use crate::arena_podium_participants;
 use crate::arena_wallet_stats;
+use crate::arena_warbow_pending_revenge;
 
 pub fn arena_routes() -> axum::Router<AppState> {
     axum::Router::new()
@@ -46,6 +49,10 @@ pub fn arena_routes() -> axum::Router<AppState> {
         .route(
             "/v1/arena/warbow/latest-bp",
             axum::routing::get(arena_warbow_latest_bp),
+        )
+        .route(
+            "/v1/arena/warbow/pending-revenge/{address}",
+            axum::routing::get(arena_warbow_pending_revenge),
         )
         .route(
             "/v1/arena/podium-pool-donations",
@@ -285,6 +292,12 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
             .into_response();
     };
 
+    let participant_counts = match arena_podium_participants::fetch_participant_counts(&state.pool).await
+    {
+        Ok(c) => c,
+        Err(e) => return internal_db_error_response("GET /v1/arena/podiums", e),
+    };
+
     let mut rows: Vec<serde_json::Value> = Vec::with_capacity(4);
     for (ux_i, &cat) in PODIUM_UX_CATEGORY_ORDER.iter().enumerate() {
         let epoch = epoch_for_category(h, cat);
@@ -321,6 +334,18 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         let pool_u256 = pool_wad.parse::<alloy_primitives::U256>().unwrap_or_default();
         let prize_places = arena_podium_prize::prize_places_wad_strings(pool_u256);
 
+        let seed_pool_wad = h.seed_pool_balance_doub_wad[cat as usize].clone();
+        let seed_pool_u256 = seed_pool_wad
+            .parse::<alloy_primitives::U256>()
+            .unwrap_or_default();
+        let seed_prize_places = arena_podium_prize::prize_places_wad_strings(seed_pool_u256);
+
+        let future_pool_wad = h.future_pool_balance_doub_wad[cat as usize].clone();
+        let future_pool_u256 = future_pool_wad
+            .parse::<alloy_primitives::U256>()
+            .unwrap_or_default();
+        let future_prize_places = arena_podium_prize::prize_places_wad_strings(future_pool_u256);
+
         let mut row = json!({
             "category": label,
             "category_index": cat,
@@ -330,6 +355,11 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
             "podium_prediction": podium_prediction,
             "active_pool_balance_doub_wad": pool_wad,
             "prize_places_doub_wad": prize_places,
+            "seed_pool_balance_doub_wad": seed_pool_wad,
+            "seed_prize_places_doub_wad": seed_prize_places,
+            "future_pool_balance_doub_wad": future_pool_wad,
+            "future_prize_places_doub_wad": future_prize_places,
+            "participant_count": participant_counts[cat as usize],
         });
         if cat == 0 {
             row["last_buy_prediction"] = json!(podium_prediction);
@@ -343,6 +373,12 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         rows.push(row);
     }
 
+    let buy_routing = arena_buy_routing::podiums_buy_routing_json(
+        &h.active_pool_balance_doub_wad,
+        &h.seed_pool_balance_doub_wad,
+        &h.future_pool_balance_doub_wad,
+    );
+
     (
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
@@ -350,6 +386,7 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
             "rows": rows,
             "read_block_number": h.timer.read_block_number,
             "sale_ended": h.sale_ended,
+            "buy_routing": buy_routing,
         })),
     )
         .into_response()
@@ -831,6 +868,62 @@ async fn arena_warbow_latest_bp(
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
         Json(json!({ "items": items })),
+    )
+        .into_response()
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct PendingRevengeQuery {
+    now_sec: Option<i64>,
+}
+
+/// Open (victim, stealer) revenge windows from indexed steals minus consumed revenges (#135).
+async fn arena_warbow_pending_revenge(
+    State(state): State<AppState>,
+    Path(address): Path<String>,
+    Query(q): Query<PendingRevengeQuery>,
+) -> Response {
+    let victim = address.trim().to_ascii_lowercase();
+    if !valid_0x_address20(&victim) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "invalid_address" })),
+        )
+            .into_response();
+    }
+
+    let now_sec = q.now_sec.unwrap_or_else(|| {
+        state
+            .chain_timer
+            .try_read()
+            .ok()
+            .and_then(|g| g.as_ref().cloned())
+            .and_then(|h| h.timer.block_timestamp_sec.parse::<i64>().ok())
+            .unwrap_or(0)
+    });
+
+    let items = match arena_warbow_pending_revenge::fetch_pending_revenge(
+        &state.pool,
+        &victim,
+        now_sec,
+    )
+    .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return internal_db_error_response("GET /v1/arena/warbow/pending-revenge", e);
+        }
+    };
+
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(json!({
+            "victim": victim,
+            "now_sec": now_sec,
+            "items": items,
+            "revenge_window_sec": arena_warbow_pending_revenge::WARBOW_REVENGE_WINDOW_SEC,
+        })),
     )
         .into_response()
 }

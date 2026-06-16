@@ -335,13 +335,38 @@ export type ArenaPodiumApiRow = {
   prize_places_doub_wad?: [string, string, string];
   /** Last Buy row only: unix sec when each placement's buy landed (newest-first in epoch; schema ≥ 2.9.0). */
   winner_buy_sec?: [string | null, string | null, string | null];
+  /** Head `PodiumVaults.seedPoolBalance(category_index)` wad string (schema ≥ 2.15.0). */
+  seed_pool_balance_doub_wad?: string;
+  /** 1st/2nd/3rd DOUB wad preview from seed pool × 4∶2∶1 (schema ≥ 2.15.0). */
+  seed_prize_places_doub_wad?: [string, string, string];
+  /** Head `PodiumVaults.futurePoolBalance(category_index)` wad string (schema ≥ 2.15.0). */
+  future_pool_balance_doub_wad?: string;
+  /** 1st/2nd/3rd DOUB wad preview from future pool × 4∶2∶1 (schema ≥ 2.15.0). */
+  future_prize_places_doub_wad?: [string, string, string];
+  /** Distinct wallets with meaningful participation in this category (schema ≥ 2.15.0). */
+  participant_count?: number;
+};
+
+/** Aggregated head buy routing on `GET /v1/arena/podiums` (schema ≥ 2.16.0, [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). */
+export type ArenaBuyRoutingTranche = {
+  slot: "current" | "next" | "future" | string;
+  tranche_bps: number;
+  pool_total_doub_wad: string;
+  prize_places_doub_wad: [string, string, string];
+};
+
+export type ArenaBuyRoutingSummary = {
+  podium_category_share_bps: number;
+  admin_share_bps: number;
+  epoch_tranches: ArenaBuyRoutingTranche[];
 };
 
 export type ArenaPodiumsResponse = {
-  sale_ended: boolean;
+  sale_ended?: boolean;
   read_block_number: string;
-  polled_at_ms: number;
+  polled_at_ms?: number;
   rows: ArenaPodiumApiRow[];
+  buy_routing?: ArenaBuyRoutingSummary;
 };
 
 export async function fetchLegacyArenaPodiums(): Promise<ArenaPodiumsResponse | null> {
@@ -427,19 +452,29 @@ export type WarbowPendingRevengeResponse = {
   victim: string;
   now_sec: number;
   items: WarbowPendingRevengeItem[];
+  revenge_window_sec?: number;
   note?: string;
 };
 
-/** GitLab #135: open (victim, stealer) windows reconciled from `WarBowRevengeWindowOpened` + `WarBowRevenge`. */
-/** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchWarbowPendingRevenge(_victim: string, _nowSec: number) {
-  return null;
+/** GitLab #135: open windows reconciled from indexed steals minus consumed revenges. */
+export function arenaWarbowPendingRevengePath(victim: string, nowSec?: number): string {
+  const w = victim.trim().toLowerCase();
+  if (nowSec !== undefined) {
+    return `/v1/arena/warbow/pending-revenge/${w}?now_sec=${nowSec}`;
+  }
+  return `/v1/arena/warbow/pending-revenge/${w}`;
+}
+
+export async function fetchWarbowPendingRevenge(victim: string, nowSec?: number) {
+  return getJson<WarbowPendingRevengeResponse>(arenaWarbowPendingRevengePath(victim, nowSec));
 }
 
 export type ArenaBuyerStats = {
   buyer: string;
-  indexed_charm_weight: string;
+  /** Current Last Buy epoch CHARM weight from the indexer wallet stats API. */
+  indexed_epoch_charm_wad: string;
   indexed_buy_count: string;
+  indexed_longest_defended_streak: string;
 };
 
 export function arenaBuyerStatsApiPath(buyer: string): string {
@@ -453,8 +488,9 @@ export async function fetchArenaBuyerStats(buyer: string) {
   }
   return {
     buyer: stats.address,
-    indexed_charm_weight: stats.xp,
+    indexed_epoch_charm_wad: stats.epoch_charm_wad ?? "0",
     indexed_buy_count: String(stats.buy_count),
+    indexed_longest_defended_streak: stats.longest_defended_streak,
   } satisfies ArenaBuyerStats;
 }
 
@@ -894,7 +930,7 @@ export async function fetchArenaTimers() {
 }
 
 export async function fetchArenaPodiums() {
-  return getJson<{ rows: ArenaPodiumApiRow[]; read_block_number: string }>("/v1/arena/podiums");
+  return getJson<ArenaPodiumsResponse>("/v1/arena/podiums");
 }
 
 export function arenaWalletStatsPath(address: string) {

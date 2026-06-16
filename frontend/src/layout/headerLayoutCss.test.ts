@@ -68,6 +68,46 @@ describe("header layout CSS (GitLab #171)", () => {
     expect(cssBlock(css, ".referrals-panel.data-panel")).toContain("border-width: 1px;");
   });
 
+  it("uses dark glass PageBadge tones with readable accent text (GitLab #294)", () => {
+    const info = cssBlock(css, ".ui-badge--info");
+    expect(info).toContain("color: var(--yo-cyan-soft);");
+    expect(info).toContain("background: rgba(126, 241, 255, 0.1);");
+    expect(info).not.toContain("#fff");
+    const soon = cssBlock(css, ".ui-badge--soon");
+    expect(soon).toContain("color: #fff3bc;");
+    expect(soon).not.toContain("linear-gradient");
+  });
+
+  it("uses dark glass activity ticker rows with accent borders", () => {
+    const row = cssBlock(css, ".arena-simple__ticker-row");
+    expect(row).toContain("backdrop-filter: blur(10px)");
+    expect(row).toContain("color: #eefcff;");
+    expect(row).not.toContain("rgba(255, 255, 255, 0.97)");
+    const badge = cssBlock(css, ".arena-simple__ticker-badge");
+    expect(badge).toContain("color: #dffef6;");
+    expect(badge).not.toContain("background: var(--ticker-accent);");
+  });
+
+  it("uses dark glass accordion toggles instead of arcade plus buttons", () => {
+    const toggle = cssBlock(css, ".accordion-panel > summary::after");
+    expect(toggle).toContain("color: var(--yo-cyan-soft);");
+    expect(toggle).toContain("backdrop-filter: blur(8px)");
+    expect(toggle).not.toContain("Bungee");
+    expect(toggle).not.toContain("linear-gradient(180deg, #fff");
+    const open = cssBlock(css, ".accordion-panel[open] > summary::after");
+    expect(open).toContain('content: "−";');
+  });
+
+  it("uses dark glass stat cards inside protocol raw accordions", () => {
+    const card = cssBlock(css, ".data-panel.accordion-panel .podium-block");
+    expect(card).toContain("backdrop-filter: blur(10px)");
+    expect(card).toContain("rgba(6, 18, 28, 0.82)");
+    expect(card).not.toContain("rgba(255, 255, 255, 0.55)");
+    const heading = cssBlock(css, ".data-panel.accordion-panel .podium-block h3");
+    expect(heading).toContain("color: var(--yo-cyan-soft);");
+    expect(heading).not.toContain("Bungee");
+  });
+
   it("shows dense header nav + network text labels only from tablet/desktop (header on top)", () => {
     expect(css).toContain(".app-header__nav-label,");
     expect(css).toContain(".app-header__network-label");

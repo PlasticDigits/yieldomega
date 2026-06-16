@@ -12,12 +12,9 @@ import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerCon
 
 /// @notice Shared **implementation → ERC1967Proxy + initialize** helpers for Arena v2 UUPS contracts.
 library UUPSDeployLib {
-    function deployReferralRegistry(IERC20 cl8y, uint256 burnAmt, address initialOwner)
-        internal
-        returns (ReferralRegistry)
-    {
+    function deployReferralRegistry(address initialOwner) internal returns (ReferralRegistry) {
         ReferralRegistry impl = new ReferralRegistry();
-        bytes memory data = abi.encodeCall(ReferralRegistry.initialize, (cl8y, burnAmt, initialOwner));
+        bytes memory data = abi.encodeCall(ReferralRegistry.initialize, (initialOwner));
         return ReferralRegistry(payable(address(new ERC1967Proxy(address(impl), data))));
     }
 

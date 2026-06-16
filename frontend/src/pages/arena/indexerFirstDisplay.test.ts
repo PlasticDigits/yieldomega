@@ -43,6 +43,16 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("WARBOW_STEAL_DOUB_WAD");
   });
 
+  it("useArenaPendingRevengeTargets uses indexer pending-revenge HTTP only (#135)", () => {
+    const src = readFileSync(
+      resolve(arenaDir, "../../hooks/useArenaPendingRevengeTargets.ts"),
+      "utf8",
+    );
+    expect(src).toContain("fetchWarbowPendingRevenge");
+    expect(src).not.toContain("useReadContracts");
+    expect(src).not.toContain("fetchArenaActivity");
+  });
+
   it("ArenaSimplePage resolves WarBow card display from indexer when RPC is inactive", () => {
     const src = readArena("ArenaSimplePage.tsx");
     expect(src).toContain("walletWarbowBattlePoints: playerWalletStats?.warbow_battle_points");

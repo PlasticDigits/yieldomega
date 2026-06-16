@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { PageHero } from "@/components/ui/PageHero";
-import { PLACEHOLDER_CUTOUTS_BY_SLUG } from "@/lib/surfaceContent";
+import { DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { ReferralLeaderboardSection } from "@/pages/referrals/ReferralLeaderboardSection";
 import { ReferralProgramEarningsSection } from "@/pages/referrals/ReferralProgramEarningsSection";
 import { ReferralRegisterSection } from "@/pages/referrals/ReferralRegisterSection";
-
-const CUT = PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
 
 function ReferralQuestStrip() {
   return (
@@ -20,7 +17,7 @@ function ReferralQuestStrip() {
       </div>
       <div className="referrals-quest-strip__badges" aria-label="Referral facts">
         <span title="Referral codes normalize to lowercase and accept 3-16 letters or digits.">3-16 chars</span>
-        <span title="ReferralRegistry registration burns 1 CL8Y once when the code is claimed.">1 CL8Y burn</span>
+        <span title="ReferralRegistry registration burns DOUB equal to the Last Buy epoch CHARM anchor once when the code is claimed.">Epoch-anchor DOUB burn</span>
         <span title="ReferralRegistry stores one owner code per wallet.">One code</span>
         <span title="ReferralCredApplied mints 5 CRED to the guide and 5 CRED to the referred buyer.">5 + 5 CRED</span>
       </div>
@@ -31,39 +28,13 @@ function ReferralQuestStrip() {
 export function ReferralsPage() {
   return (
     <section className="page page--referrals yga-secondary-page" data-testid="referrals-surface">
-      <div className="placeholder-cutout-layer" aria-hidden="true">
-        <CutoutDecoration
-          className="placeholder-cutout placeholder-cutout--left cutout-decoration--float"
-          src={CUT.primary}
-          width={300}
-          height={320}
-        />
-        <CutoutDecoration
-          className="placeholder-cutout placeholder-cutout--right cutout-decoration--peek"
-          src={CUT.secondary}
-          width={208}
-          height={208}
-        />
-        <CutoutDecoration
-          className="placeholder-cutout placeholder-cutout--orbit cutout-decoration--bob"
-          src={CUT.tertiary}
-          width={144}
-          height={144}
-        />
-      </div>
       <PageHero
         title="Referrals"
         badgeLabel="CRED Network"
         badgeTone="live"
-        coinSrc="/tokens/cl8y.svg"
-        coinAlt="CL8Y"
+        coinSrc={DOUB_TOKEN_LOGO}
+        coinAlt="DOUB"
         lede="Guide codes for TimeArena DOUB buys."
-        mascot={{
-          src: CUT.primary,
-          width: 300,
-          height: 320,
-          className: "cutout-decoration--float",
-        }}
       />
       <ReferralQuestStrip />
       <ReferralRegisterSection className="referral-register" />

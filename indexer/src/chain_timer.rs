@@ -49,6 +49,10 @@ pub const SEL_TIME_ARENA_BUY_ROUTER: [u8; 4] = [0x57, 0xcd, 0x7c, 0x88];
 pub const SEL_REFERRAL_CRED_FLAT_WAD: [u8; 4] = [0x1f, 0x5e, 0x9f, 0x48];
 /// `PodiumVaults.activePoolBalance(uint8)` ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)).
 pub const SEL_ACTIVE_POOL_BALANCE: [u8; 4] = [0x2f, 0xd2, 0xac, 0xfb];
+/// `PodiumVaults.seedPoolBalance(uint8)` — epoch N+1 tranche at head block.
+pub const SEL_SEED_POOL_BALANCE: [u8; 4] = [0xa6, 0x55, 0x87, 0xe8];
+/// `PodiumVaults.futurePoolBalance(uint8)` — epoch N+2 tranche at head block.
+pub const SEL_FUTURE_POOL_BALANCE: [u8; 4] = [0x33, 0x65, 0x42, 0xdf];
 
 /// Head sale fields for Arena v2 buy hub — batched at `read_block_number` ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
 #[derive(Debug, Clone, serde::Serialize)]
@@ -92,6 +96,10 @@ pub struct TimecurveHeadSnapshot {
     pub podium_contract: [PodiumRpcRow; 4],
     /// Head `PodiumVaults.activePoolBalance(cat)` at `read_block_number` ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)).
     pub active_pool_balance_doub_wad: [String; 4],
+    /// Head `PodiumVaults.seedPoolBalance(cat)` — funds epoch N+1 prizes ([#293](https://gitlab.com/PlasticDigits/yieldomega/-/issues/293)).
+    pub seed_pool_balance_doub_wad: [String; 4],
+    /// Head `PodiumVaults.futurePoolBalance(cat)` — funds epoch N+2 prizes ([#293](https://gitlab.com/PlasticDigits/yieldomega/-/issues/293)).
+    pub future_pool_balance_doub_wad: [String; 4],
     pub sale_state: TimecurveSaleStateSnapshot,
     pub sale_head: ArenaSaleHeadFields,
 }
@@ -413,6 +421,12 @@ async fn poll_once_multicall(
     let i_active_pool: [Option<usize>; 4] = std::array::from_fn(|cat| {
         pv.map(|vault| batch.push_u8_arg(vault, SEL_ACTIVE_POOL_BALANCE, cat as u8))
     });
+    let i_seed_pool: [Option<usize>; 4] = std::array::from_fn(|cat| {
+        pv.map(|vault| batch.push_u8_arg(vault, SEL_SEED_POOL_BALANCE, cat as u8))
+    });
+    let i_future_pool: [Option<usize>; 4] = std::array::from_fn(|cat| {
+        pv.map(|vault| batch.push_u8_arg(vault, SEL_FUTURE_POOL_BALANCE, cat as u8))
+    });
     let i_total_doub = batch.push_selector(arena, SEL_TOTAL_DOUB_RAISED);
     let i_paused = batch.push_selector(arena, SEL_PAUSED);
     let i_eff_charm = batch.push_selector(arena, SEL_EFFECTIVE_CHARM_PRICE_WAD);
@@ -467,11 +481,23 @@ async fn poll_once_multicall(
     }
 
     let mut active_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
+    let mut seed_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
+    let mut future_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
     for cat in 0..4 {
         if let Some(idx) = i_active_pool[cat] {
             let bal = decode_return_u256(&results[idx])
                 .wrap_err_with(|| format!("activePoolBalance({cat})"))?;
             active_pool_balance_doub_wad[cat] = u256_to_decimal_string(bal);
+        }
+        if let Some(idx) = i_seed_pool[cat] {
+            let bal = decode_return_u256(&results[idx])
+                .wrap_err_with(|| format!("seedPoolBalance({cat})"))?;
+            seed_pool_balance_doub_wad[cat] = u256_to_decimal_string(bal);
+        }
+        if let Some(idx) = i_future_pool[cat] {
+            let bal = decode_return_u256(&results[idx])
+                .wrap_err_with(|| format!("futurePoolBalance({cat})"))?;
+            future_pool_balance_doub_wad[cat] = u256_to_decimal_string(bal);
         }
     }
 
@@ -531,6 +557,8 @@ async fn poll_once_multicall(
         sale_ended: false,
         podium_contract: podium_rows,
         active_pool_balance_doub_wad,
+        seed_pool_balance_doub_wad,
+        future_pool_balance_doub_wad,
         sale_state,
         sale_head,
     })
@@ -648,6 +676,8 @@ async fn poll_once_sequential(
     }
 
     let mut active_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
+    let mut seed_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
+    let mut future_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
     if let Some(pv) = podium_vaults.filter(|a| *a != Address::ZERO) {
         for cat in 0u8..=3 {
             let bal = eth_call_u256(
@@ -660,6 +690,28 @@ async fn poll_once_sequential(
             )
             .await?;
             active_pool_balance_doub_wad[cat as usize] = u256_to_decimal_string(bal);
+
+            let seed = eth_call_u256(
+                providers,
+                pv,
+                block_id,
+                encode_u8_call(SEL_SEED_POOL_BALANCE, cat),
+                &format!("seedPoolBalance({cat})"),
+                metrics,
+            )
+            .await?;
+            seed_pool_balance_doub_wad[cat as usize] = u256_to_decimal_string(seed);
+
+            let future = eth_call_u256(
+                providers,
+                pv,
+                block_id,
+                encode_u8_call(SEL_FUTURE_POOL_BALANCE, cat),
+                &format!("futurePoolBalance({cat})"),
+                metrics,
+            )
+            .await?;
+            future_pool_balance_doub_wad[cat as usize] = u256_to_decimal_string(future);
         }
     }
 
@@ -786,6 +838,8 @@ async fn poll_once_sequential(
         sale_ended: false,
         podium_contract: podium_rows,
         active_pool_balance_doub_wad,
+        seed_pool_balance_doub_wad,
+        future_pool_balance_doub_wad,
         sale_state,
         sale_head,
     })

@@ -8,6 +8,17 @@ export function formatMmSsCountdown(totalSec: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+/** Whole seconds — `dd:HH:MM:SS` (day segment zero-padded to 2 digits). */
+export function formatDdHhMmSsCountdown(totalSec: number): string {
+  const safe = Math.max(0, Math.floor(totalSec));
+  const days = Math.floor(safe / 86400);
+  const remainder = safe - days * 86400;
+  const h = Math.floor(remainder / 3600);
+  const m = Math.floor((remainder % 3600) / 60);
+  const s = remainder % 60;
+  return `${String(days).padStart(2, "0")}:${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 /** Whole seconds only — `HH:MM:SS` (no sub-second digits). */
 export function formatCountdown(totalSec: number): string {
   const totalWhole = Math.floor(Math.max(0, totalSec));

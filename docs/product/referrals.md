@@ -4,7 +4,7 @@
 
 <a id="arena-v2-live"></a>
 
-Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**: on each referred **DOUB** buy, **5 CRED** mints to referrer and **5 CRED** to buyer — **not** CHARM weight, independent of the **35 CRED** epoch pool ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)). Registration still burns **1 CL8Y** per code for continuity. Full rules: [time-arena.md § Referrals](time-arena.md#referrals) · [GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240) · baseline [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253).
+Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**: on each referred **DOUB** buy, **5 CRED** mints to referrer and **5 CRED** to buyer — **not** CHARM weight, independent of the **35 CRED** epoch pool ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)). Registration burns **DOUB** equal to **`epochCharmAnchorWad`** (DOUB per 1 CHARM at the start of the current Last Buy epoch); the burn amount updates when the epoch rolls. Full rules: [time-arena.md § Referrals](time-arena.md#referrals) · [GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240) · baseline [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253).
 
 ### Code ownership continuity ([GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
 

@@ -12,7 +12,7 @@ from web3 import Web3
 from web3.contract import Contract
 
 from timearena_bot.actions import _build_and_send, _tx_template, approve_if_needed
-from timearena_bot.contracts import erc20_contract, referral_registry_contract
+from timearena_bot.contracts import referral_registry_contract
 from timearena_bot.swarm_layout import REFERRAL_REGISTRAR_INDEX
 from timearena_bot.referral_code import normalize_referral_code
 
@@ -39,8 +39,9 @@ def ensure_swarm_referral_registered(
     send: bool,
 ) -> Optional[str]:
     """
-    If TimeCurve has a referral registry and the registrar has no `ownerCode`,
-    approve CL8Y and `registerCode` with `swarm_referral_code_raw()` (normalized).
+    If TimeArena has a referral registry and the registrar has no `ownerCode`,
+    approve DOUB and `registerCode` with `swarm_referral_code_raw()` (normalized).
+    Burn amount is dynamic: `registrationBurnAmount()` (= epoch CHARM anchor DOUB).
     """
     if not swarm_referrals_enabled():
         return None
@@ -61,17 +62,18 @@ def ensure_swarm_referral_registered(
         print(f"swarm referrals: registrar {registrar.address} already has a code — skipping register")
         return None
 
-    cl8y = registry.functions.cl8yToken().call()
     need = int(registry.functions.registrationBurnAmount().call())
+    if need <= 0:
+        print("swarm referrals: registrationBurnAmount is zero — skipping")
+        return None
+
     if not send:
         print(f"swarm referrals: would register {code!r} from {registrar.address} (dry-run)")
         return None
 
-    cl8y_addr = Web3.to_checksum_address(cl8y)
-    pay_token = asset if Web3.to_checksum_address(asset.address) == cl8y_addr else erc20_contract(w3, cl8y_addr)
     approve_if_needed(
         w3,
-        pay_token,
+        asset,
         registrar,
         Web3.to_checksum_address(reg_addr),
         need,

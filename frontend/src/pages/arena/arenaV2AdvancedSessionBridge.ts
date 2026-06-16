@@ -20,6 +20,25 @@ function row(result: unknown): ContractReadRow {
 
 export { isTimeArenaV2 };
 
+/** Indices into {@link mapArenaV2AdvancedCoreRows} output (27 rows). */
+export const ARENA_V2_ADVANCED_CORE_ROW_INDICES = {
+  arenaStart: 0,
+  deadline: 1,
+  totalDoubRaised: 2,
+  minCharmWad: 4,
+  maxCharmWad: 5,
+  charmPriceWad: 7,
+  doub: 8,
+  referralRegistry: 10,
+  timerExtensionSec: 13,
+  timerCapSec: 15,
+  paused: 19,
+  podiumVaults: 21,
+  buyCooldownSec: 23,
+  timeArenaBuyRouter: 24,
+  owner: 26,
+} as const;
+
 /** Core session reads for `/arena/arena` when `tc` is TimeArena (27 rows). */
 export function arenaV2AdvancedCoreContracts(tc: HexAddress) {
   return [

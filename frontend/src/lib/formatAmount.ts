@@ -147,3 +147,21 @@ export function formatUnixSecIsoUtc(sec: bigint): string {
     return "—";
   }
 }
+
+/** Locale UTC wall-clock for product UI (preferred over raw ISO in stat cards). */
+export function formatUnixSecUtcDisplay(sec: bigint): string {
+  const n = unixSecToValidNumber(sec);
+  if (n === null) {
+    return "—";
+  }
+  try {
+    const formatted = new Date(n * 1000).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    });
+    return `${formatted} UTC`;
+  } catch {
+    return "—";
+  }
+}

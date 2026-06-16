@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCountdown,
+  formatDdHhMmSsCountdown,
   formatLaunchCountdown,
   formatMmSsCountdown,
   formatPodiumChipCountdown,
@@ -35,6 +36,23 @@ describe("formatCountdown", () => {
   it("does not roll an HH > 23 into a day — that's the caller's job (see formatLaunchCountdown)", () => {
     // 25h 13m 7s — HH stays 25, never wraps.
     expect(formatCountdown(25 * 3600 + 13 * 60 + 7)).toBe("25:13:07");
+  });
+});
+
+describe("formatDdHhMmSsCountdown", () => {
+  it("formats sub-day durations as 00:HH:MM:SS", () => {
+    expect(formatDdHhMmSsCountdown(0)).toBe("00:00:00:00");
+    expect(formatDdHhMmSsCountdown(3661)).toBe("00:01:01:01");
+    expect(formatDdHhMmSsCountdown(86399)).toBe("00:23:59:59");
+  });
+
+  it("formats multi-day durations with a zero-padded day segment", () => {
+    expect(formatDdHhMmSsCountdown(127_695)).toBe("01:11:28:15");
+    expect(formatDdHhMmSsCountdown(90061)).toBe("01:01:01:01");
+  });
+
+  it("clamps negative values", () => {
+    expect(formatDdHhMmSsCountdown(-5)).toBe("00:00:00:00");
   });
 });
 

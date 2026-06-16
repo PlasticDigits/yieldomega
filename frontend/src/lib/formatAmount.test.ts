@@ -7,6 +7,7 @@ import {
   formatBpsAsPercent,
   formatLocaleInteger,
   formatUnixSecIsoUtc,
+  formatUnixSecUtcDisplay,
   parseBigIntString,
 } from "./formatAmount";
 
@@ -65,6 +66,18 @@ describe("formatUnixSecIsoUtc", () => {
   it("returns em dash out of range", () => {
     expect(formatUnixSecIsoUtc(-1n)).toBe("—");
     expect(formatUnixSecIsoUtc(10n ** 16n)).toBe("—");
+  });
+});
+
+describe("formatUnixSecUtcDisplay", () => {
+  it("formats valid unix seconds as locale UTC wall clock", () => {
+    const label = formatUnixSecUtcDisplay(1700000000n);
+    expect(label).toContain("UTC");
+    expect(label).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
+    expect(label).not.toContain("1700000000");
+  });
+  it("returns em dash out of range", () => {
+    expect(formatUnixSecUtcDisplay(-1n)).toBe("—");
   });
 });
 

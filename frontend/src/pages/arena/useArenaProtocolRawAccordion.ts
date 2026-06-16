@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "wagmi";
+import { ARENA_V2_ADVANCED_CORE_ROW_INDICES as CORE } from "@/pages/arena/arenaV2AdvancedSessionBridge";
 import { walletDisplayFromMap } from "@/lib/addressFormat";
 import { indexerBaseUrl } from "@/lib/addresses";
 import {
@@ -20,6 +21,7 @@ import {
   useArenaProtocolData,
   useArenaProtocolAccordionTokenDecimals,
 } from "@/pages/arena/ArenaProtocolDataContext";
+import { useArenaPendingRevengeTargets } from "@/hooks/useArenaPendingRevengeTargets";
 
 /**
  * Contract + indexer mirrors for {@link RawDataAccordion} on the protocol / audit page.
@@ -50,24 +52,26 @@ export function useArenaProtocolRawAccordion() {
     [ledgerSecInt, heroChainNowSec],
   );
 
-  const [
-    saleStart,
-    deadline,
-    totalRaised,
-    _paused,
-    _charmPriceWad,
-    _doub,
-    _refReg,
-    timerExtensionSecR,
-    timerCapSecR,
-    _buyCooldownSecR,
-    _buyRouter,
-    _owner,
-  ] = coreTcData ?? [];
+  const saleStart = coreTcData?.[CORE.arenaStart];
+  const deadline = coreTcData?.[CORE.deadline];
+  const totalRaised = coreTcData?.[CORE.totalDoubRaised];
 
-  const [battlePtsR, _guardUntilR, timerAddedR] = userSaleDataRaw ?? [];
+  const [
+    battlePtsR,
+    _guardUntilR,
+    charmWeightR,
+    buyCountR,
+    timerAddedR,
+    activeStreakR,
+    bestStreakR,
+  ] = userSaleDataRaw ?? [];
 
   const decimals = useArenaProtocolAccordionTokenDecimals();
+
+  const { pendingRevengeTargets, revengeIndexerConfigured } = useArenaPendingRevengeTargets(
+    address,
+    heroChainNowSec ?? ledgerSecInt,
+  );
 
   const arenaSaleStartSec =
     saleStart?.status === "success" ? Number(saleStart.result as bigint) : undefined;
@@ -121,7 +125,6 @@ export function useArenaProtocolRawAccordion() {
     };
   }, [address]);
 
-  const pendingRevengeTargets = useMemo(() => [] as const, []);
   const formatWallet = useMemo(() => walletDisplayFromMap(new Map()), []);
 
   return {
@@ -132,19 +135,15 @@ export function useArenaProtocolRawAccordion() {
     countdownSecondsContext,
     totalRaised: serializeContractRead(totalRaised),
     isConnected,
-    charmWeightResult: undefined,
-    buyCountResult: undefined,
+    charmWeightResult: serializeContractRead(charmWeightR),
+    buyCountResult: serializeContractRead(buyCountR),
     timerAddedResult: serializeContractRead(timerAddedR),
     battlePointsResult: serializeContractRead(battlePtsR),
-    activeStreakResult: undefined,
-    bestStreakResult: undefined,
+    activeStreakResult: serializeContractRead(activeStreakR),
+    bestStreakResult: serializeContractRead(bestStreakR),
     pendingRevengeTargets,
-    revengeIndexerConfigured: Boolean(indexerBaseUrl()),
+    revengeIndexerConfigured,
     buyerStats: indexerBaseUrl() ? buyerStats : null,
-    timerExtensionSecResult: serializeContractRead(timerExtensionSecR),
-    initialTimerSecResult: undefined,
-    timerCapSecResult: serializeContractRead(timerCapSecR),
-    sinkReads: undefined,
     decimals,
     formatWallet,
   };

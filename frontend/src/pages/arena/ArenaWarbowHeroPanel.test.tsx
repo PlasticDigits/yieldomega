@@ -11,6 +11,18 @@ vi.mock("./useArenaWarbowHero", () => ({
   useArenaWarbowHero: () => mockWarbowHero(),
 }));
 
+vi.mock("@/hooks/useArenaPendingRevengeTargets", () => ({
+  useArenaPendingRevengeTargets: () => ({
+    pendingRevengeTargets: [],
+    hasRevengeOpen: false,
+    revengeIndexerConfigured: true,
+  }),
+}));
+
+vi.mock("wagmi", () => ({
+  useAccount: () => ({ address: undefined, isConnected: false }),
+}));
+
 vi.mock("@/components/WalletConnectButton", () => ({
   WalletConnectButton: () => createElement("button", { type: "button" }, "Connect"),
 }));

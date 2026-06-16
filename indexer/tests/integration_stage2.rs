@@ -170,6 +170,8 @@ fn arena_head_snapshot() -> TimecurveHeadSnapshot {
             }
         }),
         active_pool_balance_doub_wad: ["700".into(), "0".into(), "1400".into(), "350".into()],
+        seed_pool_balance_doub_wad: ["200".into(), "0".into(), "400".into(), "100".into()],
+        future_pool_balance_doub_wad: ["100".into(), "0".into(), "200".into(), "50".into()],
         sale_head: ArenaSaleHeadFields {
             charm_price_wad: "1000000000000000000".into(),
             epoch_charm_anchor_wad: "1000000000000000000".into(),
@@ -516,6 +518,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     api_podium_pool_donations_smoke(&pool).await;
     api_arena_buys_actual_seconds_added_smoke(&pool).await;
     api_arena_activity_smoke(&pool).await;
+    api_arena_warbow_pending_revenge_smoke(&pool).await;
     api_platform_usage_smoke(&pool).await;
     api_buys_cursor_smoke(&pool).await;
     api_buy_via_kumbaya_pay_kind_smoke(&pool).await;
@@ -681,6 +684,22 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
             .and_then(|v| v.as_str()),
         Some("700")
     );
+
+    let buy_routing = j.get("buy_routing").expect("buy_routing");
+    let tranches = buy_routing
+        .get("epoch_tranches")
+        .and_then(|v| v.as_array())
+        .expect("epoch_tranches");
+    assert_eq!(tranches.len(), 3);
+    assert_eq!(
+        tranches[0].get("pool_total_doub_wad").and_then(|v| v.as_str()),
+        Some("2450")
+    );
+    let total_prizes = tranches[0]
+        .get("prize_places_doub_wad")
+        .and_then(|v| v.as_array())
+        .expect("prize totals");
+    assert_eq!(total_prizes[0].as_str(), Some("1400"));
 
     sqlx::query(
         r#"INSERT INTO idx_arena_buy (
@@ -877,6 +896,61 @@ async fn api_arena_activity_smoke(pool: &sqlx::PgPool) {
         .get("target")
         .and_then(|v| v.as_str())
         .is_some_and(|s| s.eq_ignore_ascii_case(&format!("{:#x}", addr_byte(0xb3)))));
+}
+
+/// `GET /v1/arena/warbow/pending-revenge/{victim}` — open windows from steal/revenge tables (#135).
+async fn api_arena_warbow_pending_revenge_smoke(pool: &sqlx::PgPool) {
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    let victim = format!("{:#x}", addr_byte(0xb2));
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/warbow/pending-revenge/{}", victim))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert_eq!(
+        j.get("victim").and_then(|v| v.as_str()),
+        Some(victim.to_ascii_lowercase().as_str())
+    );
+    let items = j.get("items").and_then(|v| v.as_array()).expect("items");
+    assert_eq!(items.len(), 1);
+    let row = &items[0];
+    assert!(row
+        .get("stealer")
+        .and_then(|v| v.as_str())
+        .is_some_and(|s| s.eq_ignore_ascii_case(&format!("{:#x}", addr_byte(0xa1)))));
+    assert_eq!(
+        row.get("steal_seq").and_then(|v| v.as_str()),
+        Some("1")
+    );
+
+    let alice = format!("{:#x}", addr_byte(0xa1));
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/warbow/pending-revenge/{}", alice))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert_eq!(j.get("items").and_then(|v| v.as_array()).map(|a| a.len()), Some(0));
 }
 
 async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {
