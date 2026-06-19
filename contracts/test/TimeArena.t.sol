@@ -302,6 +302,25 @@ contract TimeArenaTest is Test {
         assertEq(charges, arena.maxBuyCharges());
     }
 
+    function test_buy_energy_cap_includes_level_bonus() public {
+        _ensureLevel(alice, 2);
+        (, uint8 level2Cap,,,,) = arena.buyEnergyState(alice);
+        assertEq(level2Cap, 6);
+
+        vm.warp(block.timestamp + arena.buyChargeIntervalSec() * 20);
+        (uint8 level2Charges,,,,,) = arena.buyEnergyState(alice);
+        assertEq(level2Charges, 6);
+
+        _ensureLevel(alice, 5);
+        (, uint8 level5Cap,,,,) = arena.buyEnergyState(alice);
+        assertEq(level5Cap, 9);
+        assertEq(arena.maxBuyCharges(), 5);
+
+        vm.warp(block.timestamp + arena.buyChargeIntervalSec() * 20);
+        (uint8 level5Charges,,,,,) = arena.buyEnergyState(alice);
+        assertEq(level5Charges, 9);
+    }
+
     function test_buy_energy_preserves_partial_interval_progress() public {
         vm.prank(alice);
         arena.buy(1e18);

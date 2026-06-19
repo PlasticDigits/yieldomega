@@ -30,7 +30,7 @@ describe("previewBuyPlayerLevelAfterCharm", () => {
       levelBefore: 1,
       levelAfter: 2,
     });
-    expect(formatBuyProjectedLevelLine(1, 2)).toBe("1->2 Level");
+    expect(formatBuyProjectedLevelLine(1, 2)).toBe("1->2 Level (+1 max move)");
   });
 });
 
@@ -142,7 +142,7 @@ describe("buildArenaBuyProjectedEffectLines", () => {
       formatRivalWallet: fmt,
     });
     expect(lines[0]).toBe(formatBuyProjectedXpLine(charmWad));
-    expect(lines[1]).toBe("1->2 Level");
+    expect(lines[1]).toBe("1->2 Level (+1 max move)");
   });
 
   it("uses post-buy level for WarBow BP preview (#299)", () => {
@@ -154,7 +154,7 @@ describe("buildArenaBuyProjectedEffectLines", () => {
       plantWarBowFlag: false,
       formatRivalWallet: fmt,
     });
-    expect(lines).toContain("3->4 Level");
+    expect(lines).toContain("3->4 Level (+1 max move)");
     expect(lines.some((line) => line.includes("BP"))).toBe(true);
   });
 

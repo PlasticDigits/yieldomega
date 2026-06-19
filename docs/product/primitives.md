@@ -11,7 +11,7 @@ Epic: [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Document
 ### Per-wallet buy energy (`TimeArena`) — GitLab #332
 
 - **`buyChargeIntervalSec`** defaults to **300** seconds: each wallet earns one buy charge every 5 minutes.
-- **`maxBuyCharges`** defaults to **5**. A wallet that idles for at least 25 minutes can spend up to five stored moves.
+- **`maxBuyCharges`** defaults to **5** as the Level 1 base cap. Effective cap is **`maxBuyCharges + level - 1`** (Level 2 = 6, Level 5 = 9).
 - **`burstBuyCooldownSec`** defaults to **15** seconds and must be **> 0**. A wallet with charges still cannot buy again inside this short gap.
 - **`buyEnergyState(buyer)`** is the canonical wallet read for current charges, next charge timestamp, and next allowed buy timestamp. **`nextBuyAllowedAt(buyer)`** is a computed compatibility view. **`buyCooldownSec`** remains as a legacy ABI mirror of the charge interval.
 - Reverts: **`TimeArena: no buy charges`** when exhausted, **`TimeArena: burst cooldown`** inside the short gap. Long-run default pacing remains one buy per 5 minutes per wallet.

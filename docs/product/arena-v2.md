@@ -12,7 +12,7 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 - CHARM band: **0.99–10** CHARM (WAD). Ingress uses ERC-20 **balance-delta parity** ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
 - **`TimeArenaBuyRouter`**: CL8Y / ETH / USDm → Kumbaya **`exactOutput`** → DOUB → **`buyFor`**.
 
-**Buy energy ([#332](https://gitlab.com/PlasticDigits/yieldomega/-/issues/332)):** wallet pacing is onchain. Defaults are `buyChargeIntervalSec = 300`, `maxBuyCharges = 5`, and `burstBuyCooldownSec = 15`. Each successful `buy`, `buy(codeHash)`, `buyFor`, or `buyWithCred` spends one charge before token transfer/burn. `buyEnergyState(wallet)` returns current charges, cap, refill timestamps, and computed next buy time; `buyCooldownSec` remains a legacy ABI mirror of the 300s interval.
+**Buy energy ([#332](https://gitlab.com/PlasticDigits/yieldomega/-/issues/332)):** wallet pacing is onchain. Defaults are `buyChargeIntervalSec = 300`, base `maxBuyCharges = 5`, and `burstBuyCooldownSec = 15`. Effective wallet cap is `maxBuyCharges + level - 1` (L1 = 5, L5 = 9). Each successful `buy`, `buy(codeHash)`, `buyFor`, or `buyWithCred` spends one charge before token transfer/burn. `buyEnergyState(wallet)` returns current charges, effective cap, refill timestamps, and computed next buy time; `buyCooldownSec` remains a legacy ABI mirror of the 300s interval.
 
 ## Timers (Last Buy + four podiums)
 

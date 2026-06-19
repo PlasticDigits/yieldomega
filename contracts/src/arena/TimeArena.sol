@@ -386,8 +386,8 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         )
     {
         BuyEnergy memory energy = _buyEnergy[buyer];
-        maxCharges = maxBuyCharges;
-        (charges, lastRefillAt) = _refilledBuyEnergy(energy, block.timestamp);
+        maxCharges = _effectiveMaxBuyCharges(buyer);
+        (charges, lastRefillAt) = _refilledBuyEnergy(energy, block.timestamp, maxCharges);
         lastBuyAt = energy.lastBuyAt;
         if (charges >= maxCharges) {
             nextChargeAt = 0;
@@ -728,7 +728,8 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     function _spendBuyCharge(address buyer) internal {
         BuyEnergy storage energy = _buyEnergy[buyer];
-        (uint8 charges, uint256 refillAt) = _refilledBuyEnergy(energy, block.timestamp);
+        uint8 cap = _effectiveMaxBuyCharges(buyer);
+        (uint8 charges, uint256 refillAt) = _refilledBuyEnergy(energy, block.timestamp, cap);
         require(charges > 0, "TimeArena: no buy charges");
         uint256 lastBuyAt = energy.lastBuyAt;
         require(lastBuyAt == 0 || block.timestamp >= lastBuyAt + burstBuyCooldownSec, "TimeArena: burst cooldown");
@@ -741,12 +742,17 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         energy.lastBuyAt = uint40(block.timestamp);
     }
 
-    function _refilledBuyEnergy(BuyEnergy memory energy, uint256 nowSec)
+    function _effectiveMaxBuyCharges(address buyer) internal view returns (uint8) {
+        uint256 lvl = _playerLevel(buyer);
+        uint256 cap = uint256(maxBuyCharges) + lvl - 1;
+        return cap > type(uint8).max ? type(uint8).max : uint8(cap);
+    }
+
+    function _refilledBuyEnergy(BuyEnergy memory energy, uint256 nowSec, uint8 cap)
         internal
         view
         returns (uint8 charges, uint256 lastRefillAt)
     {
-        uint8 cap = maxBuyCharges;
         if (energy.lastRefillAt == 0) {
             return (cap, nowSec);
         }
