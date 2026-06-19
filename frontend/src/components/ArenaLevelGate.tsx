@@ -6,6 +6,7 @@ import {
   type ArenaFeatureKey,
   FEATURE_UNLOCK_LEVEL,
   isFeatureUnlocked,
+  shouldShowLevelLock,
 } from "@/lib/arenaProgression";
 
 type Props = {
@@ -26,8 +27,10 @@ export function ArenaLevelGate({
   const unlocked =
     playerLevel !== undefined && isFeatureUnlocked(playerLevel, feature);
   const required = FEATURE_UNLOCK_LEVEL[feature];
+  const showLock =
+    !unlocked && shouldShowLevelLock(playerLevel, required);
 
-  if (unlocked) {
+  if (unlocked || !showLock) {
     return (
       <div className={className} data-testid={testId}>
         {children}

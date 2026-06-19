@@ -7,8 +7,9 @@ import {
   isArenaLastBuyWalletSurfaceUnlocked,
 } from "@/lib/arenaPageHelpers";
 import {
+  clampPlayerLevel,
   FEATURE_UNLOCK_LEVEL,
-  isFeatureUnlocked,
+  shouldShowLevelLock,
   type ArenaFeatureKey,
 } from "@/lib/arenaProgression";
 import type { BuyItem } from "@/lib/indexerApi";
@@ -101,12 +102,18 @@ export function ArenaPodiumTimerChip({
     arenaUsers: { recentBuys, podiumRows },
   });
 
-  const unlocked =
+  const requiredLevel = feature !== undefined ? FEATURE_UNLOCK_LEVEL[feature] : 1;
+  const viewerLevel =
+    walletConnected && playerLevel !== undefined ? clampPlayerLevel(playerLevel) : undefined;
+  const showProgressionLock =
+    feature !== undefined &&
+    feature !== "last_buy" &&
+    shouldShowLevelLock(viewerLevel, requiredLevel);
+  const lastBuyLocked = feature === "last_buy" && !walletStatsPending && !lastBuyWalletUnlocked;
+  const chipVisuallyUnlocked =
     feature === "last_buy"
       ? walletStatsPending || lastBuyWalletUnlocked
-      : feature === undefined ||
-        (playerLevel !== undefined && isFeatureUnlocked(playerLevel, feature));
-  const requiredLevel = feature !== undefined ? FEATURE_UNLOCK_LEVEL[feature] : 1;
+      : !showProgressionLock;
 
   const viewerValueRaw = resolveViewerPodiumValueRaw(categoryIndex, podiumRow, address, {
     activeDefendedStreak,
@@ -141,7 +148,7 @@ export function ArenaPodiumTimerChip({
       </p>
       <div className="arena-timer-chips__head">
         <span className="arena-timer-chips__lock">
-          {unlocked
+          {chipVisuallyUnlocked
             ? podiumRow?.epoch !== undefined
               ? `EPOCH ${podiumRow.epoch}`
               : "EPOCH —"
@@ -162,7 +169,7 @@ export function ArenaPodiumTimerChip({
           ) : (
             <span className="arena-timer-chips__chip arena-timer-chips__chip--hero-owned" aria-hidden="true" />
           )}
-          {unlocked ? helpButton : null}
+          {chipVisuallyUnlocked ? helpButton : null}
         </div>
       </div>
 
@@ -214,14 +221,14 @@ export function ArenaPodiumTimerChip({
 
   const gateClassName = [
     "arena-timer-chips__gate",
-    unlocked ? "arena-timer-chips__gate--unlocked" : "arena-timer-chips__gate--locked",
+    chipVisuallyUnlocked ? "arena-timer-chips__gate--unlocked" : "arena-timer-chips__gate--locked",
     className ?? "",
   ]
     .filter(Boolean)
     .join(" ");
   const gateTestId = testId ?? `arena-timer-chip-gate-${contractIndex}`;
 
-  if (!unlocked && feature !== undefined) {
+  if ((showProgressionLock || lastBuyLocked) && feature !== undefined) {
     return (
       <LockedUntilLevel
         requiredLevel={requiredLevel}
