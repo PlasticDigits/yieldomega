@@ -171,10 +171,17 @@ Claim helper: [`arenaCharmCredClaim.ts`](../../frontend/src/lib/arenaCharmCredCl
 |---------|-------------------|--------|
 | XP hero | [`ArenaXpHero.tsx`](../../frontend/src/components/ArenaXpHero.tsx) · **`data-testid="arena-xp-hero"`** | On play **`/`** timer panel; reads `level` + `xpTowardNext` |
 | Lock overlays | [`ArenaLevelGate.tsx`](../../frontend/src/components/ArenaLevelGate.tsx) | `Locked until Level N` + lock icon on Time Booster / Streak / WarBow sections |
-| Mechanic modal | [`FeatureMechanicModal.tsx`](../../frontend/src/components/FeatureMechanicModal.tsx) | First unlock + `?` help; tutorial seen in `localStorage` via [`arenaProgression.ts`](../../frontend/src/lib/arenaProgression.ts) |
+| Mechanic modal | [`FeatureMechanicModal.tsx`](../../frontend/src/components/FeatureMechanicModal.tsx) | Explicit `?` help; long-form copy from [`podiumCopy.tsx`](../../frontend/src/pages/arena/podiumCopy.tsx) |
+| Level-up celebration | [`LevelUpCelebrationPopover.tsx`](../../frontend/src/components/LevelUpCelebrationPopover.tsx) · **`data-testid="level-up-celebration"`** | Auto-trigger on **L2+** first unlock; glass popover + subtle confetti; tutorial seen in `localStorage` via [`arenaProgression.ts`](../../frontend/src/lib/arenaProgression.ts) ([#335](https://gitlab.com/PlasticDigits/yieldomega/-/issues/335)) |
 | Buy preview | [`arenaBuyProjectedEffects.ts`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) | Filters streak/BP/flag chips by onchain `level` |
 
-Invariants: **`INV-ARENA-PROGRESSION-*`** in [invariants §299](../testing/invariants-and-business-logic.md#arena-player-progression-gitlab-299). Product: [arena-v2 § XP](../product/arena-v2.md#xp).
+Invariants: **`INV-ARENA-PROGRESSION-*`** · **`INV-FRONTEND-335-LEVEL-UP-CELEBRATION`** in [invariants §299](../testing/invariants-and-business-logic.md#arena-player-progression-gitlab-299) · [invariants §335](../testing/invariants-and-business-logic.md#frontend-level-up-celebration-gitlab-335). Product: [arena-v2 § XP](../product/arena-v2.md#xp).
+
+<a id="level-up-celebration-gitlab-335"></a>
+
+## Level-up celebration popover (GitLab [#335](https://gitlab.com/PlasticDigits/yieldomega/-/issues/335))
+
+When a connected wallet crosses **Level 2+** on play **`/`**, [`ArenaSimplePage.tsx`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) mounts [`LevelUpCelebrationPopover`](../../frontend/src/components/LevelUpCelebrationPopover.tsx) once per unseen unlock tier. Level 1 / first wallet connect does **not** celebrate. `prefers-reduced-motion` keeps the glass popover but disables confetti. Full mechanic education remains on explicit help (`FeatureMechanicModal`).
 
 ## Env
 
