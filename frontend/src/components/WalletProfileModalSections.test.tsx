@@ -127,6 +127,18 @@ describe("WalletProfileModalSections (GitLab #258)", () => {
     expect(html).toContain(expectedL1);
   });
 
+  it("renders default level placeholders when level_history is empty (#336 sad path)", () => {
+    const html = renderToStaticMarkup(
+      createElement(WalletProfileLevelHistorySection, {
+        data: { ...mockStats, level_history: [] },
+      }),
+    );
+    expect(html).toContain('data-testid="wallet-profile-level-history"');
+    expect(html).toContain("Level 1 · Last Buy");
+    expect(html).toContain("Level 5 · Flag");
+    expect(html.match(/—/g)?.length).toBeGreaterThanOrEqual(5);
+  });
+
   it("renders WarBow steals and guards", () => {
     const html = renderToStaticMarkup(createElement(WalletProfileWarbowSection, { data: mockStats }));
     expect(html).toContain("Steals");

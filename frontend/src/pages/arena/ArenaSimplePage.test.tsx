@@ -264,3 +264,24 @@ describe("ArenaSimplePage smoke regions (GitLab #321)", () => {
     expect(src).toContain("ArenaCharmCredCard");
   });
 });
+
+describe("ArenaSimplePage #331 visual feature wiring", () => {
+  const src = readFileSync(resolve(__dirname, "ArenaSimplePage.tsx"), "utf8");
+
+  it("wires next-level lock overlays via LockedUntilLevel (#334)", () => {
+    expect(src).toContain("LockedUntilLevel");
+    expect(src).toContain("shouldShowLevelLock");
+    expect(src).toContain("FEATURE_UNLOCK_LEVEL");
+  });
+
+  it("wires level-up celebration popover for L2+ unlocks (#335)", () => {
+    expect(src).toContain("useArenaLevelUpCelebration");
+    expect(src).toContain("LevelUpCelebrationPopover");
+  });
+
+  it("wires post-buy effect toast stack on successful buys (#337)", () => {
+    expect(src).toContain("useArenaBuyEffectToasts");
+    expect(src).toContain("ArenaEffectToastStack");
+    expect(src).toContain("onBuySuccess");
+  });
+});

@@ -9,6 +9,7 @@ import {
   readArenaLastClosedAt,
 } from "@/lib/arenaSessionClose";
 import { fetchArenaSessionSummary, type ArenaSessionSummary } from "@/lib/indexerApi";
+import { hasWywaSummaryActivity } from "@/lib/whileYouWereAwayActivity";
 
 export type WhileYouWereAwayState = {
   summary: ArenaSessionSummary;
@@ -46,13 +47,7 @@ export function useWhileYouWereAway() {
       const summary = await fetchArenaSessionSummary(lastClosedAt, wallet);
       if (cancelled || !summary) return;
 
-      const totalBuys = Number(summary.total_buys);
-      const podiumUpdates = Number(summary.podium_updates);
-      const hasActivity =
-        (Number.isFinite(totalBuys) && totalBuys > 0) ||
-        (Number.isFinite(podiumUpdates) && podiumUpdates > 0) ||
-        (summary.podium_epochs_ended?.length ?? 0) > 0;
-      if (!hasActivity) return;
+      if (!hasWywaSummaryActivity(summary)) return;
 
       setState({ summary, lastClosedAt });
     })();
