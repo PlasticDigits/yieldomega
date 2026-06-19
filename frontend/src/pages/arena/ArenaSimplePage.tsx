@@ -798,11 +798,13 @@ export function ArenaSimplePage({
       data-testid="arena-simple-buy-charm"
       aria-label={
         buyOnCooldown
-          ? `Buy CHARM — wallet cooldown ${formatMmSsCountdown(session.walletCooldownRemainingSec)} remaining`
+          ? `Buy CHARM — next move in ${formatMmSsCountdown(session.walletCooldownRemainingSec)}`
           : session.buySubmitBusy || session.isWriting
             ? "Buy CHARM — processing transaction"
             : payUsesKumbaya && session.swapQuoteLoading
               ? "Buy CHARM — refreshing pay token quote"
+              : session.walletBuyCharges !== undefined && session.walletMaxBuyCharges !== undefined
+                ? `Buy CHARM — ${session.walletBuyCharges} of ${session.walletMaxBuyCharges} moves available`
               : `Buy CHARM with ${paySpendSuffix}`
       }
       className={[
@@ -812,18 +814,20 @@ export function ArenaSimplePage({
         .filter(Boolean)
         .join(" ")}
       disabled={buyDisabled}
-      title={buyOnCooldown ? "Wallet buy cooldown (matches onchain pacing)" : undefined}
+      title={buyOnCooldown ? "Next onchain buy-energy move is not available yet" : undefined}
       onClick={() => void session.submitBuy()}
       {...buyButtonMotion}
     >
       <span className="arena-simple__cta-label">
         {session.buySubmitBusy || session.isWriting
           ? "Processing transaction…"
-          : payUsesKumbaya && session.swapQuoteLoading
-            ? "Refreshing quote…"
-            : buyOnCooldown
-              ? `${formatMmSsCountdown(session.walletCooldownRemainingSec)} cooldown`
-              : "Buy"}
+            : payUsesKumbaya && session.swapQuoteLoading
+              ? "Refreshing quote…"
+              : buyOnCooldown
+                ? `Next move ${formatMmSsCountdown(session.walletCooldownRemainingSec)}`
+                : session.walletBuyCharges !== undefined && session.walletMaxBuyCharges !== undefined
+                  ? `Buy (${session.walletBuyCharges}/${session.walletMaxBuyCharges})`
+                  : "Buy"}
       </span>
     </motion.button>
   );

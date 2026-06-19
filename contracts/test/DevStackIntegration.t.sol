@@ -10,7 +10,6 @@ import {PlayCred} from "../src/PlayCred.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
-import {DeployDevBuyCooldown} from "../script/DeployDevBuyCooldown.sol";
 
 /// @dev Minimal CL8Y stand-in for DeployDev wiring tests.
 contract MockReserveCl8yTest is ERC20 {
@@ -39,14 +38,15 @@ contract DevStackIntegrationTest is Test {
         referralRegistry = UUPSDeployLib.deployReferralRegistry(deployer);
         playCred = UUPSDeployLib.deployPlayCred(deployer);
 
-        uint256 buyCooldownSec = DeployDevBuyCooldown.readBuyCooldownSec(vm);
         arena = UUPSDeployLib.deployTimeArenaProductionDefaults(
             doub,
             podiumVaults,
             address(referralRegistry),
             address(playCred),
             1000e18,
-            buyCooldownSec,
+            300,
+            5,
+            15,
             deployer
         );
 
@@ -80,7 +80,10 @@ contract DevStackIntegrationTest is Test {
         assertEq(referralRegistry.registrationBurnAmount(), arena.epochCharmAnchorWad());
     }
 
-    function test_deployDev_wiring_buyCooldown_default_300() public view {
+    function test_deployDev_wiring_buyEnergy_defaults() public view {
+        assertEq(arena.buyChargeIntervalSec(), 300);
+        assertEq(arena.maxBuyCharges(), 5);
+        assertEq(arena.burstBuyCooldownSec(), 15);
         assertEq(arena.buyCooldownSec(), 300);
     }
 }

@@ -38,7 +38,7 @@ export function arenaV2CoreContracts(tc: HexAddress) {
     { address: tc, abi: timeArenaReadAbi, functionName: "doub" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "referralRegistry" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "totalDoubRaised" as const },
-    { address: tc, abi: timeArenaReadAbi, functionName: "buyCooldownSec" as const },
+    { address: tc, abi: timeArenaReadAbi, functionName: "burstBuyCooldownSec" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "timerExtensionSec" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "timerCapSec" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "timeArenaBuyRouter" as const },
@@ -65,7 +65,7 @@ export function mapArenaV2CoreRows(
   const doub = raw[4]!.result as HexAddress;
   const referral = ok(5) ? (raw[5]!.result as HexAddress) : ZERO;
   const totalRaised = ok(6) ? (raw[6]!.result as bigint) : 0n;
-  const buyCooldown = ok(7) ? (raw[7]!.result as bigint) : 300n;
+  const burstCooldown = ok(7) ? (raw[7]!.result as bigint) : 15n;
   const timerExt = ok(8) ? (raw[8]!.result as bigint) : 120n;
   const timerCap = ok(9) ? (raw[9]!.result as bigint) : 86_400n;
   const buyRouter = ok(10) ? (raw[10]!.result as HexAddress) : ZERO;
@@ -88,7 +88,7 @@ export function mapArenaV2CoreRows(
     row(totalRaised),
     row(timerExt),
     row(timerCap),
-    row(buyCooldown),
+    row(burstCooldown),
     row(ZERO),
     row(paused),
     row(buyRouter),
@@ -105,6 +105,7 @@ export function mapArenaV2CoreRows(
 export function arenaV2UserContracts(tc: HexAddress, wallet: HexAddress) {
   return [
     { address: tc, abi: timeArenaReadAbi, functionName: "nextBuyAllowedAt" as const, args: [wallet] },
+    { address: tc, abi: timeArenaReadAbi, functionName: "buyEnergyState" as const, args: [wallet] },
   ] as const;
 }
 
@@ -113,7 +114,8 @@ export function mapArenaV2UserRows(
 ): readonly ContractReadRow[] | undefined {
   if (!raw?.[0] || raw[0].status !== "success") return undefined;
   const nextBuy = raw[0].result as bigint;
-  return [row(nextBuy), row(0n)];
+  const energy = raw[1]?.status === "success" ? raw[1].result : undefined;
+  return [row(nextBuy), row(0n), row(energy)];
 }
 
 /** Maps `GET /v1/arena/timers` into Arena v2 `useArenaSaleSession` core rows ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
@@ -138,7 +140,7 @@ export function coreReadRowsFromArenaTimers(
   }
 
   const referral = (t.referral_registry ?? ZERO) as HexAddress;
-  const buyCooldown = BigInt(t.buy_cooldown_sec ?? "300");
+  const burstCooldown = BigInt(t.burst_buy_cooldown_sec ?? "15");
   const timerExt = BigInt(t.timer_extension_sec ?? "120");
   const buyRouter = (t.time_arena_buy_router ?? ZERO) as HexAddress;
   const referralFlat = BigInt(t.referral_cred_flat_wad ?? String(5n * 10n ** 18n));
@@ -159,7 +161,7 @@ export function coreReadRowsFromArenaTimers(
     row(BigInt(t.total_doub_raised)),
     row(timerExt),
     row(BigInt(t.timer_cap_sec)),
-    row(buyCooldown),
+    row(burstCooldown),
     row(ZERO),
     row(t.paused),
     row(buyRouter),

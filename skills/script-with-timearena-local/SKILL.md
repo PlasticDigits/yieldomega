@@ -23,7 +23,7 @@ description: Author local TypeScript or Python scripts against deployed TimeAren
 
 ## C. Read-before-write
 
-- **`TimeArena`:** `paused`, podium deadlines, `buyCooldownSec`, `nextBuyAllowedAt(account)`.
+- **`TimeArena`:** `paused`, podium deadlines, buy-energy globals (`buyChargeIntervalSec`, `maxBuyCharges`, `burstBuyCooldownSec`), `buyEnergyState(account)`, and computed `nextBuyAllowedAt(account)` ([GitLab #332](https://gitlab.com/PlasticDigits/yieldomega/-/issues/332)). Do not duplicate refill math when the view is available.
 - **CHARM band** and **DOUB** spend per [`time-arena.md`](../../docs/product/time-arena.md).
 - **Balances / allowances** for DOUB and optional Kumbaya paths ([`docs/integrations/kumbaya.md`](../../docs/integrations/kumbaya.md)).
 - **Reference:** [`bots/timearena/README.md`](../../bots/timearena/README.md) — AGPL; study patterns in your own project.

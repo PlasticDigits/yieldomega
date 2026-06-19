@@ -148,6 +148,9 @@ function baseSession(overrides: Partial<UseArenaSaleSession> = {}): UseArenaSale
     warbowPendingFlagOwner: undefined,
     warbowPendingFlagPlantAt: 0n,
     walletCooldownRemainingSec: 0,
+    walletBuyCharges: 5,
+    walletMaxBuyCharges: 5,
+    walletNextBuyChargeAtSec: 0,
     buySubmitBusy: false,
     totalRaisedWei: 0n,
     pricePerCharmWad: 1000n * 10n ** 18n,
@@ -212,7 +215,7 @@ describe("ArenaSimplePage (GitLab #321)", () => {
     expect(html).toContain('data-testid="arena-command-console-primary"');
     expect(html).toContain('data-testid="arena-command-console-warbow"');
     expect(html).toContain('data-testid="arena-simple-buy-charm"');
-    expect(html).toContain('aria-label="Buy CHARM with DOUB"');
+    expect(html).toContain('aria-label="Buy CHARM — 5 of 5 moves available"');
     expect(html).toContain('data-testid="arena-warbow-hero-stub"');
     expect(html).toContain('data-testid="arena-charm-cred-card-stub"');
   });

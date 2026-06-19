@@ -17,7 +17,9 @@ import {ArenaCharmPriceTwap} from "../src/oracle/ArenaCharmPriceTwap.sol";
 ///      Initial `charmPriceWad` on chain 4326: Kumbaya TWAP (~$1/CHARM) unless `ARENA_CHARM_PRICE_WAD` set (#303).
 contract DeployProduction is Script {
     uint256 internal constant CHAIN_MEGAETH_MAINNET = 4326;
-    uint256 internal constant DEFAULT_BUY_COOLDOWN_SEC = 300;
+    uint256 internal constant DEFAULT_BUY_CHARGE_INTERVAL_SEC = 300;
+    uint8 internal constant DEFAULT_MAX_BUY_CHARGES = 5;
+    uint256 internal constant DEFAULT_BURST_BUY_COOLDOWN_SEC = 15;
 
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
@@ -25,7 +27,11 @@ contract DeployProduction is Script {
         address admin = vm.envOr("DEPLOY_ADMIN_ADDRESS", deployer);
 
         uint256 charmPriceWad = _resolveCharmPriceWad();
-        uint256 buyCooldownSec = vm.envOr("ARENA_BUY_COOLDOWN_SEC", DEFAULT_BUY_COOLDOWN_SEC);
+        uint256 buyChargeIntervalSec =
+            vm.envOr("ARENA_BUY_CHARGE_INTERVAL_SEC", DEFAULT_BUY_CHARGE_INTERVAL_SEC);
+        uint8 maxBuyCharges = uint8(vm.envOr("ARENA_MAX_BUY_CHARGES", uint256(DEFAULT_MAX_BUY_CHARGES)));
+        uint256 burstBuyCooldownSec =
+            vm.envOr("ARENA_BURST_BUY_COOLDOWN_SEC", DEFAULT_BURST_BUY_COOLDOWN_SEC);
         bool startArenaNow = vm.envOr("START_ARENA", uint256(0)) == 1;
 
         (
@@ -69,7 +75,9 @@ contract DeployProduction is Script {
             cap,
             below,
             to,
-            buyCooldownSec,
+            buyChargeIntervalSec,
+            maxBuyCharges,
+            burstBuyCooldownSec,
             admin
         );
         podiumVaults.setArena(address(arena));
@@ -87,6 +95,9 @@ contract DeployProduction is Script {
         console.log("TimeArena:", address(arena));
         console.log("Deploy admin:", admin);
         console.log("Arena started:", startArenaNow);
+        console.log("buyChargeIntervalSec:", buyChargeIntervalSec);
+        console.log("maxBuyCharges:", maxBuyCharges);
+        console.log("burstBuyCooldownSec:", burstBuyCooldownSec);
 
         vm.stopBroadcast();
     }

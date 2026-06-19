@@ -49,7 +49,7 @@ contract NonStandardERC20Test is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, 5, 15, admin)
         );
         a = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(a));

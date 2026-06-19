@@ -59,7 +59,7 @@ contract TimeArenaEpochCharmPriceTest is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, vaults, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, 5, 15, admin)
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
@@ -117,6 +117,8 @@ contract TimeArenaEpochCharmPriceTest is Test {
     /// GitLab #315 — at hard-reset boundary, preview samples re-anchor before state write.
     function test_doubOwedForBuy_matches_buy_at_hard_reset_boundary() public {
         _wireKumbayaSpot();
+        vm.prank(alice);
+        arena.buy(CHARM_MIN);
 
         vm.warp(arena.deadline() - 600);
 
@@ -147,6 +149,8 @@ contract TimeArenaEpochCharmPriceTest is Test {
 
     function test_hard_reset_reanchors_and_prices_at_new_anchor() public {
         _wireKumbayaSpot();
+        vm.prank(alice);
+        arena.buy(CHARM_MIN);
 
         vm.warp(arena.deadline() - 600);
 

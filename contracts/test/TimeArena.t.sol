@@ -48,7 +48,7 @@ contract TimeArenaTest is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, vaults, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, 5, 15, admin)
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
@@ -240,12 +240,97 @@ contract TimeArenaTest is Test {
         arena.buy(CHARM_MAX + 1);
     }
 
-    /// INV-TIME-ARENA-COOLDOWN (#246): per-wallet rolling cooldown.
-    function test_buy_reverts_on_cooldown() public {
+    /// INV-TIME-ARENA-BUY-ENERGY-332: new wallets start with capped charges.
+    function test_buy_energy_initial_state_full_charges() public view {
+        (
+            uint8 charges,
+            uint8 maxCharges,
+            uint256 lastRefillAt,
+            uint256 lastBuyAt,
+            uint256 nextChargeAt,
+            uint256 nextAllowedAt
+        ) = arena.buyEnergyState(alice);
+        assertEq(charges, 5);
+        assertEq(maxCharges, 5);
+        assertEq(lastRefillAt, block.timestamp);
+        assertEq(lastBuyAt, 0);
+        assertEq(nextChargeAt, 0);
+        assertEq(nextAllowedAt, 0);
+    }
+
+    /// INV-TIME-ARENA-BUY-ENERGY-332: each successful buy spends exactly one charge.
+    function test_buy_spends_one_buy_charge() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        (uint8 charges,,,,,) = arena.buyEnergyState(alice);
+        assertEq(charges, 4);
+    }
+
+    /// INV-TIME-ARENA-BUY-ENERGY-332: burst cooldown gates rapid repeat buys even with charges.
+    function test_buy_reverts_inside_burst_cooldown() public {
         vm.prank(alice);
         arena.buy(1e18);
         vm.prank(alice);
-        vm.expectRevert("TimeArena: buy cooldown");
+        vm.expectRevert("TimeArena: burst cooldown");
+        arena.buy(1e18);
+    }
+
+    function test_buy_succeeds_at_exact_burst_boundary_if_charge_available() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.warp(block.timestamp + arena.burstBuyCooldownSec());
+        vm.prank(alice);
+        arena.buy(1e18);
+        (uint8 charges,,,,,) = arena.buyEnergyState(alice);
+        assertEq(charges, 3);
+    }
+
+    function test_buy_charge_refills_at_exact_interval() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.warp(block.timestamp + arena.buyChargeIntervalSec());
+        (uint8 charges,,,, uint256 nextChargeAt,) = arena.buyEnergyState(alice);
+        assertEq(charges, 5);
+        assertEq(nextChargeAt, 0);
+    }
+
+    function test_buy_charges_cap_after_long_idle() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.warp(block.timestamp + arena.buyChargeIntervalSec() * 20);
+        (uint8 charges,,,,,) = arena.buyEnergyState(alice);
+        assertEq(charges, arena.maxBuyCharges());
+    }
+
+    function test_buy_energy_preserves_partial_interval_progress() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.warp(block.timestamp + arena.burstBuyCooldownSec());
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.warp(block.timestamp + arena.buyChargeIntervalSec() + 100);
+        vm.prank(alice);
+        arena.buy(1e18);
+        (uint8 charges,, uint256 lastRefillAt, uint256 lastBuyAt, uint256 nextChargeAt,) = arena.buyEnergyState(alice);
+        assertEq(charges, 3);
+        assertEq(lastBuyAt, block.timestamp);
+        assertEq(nextChargeAt, lastRefillAt + arena.buyChargeIntervalSec());
+        assertLt(nextChargeAt, block.timestamp + arena.buyChargeIntervalSec());
+    }
+
+    function test_buy_reverts_when_charges_exhausted_until_next_charge() public {
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) vm.warp(block.timestamp + arena.burstBuyCooldownSec());
+            vm.prank(alice);
+            arena.buy(1e18);
+        }
+        vm.warp(block.timestamp + arena.burstBuyCooldownSec());
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: no buy charges");
+        arena.buy(1e18);
+
+        vm.warp(block.timestamp + arena.buyChargeIntervalSec() - 4 * arena.burstBuyCooldownSec());
+        vm.prank(alice);
         arena.buy(1e18);
     }
 
@@ -265,7 +350,7 @@ contract TimeArenaTest is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (feeDoub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (feeDoub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, 5, 15, admin)
         );
         TimeArena feeArena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(feeArena));
@@ -824,7 +909,7 @@ contract TimeArenaTest is Test {
     }
 
     function _warpPastBuyCooldown() internal {
-        vm.warp(block.timestamp + arena.buyCooldownSec() + 1);
+        vm.warp(block.timestamp + arena.buyChargeIntervalSec() + 1);
     }
 
     /// Arms all four podium timers via a level-5 buy (GitLab #330).
@@ -1762,7 +1847,7 @@ contract TimeArenaTest is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, 5, 15, admin)
         );
         a = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(a));
@@ -1797,6 +1882,8 @@ contract TimeArenaTest is Test {
                 _below,
                 _to,
                 300,
+                5,
+                15,
                 admin
             )
         );

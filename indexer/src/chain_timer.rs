@@ -46,6 +46,9 @@ pub const SEL_EPOCH_ANCHOR_TIMESTAMP: [u8; 4] = [0x21, 0x5e, 0xb1, 0xfb];
 pub const SEL_DOUB: [u8; 4] = [0x8e, 0x9a, 0x61, 0x22];
 pub const SEL_REFERRAL_REGISTRY: [u8; 4] = [0x4e, 0x62, 0x7e, 0x62];
 pub const SEL_BUY_COOLDOWN_SEC: [u8; 4] = [0xb9, 0xa5, 0x68, 0x4f];
+pub const SEL_BUY_CHARGE_INTERVAL_SEC: [u8; 4] = [0x66, 0x50, 0x68, 0x68];
+pub const SEL_MAX_BUY_CHARGES: [u8; 4] = [0x53, 0xa1, 0xef, 0x84];
+pub const SEL_BURST_BUY_COOLDOWN_SEC: [u8; 4] = [0xe9, 0xdf, 0x3e, 0xeb];
 pub const SEL_TIMER_EXTENSION_SEC: [u8; 4] = [0x43, 0x80, 0x09, 0xaa];
 pub const SEL_TIME_ARENA_BUY_ROUTER: [u8; 4] = [0x57, 0xcd, 0x7c, 0x88];
 pub const SEL_REFERRAL_CRED_FLAT_WAD: [u8; 4] = [0x1f, 0x5e, 0x9f, 0x48];
@@ -65,6 +68,10 @@ pub struct ArenaSaleHeadFields {
     pub epoch_anchor_timestamp_sec: String,
     pub doub: String,
     pub referral_registry: String,
+    pub buy_charge_interval_sec: String,
+    pub max_buy_charges: String,
+    pub burst_buy_cooldown_sec: String,
+    /// Legacy compatibility mirror for clients that still expect a flat cooldown field.
     pub buy_cooldown_sec: String,
     pub timer_extension_sec: String,
     pub time_arena_buy_router: String,
@@ -471,6 +478,9 @@ async fn poll_once_multicall(
     let i_doub = batch.push_selector(arena, SEL_DOUB);
     let i_referral_registry = batch.push_selector(arena, SEL_REFERRAL_REGISTRY);
     let i_buy_cooldown = batch.push_selector(arena, SEL_BUY_COOLDOWN_SEC);
+    let i_buy_charge_interval = batch.push_selector(arena, SEL_BUY_CHARGE_INTERVAL_SEC);
+    let i_max_buy_charges = batch.push_selector(arena, SEL_MAX_BUY_CHARGES);
+    let i_burst_buy_cooldown = batch.push_selector(arena, SEL_BURST_BUY_COOLDOWN_SEC);
     let i_timer_extension = batch.push_selector(arena, SEL_TIMER_EXTENSION_SEC);
     let i_buy_router = batch.push_selector(arena, SEL_TIME_ARENA_BUY_ROUTER);
     let i_referral_cred = batch.push_selector(arena, SEL_REFERRAL_CRED_FLAT_WAD);
@@ -580,6 +590,15 @@ async fn poll_once_multicall(
         ),
         referral_registry: addr_word_hex(
             decode_return_address(&results[i_referral_registry]).wrap_err("referralRegistry")?,
+        ),
+        buy_charge_interval_sec: u256_to_decimal_string(
+            decode_return_u256(&results[i_buy_charge_interval]).wrap_err("buyChargeIntervalSec")?,
+        ),
+        max_buy_charges: u256_to_decimal_string(
+            decode_return_u256(&results[i_max_buy_charges]).wrap_err("maxBuyCharges")?,
+        ),
+        burst_buy_cooldown_sec: u256_to_decimal_string(
+            decode_return_u256(&results[i_burst_buy_cooldown]).wrap_err("burstBuyCooldownSec")?,
         ),
         buy_cooldown_sec: u256_to_decimal_string(
             decode_return_u256(&results[i_buy_cooldown]).wrap_err("buyCooldownSec")?,
@@ -807,6 +826,9 @@ async fn poll_once_sequential(
         epoch_anchor_timestamp,
         doub,
         referral_registry,
+        buy_charge_interval_sec,
+        max_buy_charges,
+        burst_buy_cooldown_sec,
         buy_cooldown_sec,
         timer_extension_sec,
         time_arena_buy_router,
@@ -849,6 +871,30 @@ async fn poll_once_sequential(
             providers,
             arena,
             block_id,
+            Bytes::copy_from_slice(&SEL_BUY_CHARGE_INTERVAL_SEC),
+            "buyChargeIntervalSec",
+            metrics,
+        ),
+        eth_call_u256(
+            providers,
+            arena,
+            block_id,
+            Bytes::copy_from_slice(&SEL_MAX_BUY_CHARGES),
+            "maxBuyCharges",
+            metrics,
+        ),
+        eth_call_u256(
+            providers,
+            arena,
+            block_id,
+            Bytes::copy_from_slice(&SEL_BURST_BUY_COOLDOWN_SEC),
+            "burstBuyCooldownSec",
+            metrics,
+        ),
+        eth_call_u256(
+            providers,
+            arena,
+            block_id,
             Bytes::copy_from_slice(&SEL_BUY_COOLDOWN_SEC),
             "buyCooldownSec",
             metrics,
@@ -885,6 +931,9 @@ async fn poll_once_sequential(
         epoch_anchor_timestamp_sec: u256_to_decimal_string(epoch_anchor_timestamp),
         doub: addr_word_hex(doub),
         referral_registry: addr_word_hex(referral_registry),
+        buy_charge_interval_sec: u256_to_decimal_string(buy_charge_interval_sec),
+        max_buy_charges: u256_to_decimal_string(max_buy_charges),
+        burst_buy_cooldown_sec: u256_to_decimal_string(burst_buy_cooldown_sec),
         buy_cooldown_sec: u256_to_decimal_string(buy_cooldown_sec),
         timer_extension_sec: u256_to_decimal_string(timer_extension_sec),
         time_arena_buy_router: addr_word_hex(time_arena_buy_router),
@@ -919,4 +968,3 @@ mod tests {
         assert!(row.winners[0].ends_with("01"));
     }
 }
-

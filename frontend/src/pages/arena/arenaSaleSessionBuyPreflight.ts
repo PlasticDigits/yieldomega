@@ -57,7 +57,7 @@ export function arenaSaleSessionBuyPreflight(
     }
   }
   if (input.walletCooldownRemainingSec > 0) {
-    return "TimeArena: buy cooldown";
+    return "TimeArena: burst cooldown";
   }
   if (input.charmWadSelected === undefined || input.charmWadSelected <= 0n) {
     return `Pick a ${input.isArenaV2 ? "DOUB" : "CL8Y"} amount inside the live min–max band (and your balance).`;

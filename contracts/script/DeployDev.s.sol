@@ -52,14 +52,17 @@ contract DeployDev is Script {
         PlayCred playCred = UUPSDeployLib.deployPlayCred(deployer);
         console.log("PlayCred:", address(playCred));
 
-        uint256 buyCooldownSecDev = DeployDevBuyCooldown.readBuyCooldownSec(vm);
+        (uint256 buyChargeIntervalSecDev, uint8 maxBuyChargesDev, uint256 burstBuyCooldownSecDev) =
+            DeployDevBuyCooldown.readBuyEnergyParams(vm);
         TimeArena arena = UUPSDeployLib.deployTimeArenaProductionDefaults(
             doub,
             podiumVaults,
             address(referralRegistry),
             address(playCred),
             1000e18,
-            buyCooldownSecDev,
+            buyChargeIntervalSecDev,
+            maxBuyChargesDev,
+            burstBuyCooldownSecDev,
             deployer
         );
         podiumVaults.setArena(address(arena));
@@ -69,7 +72,9 @@ contract DeployDev is Script {
         playCred.mint(E2E_MOCK_WALLET, 1000e18);
         arena.startArena();
         console.log("TimeArena:", address(arena));
-        console.log("TimeArena buyCooldownSec (dev deploy):", buyCooldownSecDev);
+        console.log("TimeArena buyChargeIntervalSec (dev deploy):", buyChargeIntervalSecDev);
+        console.log("TimeArena maxBuyCharges (dev deploy):", maxBuyChargesDev);
+        console.log("TimeArena burstBuyCooldownSec (dev deploy):", burstBuyCooldownSecDev);
 
         doub.grantRole(doub.MINTER_ROLE(), deployer);
         address seedMinter = vm.envOr("YIELDOMEGA_SEED_MINTER_ADDRESS", address(0));

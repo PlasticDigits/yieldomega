@@ -38,7 +38,9 @@ Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol)
 | Legacy shims | `timerExtensionSec` / `initialTimerSec` / `timerCapSec` mirror cat 0 | — | — | — | ABI compat |
 
 Canonical table: [`ArenaPodiumTimerConfig.sol`](src/arena/libraries/ArenaPodiumTimerConfig.sol). **Scoring** (Time Booster totals, Defended Streak, WarBow BP clutch/reset) uses **Last Buy (cat 0)** timer only; per-category timers govern **prize settlement** deadlines ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) comment).
-| `buyCooldownSec` | `300` (5 min prod; Anvil may shorten) | Rolling from last buy |
+| `buyChargeIntervalSec` | `300` (5 min prod; Anvil may shorten) | One charge earned per interval; legacy `buyCooldownSec` mirrors this value (#332) |
+| `maxBuyCharges` | `5` | Stored buy-energy cap per wallet (#332) |
+| `burstBuyCooldownSec` | `15` | Minimum gap between charged buys; must be > 0 (#332) |
 | `CRED_PER_CHARM_WAD` | `100e18` | `buyWithCred` burn ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
 | XP per buy (CHARM-scaled) | `1` at `CHARM_MIN_WAD` → `10` at `CHARM_MAX_WAD` | `ArenaXp.xpForCharm(charmWad)`; DOUB and CRED paths ([#304](https://gitlab.com/PlasticDigits/yieldomega/-/issues/304) · **`INV-TIME-ARENA-XP-CHARM-SCALE`**) |
 | First-buy CRED bonus | `150e18` scheduled for `lastBuyEpoch + 1` | One wallet lifetime ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |

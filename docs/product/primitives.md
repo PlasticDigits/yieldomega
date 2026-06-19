@@ -8,10 +8,14 @@ Epic: [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Document
 
 ## Shared mechanics (still deployed)
 
-### Per-wallet buy cooldown (`TimeArena`)
+### Per-wallet buy energy (`TimeArena`) — GitLab #332
 
-- **`buyCooldownSec`** is set at **`TimeArena`** initialization (production default **300** seconds; must be **> 0**). After each successful buy, **`nextBuyAllowedAt[buyer] = block.timestamp + buyCooldownSec`**. Reverts with **`TimeArena: buy cooldown`** when too soon.
-- **Local `DeployDev` only:** shorten cooldown via **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** and/or **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** — [`DeployDevBuyCooldown.sol`](../../contracts/script/DeployDevBuyCooldown.sol), [e2e-anvil.md § #88](../testing/e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88).
+- **`buyChargeIntervalSec`** defaults to **300** seconds: each wallet earns one buy charge every 5 minutes.
+- **`maxBuyCharges`** defaults to **5**. A wallet that idles for at least 25 minutes can spend up to five stored moves.
+- **`burstBuyCooldownSec`** defaults to **15** seconds and must be **> 0**. A wallet with charges still cannot buy again inside this short gap.
+- **`buyEnergyState(buyer)`** is the canonical wallet read for current charges, next charge timestamp, and next allowed buy timestamp. **`nextBuyAllowedAt(buyer)`** is a computed compatibility view. **`buyCooldownSec`** remains as a legacy ABI mirror of the charge interval.
+- Reverts: **`TimeArena: no buy charges`** when exhausted, **`TimeArena: burst cooldown`** inside the short gap. Long-run default pacing remains one buy per 5 minutes per wallet.
+- **Local `DeployDev` only:** shorten pacing via **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`**, **`YIELDOMEGA_ANVIL_BUY_CHARGE_INTERVAL_SEC`**, **`YIELDOMEGA_ANVIL_BURST_BUY_COOLDOWN_SEC`**, and/or compatibility **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** — [`DeployDevBuyCooldown.sol`](../../contracts/script/DeployDevBuyCooldown.sol), [e2e-anvil.md § #88](../testing/e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88).
 
 ### Referrals
 
