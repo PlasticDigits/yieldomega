@@ -141,11 +141,12 @@ async fn response_json(response: axum::response::Response) -> Value {
 }
 
 fn arena_head_snapshot() -> TimecurveHeadSnapshot {
+    const FIXTURE_POLLED_AT_MS: u64 = 1_700_000_000_123;
     TimecurveHeadSnapshot {
         timer: ChainTimerSnapshot {
             read_block_number: "1".into(),
             block_timestamp_sec: "1".into(),
-            polled_at_ms: 0,
+            polled_at_ms: FIXTURE_POLLED_AT_MS,
             sale_start_sec: "100".into(),
             deadline_sec: "9999".into(),
             timer_cap_sec: "86400".into(),
@@ -158,7 +159,7 @@ fn arena_head_snapshot() -> TimecurveHeadSnapshot {
         sale_state: TimecurveSaleStateSnapshot {
             read_block_number: "1".into(),
             block_timestamp_sec: "1".into(),
-            polled_at_ms: 0,
+            polled_at_ms: FIXTURE_POLLED_AT_MS,
             deadline_sec: "9999".into(),
             total_doub_raised: "0".into(),
             paused: false,
@@ -210,7 +211,6 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     }
 
     for path in [
-        "/v1/arena/timers",
         "/v1/arena/podiums",
         "/v1/arena/buys?limit=2",
         "/v1/arena/platform-usage?limit=2",
@@ -233,6 +233,62 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         );
     }
 
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/timers")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let timers = response_json(res).await;
+    assert_eq!(
+        timers.get("polled_at_ms").and_then(|v| v.as_u64()),
+        Some(1_700_000_000_123)
+    );
+    assert_eq!(
+        timers.get("last_buy_deadline_sec").and_then(|v| v.as_str()),
+        Some("9999")
+    );
+    assert_eq!(
+        timers.get("charm_price_wad").and_then(|v| v.as_str()),
+        Some("1000000000000000000")
+    );
+    let armed = timers
+        .get("podium_timer_armed")
+        .and_then(|v| v.as_array())
+        .expect("podium_timer_armed array");
+    assert_eq!(armed.len(), 4);
+    assert_eq!(armed[0].as_bool(), Some(false));
+    assert_eq!(armed[1].as_bool(), Some(true));
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/activity?limit=5")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let activity = response_json(res).await;
+    let items = activity
+        .get("items")
+        .and_then(|v| v.as_array())
+        .expect("activity items");
+    if let Some(buy) = items
+        .iter()
+        .find(|row| row.get("kind").and_then(|v| v.as_str()) == Some("buy"))
+    {
+        assert!(buy.get("amount_doub_wad").and_then(|v| v.as_str()).is_some());
+        assert!(buy.get("charm_wad").and_then(|v| v.as_str()).is_some());
+    }
+
     let vb = "0xdddddddddddddddddddddddddddddddddddddddd";
     let res = app
         .clone()
@@ -245,6 +301,46 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+    let wallet_stats = response_json(res).await;
+    for key in [
+        "address",
+        "epochs_participated",
+        "buy_count",
+        "warbow_guards",
+        "longest_defended_streak",
+        "referral_cred_earned",
+        "podium_win_rate",
+        "prizes_won",
+        "highest_scores",
+    ] {
+        assert!(
+            wallet_stats.get(key).is_some(),
+            "wallet stats missing key {key}"
+        );
+    }
+
+    let app_unavailable = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+    let res = app_unavailable
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/timers")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let unavailable = response_json(res).await;
+    assert_eq!(
+        unavailable.get("error").and_then(|v| v.as_str()),
+        Some("chain_timer_unavailable")
+    );
 
     let res = app
         .clone()

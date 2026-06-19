@@ -21,6 +21,7 @@ describe("indexer-first display reads (#301)", () => {
     const src = readArena("useArenaHeroTimer.ts");
     expect(src).not.toContain("usePublicClient");
     expect(src).not.toContain("readContract");
+    expect(src).toContain("polled_at_ms");
   });
 
   it("useArenaSaleSession disables core display multicall when indexer is on", () => {
