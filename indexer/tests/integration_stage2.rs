@@ -1459,6 +1459,143 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
     assert_eq!(rank_dist.get("1").and_then(|v| v.as_str()), Some("1"));
 }
 
+/// Wallet stats `level_history` from first buy + `ArenaLevelUp` rows ([#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)).
+#[tokio::test]
+async fn arena_wallet_stats_level_history_and_reorg() {
+    let Some(url) = pg_url() else {
+        eprintln!("skip arena_wallet_stats_level_history: set YIELDOMEGA_PG_TEST_URL");
+        return;
+    };
+
+    let _pg = pg_integration_lock().await;
+
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
+        .await
+        .expect("connect_and_migrate");
+
+    clear_arena_index_for_test(&pool).await;
+
+    let alice = addr_byte(0xa1);
+    let alice_hex = format!("{alice:#x}");
+    let block = 600u64;
+    let buy_ts = 1_700_200_000u64;
+    let level_ts = 1_700_200_100u64;
+
+    let mut buy_log = sample_log_tx(
+        block,
+        1,
+        1,
+        DecodedEvent::ArenaBuy {
+            buyer: alice,
+            charm_wad: U256::from(1_000_000_000_000_000_000u128),
+            doub_paid: U256::from(DOUB_100),
+            new_deadline: U256::from(buy_ts + 900),
+            total_doub_raised_after: U256::from(DOUB_100),
+            buy_index: U256::from(1u8),
+            actual_seconds_added: U256::from(120u64),
+            timer_hard_reset: false,
+            paid_with_cred: false,
+        },
+    );
+    buy_log.block_timestamp = Some(buy_ts);
+
+    let mut level_up_log = sample_log_tx(
+        block + 1,
+        2,
+        1,
+        DecodedEvent::ArenaLevelUp {
+            player: alice,
+            new_level: U256::from(2u8),
+        },
+    );
+    level_up_log.block_timestamp = Some(level_ts);
+
+    for log in [&buy_log, &level_up_log] {
+        persist_decoded_log_autocommit(&pool, log)
+            .await
+            .expect("persist level history fixture");
+    }
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/wallet/{alice_hex}/stats"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+
+    let history = j
+        .get("level_history")
+        .and_then(|v| v.as_array())
+        .expect("level_history");
+    assert_eq!(history.len(), 5);
+    assert_eq!(history[0].get("level").and_then(|v| v.as_str()), Some("1"));
+    assert!(history[0].get("reached_at").and_then(|v| v.as_str()).is_some());
+    assert_eq!(history[1].get("level").and_then(|v| v.as_str()), Some("2"));
+    assert!(history[1].get("reached_at").and_then(|v| v.as_str()).is_some());
+    for entry in history.iter().skip(2) {
+        assert!(entry.get("reached_at").map(|v| v.is_null()).unwrap_or(false));
+    }
+
+    let bh = b256_lo(block + 1);
+    upsert_indexed_block(&pool, block + 1, bh)
+        .await
+        .expect("upsert block");
+    save_chain_pointer(
+        &pool,
+        &ChainPointer {
+            block_number: block + 1,
+            block_hash: bh,
+        },
+    )
+    .await
+    .expect("save pointer");
+
+    let ancestor = ChainPointer {
+        block_number: block,
+        block_hash: b256_lo(block),
+    };
+    rollback_after(&pool, ancestor).await.expect("rollback");
+
+    let res2 = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/wallet/{alice_hex}/stats"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+    let j2 = response_json(res2).await;
+    assert_eq!(j2.get("buy_count").and_then(|v| v.as_i64()), Some(1));
+
+    let history2 = j2
+        .get("level_history")
+        .and_then(|v| v.as_array())
+        .expect("level_history after rollback");
+    assert_eq!(history2.len(), 5);
+    assert!(history2[0].get("reached_at").and_then(|v| v.as_str()).is_some());
+    assert!(history2[1].get("reached_at").map(|v| v.is_null()).unwrap_or(false));
+    for entry in history2.iter().skip(2) {
+        assert!(entry.get("reached_at").map(|v| v.is_null()).unwrap_or(false));
+    }
+}
+
 /// Global Last Buy epoch on buys — wallet B in epoch 1 without hard-resetting ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278)).
 #[tokio::test]
 async fn last_buy_epoch_global_assignment_non_resetting_participant() {

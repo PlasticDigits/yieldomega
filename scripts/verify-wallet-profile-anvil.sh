@@ -134,6 +134,12 @@ buy_count="$(echo "${STATS}" | jq -r '.buy_count')"
 [[ "${buy_count}" =~ ^[0-9]+$ && "${buy_count}" -ge 1 ]] || die "wallet stats buy_count expected >= 1, got ${buy_count}"
 log "wallet stats buy_count=${buy_count}"
 
+level_history_len="$(echo "${STATS}" | jq -r '.level_history | length')"
+[[ "${level_history_len}" == "5" ]] || die "level_history expected 5 entries, got ${level_history_len}"
+level1_reached="$(echo "${STATS}" | jq -r '.level_history[0].reached_at // empty')"
+[[ -n "${level1_reached}" && "${level1_reached}" != "null" ]] || die "level_history[0].reached_at missing after first buy"
+log "level_history L1 reached_at=${level1_reached}"
+
 anvil_send "${BUYER}" "${DOUB}" "approve(address,uint256)" "${TA}" "${TOPUP_DOUB}"
 cast send "${TA}" "topUpPodiumPools(uint256)" "${TOPUP_DOUB}" \
   --from "${BUYER}" --unlocked --rpc-url "${RPC}" >/dev/null
@@ -154,7 +160,7 @@ log "podium-pool-donations donor_summary ok"
 
 log "Manual QA (#258): start stack (or reuse INDEXER_URL), open /arena with sale active;"
 log "  confirm data-testid=arena-simple-last-extension after an extending buy;"
-log "  click buyer on extension chip or live-buy row → WalletProfileModal (seven sections)."
+log "  click buyer on extension chip or live-buy row → WalletProfileModal (Level history + stats sections)."
 
 export YIELDOMEGA_PG_TEST_URL="${PG_URL%/*}/yieldomega_indexer_test"
 yieldomega_verify_pg_reset_test_db "${PG_URL}"

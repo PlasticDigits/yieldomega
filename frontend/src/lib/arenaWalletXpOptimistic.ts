@@ -46,6 +46,13 @@ export function emptyArenaWalletStats(address: string): ArenaWalletStats {
     longest_defended_streak: "0",
     podium_win_rate: "0",
     rank_distribution: { "1": "0", "2": "0", "3": "0" },
+    level_history: [
+      { level: "1", reached_at: null },
+      { level: "2", reached_at: null },
+      { level: "3", reached_at: null },
+      { level: "4", reached_at: null },
+      { level: "5", reached_at: null },
+    ],
   };
 }
 

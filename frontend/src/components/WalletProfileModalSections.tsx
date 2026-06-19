@@ -15,8 +15,10 @@ import {
 import type { WalletProfileBalancesSnapshot } from "@/hooks/useWalletProfileBalances";
 import {
   formatWalletProfileRankLabel,
+  formatWalletProfileIso8601,
   formatWalletProfileUnixSec,
   formatWalletProfileWinRate,
+  walletProfileLevelLabel,
   walletProfilePodiumLabel,
 } from "@/lib/walletProfileFormat";
 
@@ -197,6 +199,37 @@ export function WalletProfileXpSection({ data }: { data: ArenaWalletStats }) {
   );
 }
 
+const DEFAULT_LEVEL_HISTORY_LEVELS = ["1", "2", "3", "4", "5"] as const;
+
+export function WalletProfileLevelHistorySection({ data }: { data: ArenaWalletStats }) {
+  const history =
+    data.level_history && data.level_history.length > 0
+      ? data.level_history
+      : DEFAULT_LEVEL_HISTORY_LEVELS.map((level) => ({ level, reached_at: null }));
+
+  return (
+    <section
+      className="wallet-profile-modal__section"
+      data-testid="wallet-profile-level-history"
+    >
+      <h3 id="wallet-profile-level-history">Level history</h3>
+      <ul className="wallet-profile-modal__stats">
+        {history.map((entry) => {
+          const levelNum = Number.parseInt(entry.level, 10);
+          const tierLabel = Number.isFinite(levelNum)
+            ? walletProfileLevelLabel(levelNum)
+            : entry.level;
+          return (
+            <StatRow key={entry.level} label={`Level ${entry.level} · ${tierLabel}`}>
+              {formatWalletProfileIso8601(entry.reached_at)}
+            </StatRow>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 export function WalletProfileWarbowSection({ data }: { data: ArenaWalletStats }) {
   return (
     <section className="wallet-profile-modal__section">
@@ -269,6 +302,7 @@ export function WalletProfileStatsBody({
       <WalletProfilePodiumWinsSection data={data} />
       <WalletProfileSpendingSection data={data} />
       <WalletProfileXpSection data={data} />
+      <WalletProfileLevelHistorySection data={data} />
       <WalletProfileWarbowSection data={data} />
       <WalletProfileReferralsSection data={data} />
       <WalletProfileFunFactsSection data={data} />
