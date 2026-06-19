@@ -32,14 +32,14 @@ import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismat
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 import { phaseNarrative, preLaunchBuyGateMessage } from "@/pages/arena/arenaSimplePhase";
 import { FeatureMechanicModal } from "@/components/FeatureMechanicModal";
+import { LevelUpCelebrationPopover } from "@/components/LevelUpCelebrationPopover";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import {
   type ArenaFeatureKey,
   FEATURE_UNLOCK_LEVEL,
-  featureKeyForUnlockLevel,
   isFeatureUnlocked,
-  readFeatureTutorialSeen,
 } from "@/lib/arenaProgression";
+import { useArenaLevelUpCelebration } from "@/hooks/useArenaLevelUpCelebration";
 import { useArenaPlayerLevel } from "@/hooks/useArenaPlayerLevel";
 import { invalidateArenaWalletStatsQueries } from "@/hooks/useWalletStats";
 import { useAccount } from "wagmi";
@@ -326,7 +326,7 @@ export function ArenaSimplePage({
   const { levelBigint: playerLevelRaw, stats: playerWalletStats } =
     useArenaPlayerLevel(connectedAddress);
   const [featureModal, setFeatureModal] = useState<ArenaFeatureKey | null>(null);
-  const prevLevelRef = useRef<number | undefined>(undefined);
+  const [levelUpCelebration, dismissLevelUpCelebration] = useArenaLevelUpCelebration(playerLevelRaw);
   const warbowUnlocked =
     playerLevelRaw !== undefined && isFeatureUnlocked(playerLevelRaw as bigint, "warbow");
   const warbowFlagUnlocked =
@@ -342,21 +342,6 @@ export function ArenaSimplePage({
       session.setPlantWarBowFlag(false);
     }
   }, [playerLevelRaw, session, warbowFlagUnlocked]);
-
-  useEffect(() => {
-    if (playerLevelRaw === undefined) return;
-    const lvl = Number(playerLevelRaw);
-    const prev = prevLevelRef.current;
-    prevLevelRef.current = lvl;
-    if (prev === undefined || lvl <= prev) return;
-    for (let unlock = prev + 1; unlock <= lvl; unlock += 1) {
-      const key = featureKeyForUnlockLevel(unlock);
-      if (key && !readFeatureTutorialSeen(key)) {
-        setFeatureModal(key);
-        break;
-      }
-    }
-  }, [playerLevelRaw]);
 
   const openFeatureHelp = useCallback((feature: ArenaFeatureKey) => {
     setFeatureModal(feature);
@@ -1207,6 +1192,10 @@ export function ArenaSimplePage({
       ) : null}
 
       <FooterSiteLinksCard />
+      <LevelUpCelebrationPopover
+        feature={levelUpCelebration}
+        onDismiss={dismissLevelUpCelebration}
+      />
       <FeatureMechanicModal feature={featureModal} onClose={() => setFeatureModal(null)} />
     </div>
     </ArenaShell>
