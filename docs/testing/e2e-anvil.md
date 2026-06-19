@@ -69,32 +69,37 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 | `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector). **`npm run build` refuses this flag** unless `ANVIL_E2E=1` ([GitLab #327](https://gitlab.com/PlasticDigits/yieldomega/-/issues/327)); `vite dev` is unaffected. |
 | `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Optional — set when Kumbaya fixtures run ([#41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41)) |
 | `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | ETH pay-mode E2E; must match onchain `timeArenaBuyRouter` ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). **`e2e-anvil.sh` defaults `YIELDOMEGA_DEPLOY_KUMBAYA=1`** ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); set `YIELDOMEGA_DEPLOY_KUMBAYA=0` to skip fixtures (ETH test skipped). Also sets legacy `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`. |
-| **`DeployDev` buy cooldown ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88))** | Default **300** s on **`TimeArena`**. For multi-buy QA: **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** and/or **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** (**&gt; 0**). See [§ Buy cooldown](#anvil-deploydev-buy-cooldown-gitlab-88) and [`manual-qa-checklists.md#manual-qa-issue-88`](manual-qa-checklists.md#manual-qa-issue-88). |
+| **`DeployDev` buy energy ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88), [#332](https://gitlab.com/PlasticDigits/yieldomega/-/issues/332))** | Defaults: **300** s charge interval, **5** base max charges (effective cap adds `level - 1`), **15** s burst gap on **`TimeArena`**. For dense QA: **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** and/or **`YIELDOMEGA_ANVIL_BUY_CHARGE_INTERVAL_SEC`**, **`YIELDOMEGA_ANVIL_BURST_BUY_COOLDOWN_SEC`**, **`YIELDOMEGA_ANVIL_MAX_BUY_CHARGES`**. Compatibility: **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** sets the charge interval. See [§ Buy energy](#anvil-deploydev-buy-cooldown-gitlab-88). |
 | **Bot swarm + interval mining ([GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99))** | **`start-local-anvil-stack.sh`** may pass **`anvil --block-time`** when **`START_BOT_SWARM=1`**. Pair with short cooldown for dense **`TimeArena`** buys. [§ Bot swarm](#bot-swarm-anvil-chain-time-gitlab-99). |
 | **Standalone `run_swarm` ([GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102))** | [`bots/timearena/README.md`](../../bots/timearena/README.md) — sync env from `frontend/.env.local`, **`YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`**, optional **`YIELDOMEGA_SWARM_REFERRALS=0`**. |
 
 <a id="anvil-deploydev-buy-cooldown-gitlab-88"></a>
 
-### Anvil `DeployDev` buy cooldown ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88))
+### Anvil `DeployDev` buy energy ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88), [#332](https://gitlab.com/PlasticDigits/yieldomega/-/issues/332))
 
-**Problem:** default **`buyCooldownSec = 300`** makes consecutive buys from the same wallet impractical for manual QA.
+**Problem:** production-like **`buyChargeIntervalSec = 300`** plus **`burstBuyCooldownSec = 15`** can slow dense same-wallet manual QA.
 
 **Flags (process environment, read by [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) via [`DeployDevBuyCooldown.sol`](../../contracts/script/DeployDevBuyCooldown.sol)):**
 
 | Variable | Effect |
 |----------|--------|
-| *(unset)* | **`buyCooldownSec = 300`** (unchanged production-like dev default). |
-| **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** | Defaults **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** to **1** when unset (still **&gt; 0** for **`TimeArena`** init). |
-| **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** (numeric) | Explicit seconds (**must be &gt; 0**). When **`YIELDOMEGA_DEPLOY_NO_COOLDOWN` ≠ 1**, unset behavior defaults to **300**; when **`= 1`**, unset defaults to **1**. |
+| *(unset)* | **`buyChargeIntervalSec = 300`**, base **`maxBuyCharges = 5`**, **`burstBuyCooldownSec = 15`**. |
+| **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** | Defaults charge interval and burst gap to **1** when their explicit vars are unset (still **&gt; 0** for **`TimeArena`** init). |
+| **`YIELDOMEGA_ANVIL_BUY_CHARGE_INTERVAL_SEC`** | Explicit charge refill interval seconds (**must be &gt; 0**). |
+| **`YIELDOMEGA_ANVIL_BURST_BUY_COOLDOWN_SEC`** | Explicit burst gap seconds (**must be &gt; 0**). |
+| **`YIELDOMEGA_ANVIL_MAX_BUY_CHARGES`** | Explicit stored charge cap (**must be &gt; 0**). |
+| **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** | Compatibility alias for **`YIELDOMEGA_ANVIL_BUY_CHARGE_INTERVAL_SEC`**. |
 
 **Examples:**
 
 ```bash
 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/start-local-anvil-stack.sh
-YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=2 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/e2e-anvil.sh
+YIELDOMEGA_ANVIL_BUY_CHARGE_INTERVAL_SEC=2 YIELDOMEGA_ANVIL_BURST_BUY_COOLDOWN_SEC=1 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/e2e-anvil.sh
 ```
 
-**Do not** set **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=0`** — `DeployDev` and **`TimeArena`** reject zero cooldown.
+**Do not** set pacing values to **0** — `DeployDev` and **`TimeArena`** reject zero interval, zero cap, and zero burst gap.
+
+Focused gate: `bash scripts/verify-buy-energy-anvil.sh`.
 
 <a id="bot-swarm-anvil-chain-time-gitlab-99"></a>
 

@@ -16,7 +16,7 @@ export function walletCharmCredHelpCopy(): {
     sections: [
       {
         heading: "Levels",
-        body: `Buyer level (1–${MAX_PLAYER_LEVEL}) gates which podium mechanics each buy activates—yours and everyone else's. Level ${FEATURE_UNLOCK_LEVEL.last_buy} unlocks Last Buy; Level ${FEATURE_UNLOCK_LEVEL.time_booster} adds Time Booster; Level ${FEATURE_UNLOCK_LEVEL.defended_streak} Defended Streak; Level ${FEATURE_UNLOCK_LEVEL.warbow} WarBow timer, BP, and steal/guard/revenge; Level ${FEATURE_UNLOCK_LEVEL.warbow_flag} WarBow flags. A level-1 player's buy only moves Last Buy; higher-level buyers unlock more podiums per buy.`,
+        body: `Buyer level (1–${MAX_PLAYER_LEVEL}) gates which podium mechanics each buy activates—yours and everyone else's. Level ${FEATURE_UNLOCK_LEVEL.last_buy} unlocks Last Buy; Level ${FEATURE_UNLOCK_LEVEL.time_booster} adds Time Booster; Level ${FEATURE_UNLOCK_LEVEL.defended_streak} Defended Streak; Level ${FEATURE_UNLOCK_LEVEL.warbow} WarBow timer, BP, and steal/guard/revenge; Level ${FEATURE_UNLOCK_LEVEL.warbow_flag} WarBow flags. Each level above 1 also adds one stored Arena move, from 5 at Level 1 to 9 at Level ${MAX_PLAYER_LEVEL}.`,
       },
       {
         heading: "XP",

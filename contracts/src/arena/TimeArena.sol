@@ -90,7 +90,11 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     uint256[4] public podiumTimerCapSec;
     uint256[4] public podiumResetBelowRemainingSec;
     uint256[4] public podiumResetToRemainingSec;
+    /// @dev Legacy ABI mirror for the refill interval. New pacing uses buy-energy charges (#332).
     uint256 public buyCooldownSec;
+    uint256 public buyChargeIntervalSec;
+    uint8 public maxBuyCharges;
+    uint256 public burstBuyCooldownSec;
 
     uint256 public arenaStart;
     uint256 public deadline;
@@ -106,7 +110,6 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     mapping(address => uint256) public charmWeight;
     mapping(address => uint256) public buyCount;
-    mapping(address => uint256) public nextBuyAllowedAt;
     mapping(address => uint256) public totalEffectiveTimerSecAdded;
     mapping(address => uint256) public bestDefendedStreak;
     mapping(address => uint256) public activeDefendedStreak;
@@ -149,6 +152,14 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     mapping(address => uint256) public xpTowardNext;
     /// @dev Best three WarBow players not on the global podium; merged O(1) on BP changes (#312).
     Podium internal _warbowOffPodium;
+
+    struct BuyEnergy {
+        uint8 charges;
+        uint40 lastRefillAt;
+        uint40 lastBuyAt;
+    }
+
+    mapping(address => BuyEnergy) internal _buyEnergy;
 
     event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
     event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
@@ -217,7 +228,9 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         uint256[4] calldata _podiumTimerCapSec,
         uint256[4] calldata _podiumResetBelowRemainingSec,
         uint256[4] calldata _podiumResetToRemainingSec,
-        uint256 _buyCooldownSec,
+        uint256 _buyChargeIntervalSec,
+        uint8 _maxBuyCharges,
+        uint256 _burstBuyCooldownSec,
         address upgradeAdmin
     ) external initializer {
         __Ownable_init(upgradeAdmin);
@@ -225,7 +238,9 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         require(address(_doub) != address(0), "TimeArena: zero doub");
         require(address(_podiumVaults) != address(0), "TimeArena: zero vaults");
         require(_charmPriceWad > 0, "TimeArena: zero price");
-        require(_buyCooldownSec > 0, "TimeArena: zero cooldown");
+        require(_buyChargeIntervalSec > 0, "TimeArena: zero charge interval");
+        require(_maxBuyCharges > 0, "TimeArena: zero max charges");
+        require(_burstBuyCooldownSec > 0, "TimeArena: zero burst cooldown");
 
         ArenaPodiumTimerConfig.validate(
             _podiumTimerExtensionSec,
@@ -255,7 +270,10 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         timerExtensionSec = _podiumTimerExtensionSec[CAT_LAST_BUYERS];
         initialTimerSec = _podiumInitialTimerSec[CAT_LAST_BUYERS];
         timerCapSec = _podiumTimerCapSec[CAT_LAST_BUYERS];
-        buyCooldownSec = _buyCooldownSec;
+        buyCooldownSec = _buyChargeIntervalSec;
+        buyChargeIntervalSec = _buyChargeIntervalSec;
+        maxBuyCharges = _maxBuyCharges;
+        burstBuyCooldownSec = _burstBuyCooldownSec;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -346,6 +364,39 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     {
         require(msg.sender == timeArenaBuyRouter, "TimeArena: not router");
         _buyDoub(buyer, charmWad, codeHash, plantWarBowFlag);
+    }
+
+    function nextBuyAllowedAt(address buyer) public view returns (uint256) {
+        (,,,,, uint256 nextAllowedAt) = buyEnergyState(buyer);
+        return nextAllowedAt;
+    }
+
+    function buyEnergyState(address buyer)
+        public
+        view
+        returns (
+            uint8 charges,
+            uint8 maxCharges,
+            uint256 lastRefillAt,
+            uint256 lastBuyAt,
+            uint256 nextChargeAt,
+            uint256 nextAllowedAt
+        )
+    {
+        BuyEnergy memory energy = _buyEnergy[buyer];
+        maxCharges = _effectiveMaxBuyCharges(buyer);
+        (charges, lastRefillAt) = _refilledBuyEnergy(energy, block.timestamp, maxCharges);
+        lastBuyAt = energy.lastBuyAt;
+        if (charges >= maxCharges) {
+            nextChargeAt = 0;
+        } else {
+            nextChargeAt = lastRefillAt + buyChargeIntervalSec;
+        }
+        uint256 burstAllowedAt = lastBuyAt == 0 ? 0 : lastBuyAt + burstBuyCooldownSec;
+        nextAllowedAt = burstAllowedAt;
+        if (charges == 0 && nextChargeAt > nextAllowedAt) {
+            nextAllowedAt = nextChargeAt;
+        }
     }
 
     /// @notice Permissionless DOUB top-up across all eight prize vaults (no admin take; GitLab #261).
@@ -545,8 +596,8 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     function _buyDoub(address buyer, uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) internal {
         _requireLiveAndAutoroll();
-        require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
+        _spendBuyCharge(buyer);
 
         _prepareBuyBeforeTimer();
 
@@ -563,8 +614,8 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     function _buyCred(address buyer, uint256 charmWad) internal {
         _requireLiveAndAutoroll();
-        require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
+        _spendBuyCharge(buyer);
         _prepareBuyBeforeTimer();
         require(address(playCred) != address(0), "TimeArena: no cred");
         uint256 credBurn = Math.mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD);
@@ -580,7 +631,6 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         bool isFirstBuy = buyCount[buyer] == 0;
         buyCount[buyer] += 1;
         _totalBuys += 1;
-        nextBuyAllowedAt[buyer] = block.timestamp + buyCooldownSec;
 
         _armPodiumTimer(CAT_LAST_BUYERS);
         uint256 deadlineBefore = deadline;
@@ -672,6 +722,56 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
             deadline = dl;
         }
         emit PodiumTimerArmed(category, podiumEpoch[category]);
+    }
+
+    function _spendBuyCharge(address buyer) internal {
+        BuyEnergy storage energy = _buyEnergy[buyer];
+        uint8 cap = _effectiveMaxBuyCharges(buyer);
+        (uint8 charges, uint256 refillAt) = _refilledBuyEnergy(energy, block.timestamp, cap);
+        require(charges > 0, "TimeArena: no buy charges");
+        uint256 lastBuyAt = energy.lastBuyAt;
+        require(lastBuyAt == 0 || block.timestamp >= lastBuyAt + burstBuyCooldownSec, "TimeArena: burst cooldown");
+
+        unchecked {
+            charges -= 1;
+        }
+        energy.charges = charges;
+        energy.lastRefillAt = uint40(refillAt);
+        energy.lastBuyAt = uint40(block.timestamp);
+    }
+
+    function _effectiveMaxBuyCharges(address buyer) internal view returns (uint8) {
+        uint256 lvl = _playerLevel(buyer);
+        uint256 cap = uint256(maxBuyCharges) + lvl - 1;
+        return cap > type(uint8).max ? type(uint8).max : uint8(cap);
+    }
+
+    function _refilledBuyEnergy(BuyEnergy memory energy, uint256 nowSec, uint8 cap)
+        internal
+        view
+        returns (uint8 charges, uint256 lastRefillAt)
+    {
+        if (energy.lastRefillAt == 0) {
+            return (cap, nowSec);
+        }
+
+        charges = energy.charges;
+        lastRefillAt = energy.lastRefillAt;
+        if (charges >= cap) {
+            return (cap, nowSec);
+        }
+
+        uint256 elapsed = nowSec > lastRefillAt ? nowSec - lastRefillAt : 0;
+        uint256 earned = elapsed / buyChargeIntervalSec;
+        if (earned == 0) {
+            return (charges, lastRefillAt);
+        }
+
+        uint256 nextCharges = uint256(charges) + earned;
+        if (nextCharges >= cap) {
+            return (cap, nowSec);
+        }
+        return (uint8(nextCharges), lastRefillAt + earned * buyChargeIntervalSec);
     }
 
     function _extendPodiumTimer(uint8 category) internal {

@@ -35,13 +35,13 @@ describe("arenaSaleSessionBuyPreflight (GitLab #321)", () => {
     expect(arenaSaleSessionBuyPreflight(baseInput)).toBeNull();
   });
 
-  it("blocks submit when wallet buy cooldown is active", () => {
+  it("blocks submit when wallet buy-energy burst gap is active", () => {
     expect(
       arenaSaleSessionBuyPreflight({
         ...baseInput,
         walletCooldownRemainingSec: 42,
       }),
-    ).toBe("TimeArena: buy cooldown");
+    ).toBe("TimeArena: burst cooldown");
   });
 
   it("blocks CRED pay when checkout bounds are insufficient", () => {

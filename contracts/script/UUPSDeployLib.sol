@@ -33,7 +33,9 @@ library UUPSDeployLib {
         uint256[4] memory _podiumTimerCapSec,
         uint256[4] memory _podiumResetBelowRemainingSec,
         uint256[4] memory _podiumResetToRemainingSec,
-        uint256 _buyCooldownSec,
+        uint256 _buyChargeIntervalSec,
+        uint8 _maxBuyCharges,
+        uint256 _burstBuyCooldownSec,
         address upgradeAdmin
     ) internal returns (TimeArena) {
         TimeArena impl = new TimeArena();
@@ -50,7 +52,9 @@ library UUPSDeployLib {
                 _podiumTimerCapSec,
                 _podiumResetBelowRemainingSec,
                 _podiumResetToRemainingSec,
-                _buyCooldownSec,
+                _buyChargeIntervalSec,
+                _maxBuyCharges,
+                _burstBuyCooldownSec,
                 upgradeAdmin
             )
         );
@@ -64,7 +68,9 @@ library UUPSDeployLib {
         address _referralRegistry,
         address _playCred,
         uint256 _charmPriceWad,
-        uint256 _buyCooldownSec,
+        uint256 _buyChargeIntervalSec,
+        uint8 _maxBuyCharges,
+        uint256 _burstBuyCooldownSec,
         address upgradeAdmin
     ) internal returns (TimeArena) {
         (
@@ -85,7 +91,9 @@ library UUPSDeployLib {
             cap,
             below,
             to,
-            _buyCooldownSec,
+            _buyChargeIntervalSec,
+            _maxBuyCharges,
+            _burstBuyCooldownSec,
             upgradeAdmin
         );
     }

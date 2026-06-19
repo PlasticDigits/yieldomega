@@ -209,6 +209,12 @@ export type UseArenaSaleSession = {
   warbowPendingFlagPlantAt: bigint;
   /** Wallet buy cooldown remaining (seconds). 0 when not gated or not connected. */
   walletCooldownRemainingSec: number;
+  /** Current onchain buy-energy charges for the connected wallet, when available. */
+  walletBuyCharges: number | undefined;
+  /** Maximum stored buy-energy charges for the connected wallet, when available. */
+  walletMaxBuyCharges: number | undefined;
+  /** Next charge accrual timestamp from onchain buy-energy state, or 0 when capped/full. */
+  walletNextBuyChargeAtSec: number | undefined;
   /** True during the full purchase flow after validations pass (includes mempool confirmation waits). */
   buySubmitBusy: boolean;
   totalRaisedWei: bigint | undefined;
@@ -504,7 +510,7 @@ export function useArenaSaleSession(
     presaleCharmWeightBpsR,
   ] = coreData ?? [];
 
-  const [nextBuyAllowedAtR, activeDefendedStreakR] = userData ?? [];
+  const [nextBuyAllowedAtR, activeDefendedStreakR, buyEnergyStateR] = userData ?? [];
 
   /**
    * Last successful `acceptedAsset()` for **this** `tc`. Core multicall refetches (~1 Hz) occasionally return a
@@ -593,9 +599,9 @@ export function useArenaSaleSession(
   }, [tc, referralRegistryR, referralFlatCredWadR, presaleCharmWeightBpsR]);
 
   const buyCooldownSecResolved = useMemo(() => {
-    if (buyCooldownSecR?.status !== "success") return 300;
+    if (buyCooldownSecR?.status !== "success") return 15;
     const n = Number(buyCooldownSecR.result as bigint);
-    return Number.isFinite(n) && n > 0 ? n : 300;
+    return Number.isFinite(n) && n > 0 ? n : 15;
   }, [buyCooldownSecR]);
 
   const acceptedAsset = useMemo(() => {
@@ -1319,6 +1325,24 @@ export function useArenaSaleSession(
     ],
   );
 
+  const walletBuyEnergy = useMemo(() => {
+    if (buyEnergyStateR?.status !== "success" || !Array.isArray(buyEnergyStateR.result)) {
+      return undefined;
+    }
+    const [chargesRaw, maxRaw, , , nextChargeRaw] = buyEnergyStateR.result as readonly unknown[];
+    const charges = Number(chargesRaw);
+    const maxCharges = Number(maxRaw);
+    const nextChargeAtSec = Number(nextChargeRaw);
+    if (!Number.isFinite(charges) || !Number.isFinite(maxCharges)) {
+      return undefined;
+    }
+    return {
+      charges,
+      maxCharges,
+      nextChargeAtSec: Number.isFinite(nextChargeAtSec) ? nextChargeAtSec : undefined,
+    };
+  }, [buyEnergyStateR]);
+
   const timerExtensionPreviewSec = useMemo(() => {
     if (
       phase !== "saleActive" ||
@@ -1700,6 +1724,9 @@ export function useArenaSaleSession(
     warbowPendingFlagOwner,
     warbowPendingFlagPlantAt,
     walletCooldownRemainingSec,
+    walletBuyCharges: walletBuyEnergy?.charges,
+    walletMaxBuyCharges: walletBuyEnergy?.maxCharges,
+    walletNextBuyChargeAtSec: walletBuyEnergy?.nextChargeAtSec,
     buySubmitBusy,
     totalRaisedWei:
       totalRaisedR?.status === "success" ? (totalRaisedR.result as bigint) : undefined,

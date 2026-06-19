@@ -177,12 +177,16 @@ class TestEcoScenarios(unittest.TestCase):
         self.assertGreater(float(e.metrics["burrow_coverage_delta_receive_minus_direct"]), 0.0)
         self.assertGreater(float(e.metrics["launch_anchor_cl8y_per_charm_at_clearing"]), 0.0)
 
-    def test_simulate_sale_buy_cooldown_reduces_buys_vs_short_cooldown(self) -> None:
+    def test_simulate_sale_buy_energy_burst_beats_flat_single_charge_session(self) -> None:
         seed = 9
-        short = replace(canonical_timecurve_params(), buy_cooldown_sec=1.0)
-        long_cd = replace(canonical_timecurve_params(), buy_cooldown_sec=10_000.0)
-        m_short = _simulate_sale(
-            short,
+        burst = canonical_timecurve_params()
+        flat = replace(
+            burst,
+            max_buy_charges=1,
+            burst_buy_cooldown_sec=burst.buy_charge_interval_sec,
+        )
+        m_burst = _simulate_sale(
+            burst,
             random.Random(seed),
             population=40,
             dt_sec=5.0,
@@ -195,8 +199,8 @@ class TestEcoScenarios(unittest.TestCase):
             charm_weight_mult=lambda _i: 1.0,
             after_tick=None,
         )
-        m_long = _simulate_sale(
-            long_cd,
+        m_flat = _simulate_sale(
+            flat,
             random.Random(seed),
             population=40,
             dt_sec=5.0,
@@ -209,7 +213,7 @@ class TestEcoScenarios(unittest.TestCase):
             charm_weight_mult=lambda _i: 1.0,
             after_tick=None,
         )
-        self.assertGreater(int(m_short["total_buys"]), int(m_long["total_buys"]))
+        self.assertGreater(int(m_burst["total_buys"]), int(m_flat["total_buys"]))
 
     def test_simulate_sale_utc_offset_in_metrics(self) -> None:
         off = float(SECONDS_PER_DAY) - 400.0

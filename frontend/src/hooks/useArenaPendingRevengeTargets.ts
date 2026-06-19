@@ -27,7 +27,6 @@ export function useArenaPendingRevengeTargets(
     }
 
     let cancelled = false;
-    let timer: ReturnType<typeof setInterval> | undefined;
 
     const load = () => {
       void fetchWarbowPendingRevenge(victim, chainNowSec).then((body) => {
@@ -38,13 +37,11 @@ export function useArenaPendingRevengeTargets(
     };
 
     load();
-    timer = setInterval(load, REVENGE_POLL_MS);
+    const timer = setInterval(load, REVENGE_POLL_MS);
 
     return () => {
       cancelled = true;
-      if (timer !== undefined) {
-        clearInterval(timer);
-      }
+      clearInterval(timer);
     };
   }, [victim, revengeIndexerConfigured, chainNowSec]);
 

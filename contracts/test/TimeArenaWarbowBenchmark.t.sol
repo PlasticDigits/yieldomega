@@ -12,9 +12,9 @@ import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerCon
 /// @dev GitLab #312 — Anvil gas benchmark for incremental WarBow top-3 ranking at scale.
 contract TimeArenaWarbowBenchmarkTest is Test {
     uint256 internal constant PLAYER_COUNT = 10_000;
-    uint256 internal constant SLOT_BATTLE_POINTS = 57;
-    uint256 internal constant SLOT_BP_GENERATION = 59;
-    uint256 internal constant SLOT_CACHED_LEVEL = 103;
+    uint256 internal constant SLOT_BATTLE_POINTS = 61;
+    uint256 internal constant SLOT_BP_GENERATION = 63;
+    uint256 internal constant SLOT_CACHED_LEVEL = 107;
     uint256 internal constant WAD = 1e18;
     uint256 internal constant CHARM_MIN = 99e16;
 
@@ -33,7 +33,7 @@ contract TimeArenaWarbowBenchmarkTest is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 300, address(this))
+            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, 5, 1, address(this))
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         vaults.setArena(address(arena));

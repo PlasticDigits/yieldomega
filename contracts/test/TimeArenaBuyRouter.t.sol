@@ -67,7 +67,7 @@ abstract contract TimeArenaBuyRouterFixture is Test {
             _productionTimerInit();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, address(this))
+            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, 5, 1, address(this))
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
@@ -112,7 +112,7 @@ abstract contract TimeArenaBuyRouterFixture is Test {
             _productionTimerInit();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, address(this))
+            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, 5, 1, address(this))
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 

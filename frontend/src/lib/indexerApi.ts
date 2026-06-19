@@ -173,6 +173,9 @@ export type ArenaSaleState = {
   ended: boolean;
   timer_extension_sec: string;
   timer_cap_sec: string;
+  buy_charge_interval_sec: string;
+  max_buy_charges: string;
+  burst_buy_cooldown_sec: string;
   buy_cooldown_sec: string;
   current_min_buy_amount: string;
   current_max_buy_amount: string;
@@ -230,6 +233,9 @@ export async function fetchLegacyArenaSaleState(): Promise<ArenaSaleState | null
     ended: false,
     timer_extension_sec: t.timer_extension_sec ?? ZERO_DEC,
     timer_cap_sec: t.timer_cap_sec,
+    buy_charge_interval_sec: t.buy_charge_interval_sec ?? t.buy_cooldown_sec ?? ZERO_DEC,
+    max_buy_charges: t.max_buy_charges ?? "1",
+    burst_buy_cooldown_sec: t.burst_buy_cooldown_sec ?? t.buy_cooldown_sec ?? ZERO_DEC,
     buy_cooldown_sec: t.buy_cooldown_sec ?? ZERO_DEC,
     current_min_buy_amount: ZERO_DEC,
     current_max_buy_amount: ZERO_DEC,
@@ -829,6 +835,9 @@ export type ArenaTimersResponse = {
   epoch_anchor_timestamp_sec?: string;
   doub?: string;
   referral_registry?: string;
+  buy_charge_interval_sec?: string;
+  max_buy_charges?: string;
+  burst_buy_cooldown_sec?: string;
   buy_cooldown_sec?: string;
   timer_extension_sec?: string;
   time_arena_buy_router?: string;
@@ -966,4 +975,3 @@ export async function fetchArenaWarbowLatestBp(players: readonly string[]) {
   );
   return body ?? { items: [] as ArenaWarbowLatestBpItem[] };
 }
-

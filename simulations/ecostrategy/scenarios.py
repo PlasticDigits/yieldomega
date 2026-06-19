@@ -135,7 +135,9 @@ def _simulate_sale(
     hard_reset_buys = 0
     steps = 0
     flags_planted = 0
-    next_allowed_at = [0.0] * population
+    buy_charges = [max(0, int(p.max_buy_charges))] * population
+    buy_last_refill_at = [0.0] * population
+    buy_last_at = [-1.0e18] * population
 
     assert world.n == population
     bp = world.bp
@@ -151,7 +153,18 @@ def _simulate_sale(
         n_arrivals = _poisson(rng, arrival_rate * dt_sec)
         for _ in range(n_arrivals):
             idx = rng.randrange(population)
-            if p.buy_cooldown_sec > 0.0 and now + 1e-12 < next_allowed_at[idx]:
+            if p.buy_charge_interval_sec > 0.0 and buy_charges[idx] < p.max_buy_charges:
+                elapsed = max(0.0, now - buy_last_refill_at[idx])
+                earned = int(elapsed // p.buy_charge_interval_sec)
+                if earned > 0:
+                    buy_charges[idx] = min(p.max_buy_charges, buy_charges[idx] + earned)
+                    if buy_charges[idx] >= p.max_buy_charges:
+                        buy_last_refill_at[idx] = now
+                    else:
+                        buy_last_refill_at[idx] += earned * p.buy_charge_interval_sec
+            if buy_charges[idx] <= 0:
+                continue
+            if p.burst_buy_cooldown_sec > 0.0 and now + 1e-12 < buy_last_at[idx] + p.burst_buy_cooldown_sec:
                 continue
             mb = min_buy_at(now, p)
             cap = mb * p.purchase_cap_mult
@@ -210,8 +223,8 @@ def _simulate_sale(
             total_spend += spend
             end = new_end
 
-            if p.buy_cooldown_sec > 0.0:
-                next_allowed_at[idx] = now + p.buy_cooldown_sec
+            buy_charges[idx] -= 1
+            buy_last_at[idx] = now
 
             plant = in_final and final_window_plant_flag_prob > 0.0 and rng.random() < final_window_plant_flag_prob
             world.plant_flag_after_buy(idx, now, plant)

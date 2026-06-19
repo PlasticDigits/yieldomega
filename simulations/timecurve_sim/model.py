@@ -42,8 +42,11 @@ class TimeCurveParams:
     # Hard-reset branch (`TimeMath.extendDeadlineOrResetBelowThreshold`); defaults match `TimeCurve.sol`.
     timer_reset_below_remaining_sec: float = TIMER_RESET_BELOW_REMAINING_SEC
     timer_reset_to_remaining_sec: float = TIMER_RESET_TO_REMAINING_SEC
-    # Per-wallet buy pacing (`TimeCurve.buyCooldownSec` / `nextBuyAllowedAt`); default matches PARAMETERS.md.
+    # Legacy alias for buy-energy refill interval; default matches production long-run pacing.
     buy_cooldown_sec: float = 300.0
+    buy_charge_interval_sec: float = 300.0
+    max_buy_charges: int = 5
+    burst_buy_cooldown_sec: float = 15.0
 
 
 def min_buy_at(t_sec: float, p: TimeCurveParams) -> float:
@@ -197,6 +200,9 @@ def canonical_timecurve_params(
     hybrid_linear_days: float | None = None,
     hybrid_tail_daily_frac: float | None = None,
     buy_cooldown_sec: float = 300.0,
+    buy_charge_interval_sec: float | None = None,
+    max_buy_charges: int = 5,
+    burst_buy_cooldown_sec: float = 15.0,
 ) -> TimeCurveParams:
     """
     Canonical deployment targets (docs + `DeployDev.s.sol`): 24h initial, 96h timer cap,
@@ -212,6 +218,9 @@ def canonical_timecurve_params(
         hybrid_linear_days=hybrid_linear_days,
         hybrid_tail_daily_frac=hybrid_tail_daily_frac,
         buy_cooldown_sec=buy_cooldown_sec,
+        buy_charge_interval_sec=buy_charge_interval_sec if buy_charge_interval_sec is not None else buy_cooldown_sec,
+        max_buy_charges=max_buy_charges,
+        burst_buy_cooldown_sec=burst_buy_cooldown_sec,
     )
 
 

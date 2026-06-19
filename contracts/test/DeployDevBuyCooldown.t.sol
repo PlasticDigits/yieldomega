@@ -7,8 +7,8 @@ import {DeployDevBuyCooldown} from "../script/DeployDevBuyCooldown.sol";
 
 /// @dev External entry so `vm.expectRevert` sees a clear external revert boundary.
 contract DeployDevBuyCooldownHarness {
-    function readBuyCooldownSec(Vm vm_) external view returns (uint256) {
-        return DeployDevBuyCooldown.readBuyCooldownSec(vm_);
+    function readBuyEnergyParams(Vm vm_) external view returns (uint256, uint8, uint256) {
+        return DeployDevBuyCooldown.readBuyEnergyParams(vm_);
     }
 }
 
@@ -18,30 +18,44 @@ contract DeployDevBuyCooldownTest is Test {
     DeployDevBuyCooldownHarness internal harness = new DeployDevBuyCooldownHarness();
 
     function test_constants_match_documented_defaults() public {
-        assertEq(DeployDevBuyCooldown.DEFAULT_COOLDOWN_SEC, 300);
+        assertEq(DeployDevBuyCooldown.DEFAULT_CHARGE_INTERVAL_SEC, 300);
+        assertEq(DeployDevBuyCooldown.DEFAULT_MAX_BUY_CHARGES, 5);
+        assertEq(DeployDevBuyCooldown.DEFAULT_BURST_COOLDOWN_SEC, 15);
         assertEq(DeployDevBuyCooldown.NO_COOLDOWN_DEFAULT_SEC, 1);
     }
 
-    function test_readBuyCooldownSec_env_resolution_matrix() public {
+    function test_readBuyEnergyParams_env_resolution_matrix() public {
         vm.setEnv("YIELDOMEGA_DEPLOY_NO_COOLDOWN", "0");
         vm.setEnv("YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC", "300");
-        assertEq(DeployDevBuyCooldown.readBuyCooldownSec(vm), 300, "flag off + explicit 300");
+        (uint256 interval, uint8 cap, uint256 burst) = DeployDevBuyCooldown.readBuyEnergyParams(vm);
+        assertEq(interval, 300, "compat interval");
+        assertEq(cap, 5, "default cap");
+        assertEq(burst, 15, "default burst");
 
         vm.setEnv("YIELDOMEGA_DEPLOY_NO_COOLDOWN", "0");
-        vm.setEnv("YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC", "60");
-        assertEq(DeployDevBuyCooldown.readBuyCooldownSec(vm), 60, "flag off + explicit 60");
+        vm.setEnv("YIELDOMEGA_ANVIL_BUY_CHARGE_INTERVAL_SEC", "60");
+        vm.setEnv("YIELDOMEGA_ANVIL_BURST_BUY_COOLDOWN_SEC", "12");
+        vm.setEnv("YIELDOMEGA_ANVIL_MAX_BUY_CHARGES", "4");
+        (interval, cap, burst) = DeployDevBuyCooldown.readBuyEnergyParams(vm);
+        assertEq(interval, 300, "legacy alias wins when set");
+        assertEq(cap, 4, "custom cap");
+        assertEq(burst, 12, "custom burst");
 
         vm.setEnv("YIELDOMEGA_DEPLOY_NO_COOLDOWN", "1");
         vm.setEnv("YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC", "1");
-        assertEq(DeployDevBuyCooldown.readBuyCooldownSec(vm), 1, "no-cd branch explicit 1 (matches unset default in clean shell)");
+        (interval, cap, burst) = DeployDevBuyCooldown.readBuyEnergyParams(vm);
+        assertEq(interval, 1, "no-cd interval");
+        assertEq(cap, 4, "cap remains explicit");
+        assertEq(burst, 12, "burst remains explicit");
 
         vm.setEnv("YIELDOMEGA_DEPLOY_NO_COOLDOWN", "1");
         vm.setEnv("YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC", "5");
-        assertEq(DeployDevBuyCooldown.readBuyCooldownSec(vm), 5, "no-cd + custom");
+        (interval,,) = DeployDevBuyCooldown.readBuyEnergyParams(vm);
+        assertEq(interval, 5, "no-cd + legacy custom interval");
 
-        vm.setEnv("YIELDOMEGA_DEPLOY_NO_COOLDOWN", "0");
-        vm.setEnv("YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC", "0");
-        vm.expectRevert(abi.encodeWithSignature("Error(string)", "DeployDev: buy cooldown sec must be > 0"));
-        harness.readBuyCooldownSec(vm);
+        (interval, cap, burst) = harness.readBuyEnergyParams(vm);
+        assertEq(interval, 5, "external harness reads tuple");
+        assertEq(cap, 4, "external harness cap");
+        assertEq(burst, 12, "external harness burst");
     }
 }

@@ -22,12 +22,14 @@ export function formatBuyProjectedXpLine(charmWad: bigint): string {
   return `+${formatLocaleInteger(xpForCharm(charmWad).toString())}xp`;
 }
 
-/** Level transition chip when a buy crosses an XP threshold (e.g. `1->2 Level`). */
+/** Level transition chip when a buy crosses an XP threshold (e.g. `1->2 Level (+1 max move)`). */
 export function formatBuyProjectedLevelLine(levelBefore: number, levelAfter: number): string | undefined {
   const before = clampPlayerLevel(levelBefore);
   const after = clampPlayerLevel(levelAfter);
   if (after <= before) return undefined;
-  return `${before}->${after} Level`;
+  const extraMoves = after - before;
+  const moveLabel = extraMoves === 1 ? "move" : "moves";
+  return `${before}->${after} Level (+${extraMoves} max ${moveLabel})`;
 }
 
 /** Post-buy level after applying charm XP to cached `level` + `xpTowardNext` (#265 / #299). */

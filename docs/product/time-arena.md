@@ -19,6 +19,8 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 - **`TimeArenaBuyRouter`**: CL8Y / ETH / USDm → Kumbaya **`exactOutput`** → DOUB → **`buyFor`** ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251)).
 - Arena is **always live** when not **`paused`** — **no** `endSale`, **`redeemCharms`**, or sale-end gates ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
 
+**Buy energy ([#332](https://gitlab.com/PlasticDigits/yieldomega/-/issues/332)):** per wallet, one charge accrues every **300s**, base charges cap at **5**, and each level above 1 adds one stored charge (**L5 = 9**). Charged buys require a **15s** burst gap. `buyEnergyState(wallet)` is the canonical UX read; `nextBuyAllowedAt(wallet)` is computed from that state. Exhausted wallets revert **`TimeArena: no buy charges`**; burst-gap buys revert **`TimeArena: burst cooldown`**. Long-run pacing remains one buy per 5 minutes per wallet.
+
 ---
 
 ## Timers — four independent podiums
