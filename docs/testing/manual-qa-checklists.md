@@ -1031,7 +1031,7 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
 - [ ] Connect wallet on live sale; submit a DOUB (or CRED) buy at minimum valid CHARM.
 - [ ] One toast per projected/actual effect appears (`data-testid="arena-buy-effect-toast"`); stack caps at 4.
 - [ ] Toasts auto-dismiss within ~5s without user action; no modal or buy-panel layout shift.
-- [ ] Desktop / tablet / mobile: toast stack overlays command console safely (screenshots attached to issue).
+- [ ] Desktop / tablet / mobile: fixed viewport toast stack overlays command console safely (screenshots attached to issue; `frontend/scripts/capture-buy-effect-toast-screenshots.mjs`).
 - [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`;
   `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/anvil-arena-03-wallet-writes.spec.ts`.
 

@@ -8,6 +8,7 @@ import {
   buildArenaBuyEffectToastEntries,
   findViewerBuyAtHead,
   mergeArenaBuyEffectToasts,
+  replaceArenaBuyEffectToastBatch,
   resolveArenaBuyEffectToastLines,
 } from "./arenaBuyEffectToastLines";
 import { formatBuyProjectedXpLine } from "./arenaBuyProjectedEffects";
@@ -69,5 +70,14 @@ describe("arenaBuyEffectToastLines", () => {
 
   it("builds stable toast ids from indexed buy rows", () => {
     expect(arenaBuyEffectToastId(indexedBuy)).toBe("0xabc-1");
+  });
+
+  it("replaces a preview batch when indexer confirms buy effects", () => {
+    const batchId = "batch-1";
+    const preview = buildArenaBuyEffectToastEntries(["+3xp", "+999s"], batchId);
+    const actual = replaceArenaBuyEffectToastBatch(preview, batchId, ["+5xp", "+120s"]);
+    expect(actual).toHaveLength(2);
+    expect(actual.map((toast) => toast.line)).toEqual(["+5xp", "+120s"]);
+    expect(actual.every((toast) => toast.id.startsWith(`${batchId}-`))).toBe(true);
   });
 });

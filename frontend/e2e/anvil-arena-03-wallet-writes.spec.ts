@@ -7,6 +7,7 @@ import {
   gotoArena,
   selectPayWith,
   setCharmSliderMin,
+  warpAnvilPastBuyCooldown,
   ARENA_E2E_TIMEOUT_MS,
   waitArenaSaleLive,
 } from "./arenaE2eHelpers";
@@ -65,8 +66,11 @@ test.describe("Anvil Arena wallet writes", () => {
 
     const buyPanel = arenaBuyPanel(page);
     await expect(arenaBuyCharmButton(page)).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+    await warpAnvilPastBuyCooldown();
     await setCharmSliderMin(page);
-    await arenaBuyCharmButton(page).click();
+    const buyCharm = arenaBuyCharmButton(page);
+    await expect(buyCharm).toBeEnabled({ timeout: ARENA_E2E_TIMEOUT_MS });
+    await buyCharm.click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
       timeout: ARENA_E2E_TIMEOUT_MS,
     });

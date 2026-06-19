@@ -82,11 +82,11 @@ Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants §291](..
 
 ### Post-buy effect toasts (GitLab [#337](https://gitlab.com/PlasticDigits/yieldomega/-/issues/337))
 
-After a successful CHARM buy on the play route, the UI shows a compact glass toast stack (`data-testid="arena-buy-effect-toast"`) anchored inside **`arena-command-console`** — no layout shift on the timer or buy panel.
+After a successful CHARM buy on the play route, the UI shows a compact glass toast stack (`data-testid="arena-buy-effect-toast"`) as a **fixed viewport overlay** (portaled to `document.body`) — no layout shift on the timer or buy panel.
 
 | Concern | Behavior |
 |---------|----------|
-| Copy source | Indexer buy row via **`buildArenaBuyActualEffectLines`** when the viewer’s buy is indexed head; otherwise latched checkout preview via **`buildArenaBuyProjectedEffectLines`** |
+| Copy source | Checkout preview lines appear **immediately** on tx success; when the viewer’s buy reaches indexer head, toasts upgrade to **`buildArenaBuyActualEffectLines`** copy |
 | Stack cap | 4 visible toasts; oldest dropped on overflow |
 | Dismiss | Auto (~4s), independent per toast; **`prefers-reduced-motion`** skips enter animation |
 | SFX | Optional subdued **`charmed_confirm`** on first toast only (sparse policy [#297](https://gitlab.com/PlasticDigits/yieldomega/-/issues/297)) |

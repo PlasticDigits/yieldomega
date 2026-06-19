@@ -13,7 +13,6 @@ import { peerBuyHeadSfxId } from "@/pages/arena/peerBuyHeadSfxTick";
 
 export const ARENA_BUY_EFFECT_TOAST_MAX_VISIBLE = 4;
 export const ARENA_BUY_EFFECT_TOAST_DISMISS_MS = 4000;
-export const ARENA_BUY_EFFECT_TOAST_INDEXER_WAIT_MS = 2500;
 export const ARENA_BUY_EFFECT_TOAST_STAGGER_MS = 80;
 
 export type ArenaBuyEffectToast = {
@@ -78,6 +77,19 @@ export function mergeArenaBuyEffectToasts(
 ): ArenaBuyEffectToast[] {
   if (incoming.length === 0) return [...current];
   return [...current, ...incoming].slice(-maxVisible);
+}
+
+/** Swap a pending preview batch for indexer-confirmed effect lines (#337). */
+export function replaceArenaBuyEffectToastBatch(
+  current: readonly ArenaBuyEffectToast[],
+  batchId: string,
+  lines: readonly string[],
+  maxVisible = ARENA_BUY_EFFECT_TOAST_MAX_VISIBLE,
+): ArenaBuyEffectToast[] {
+  const batchPrefix = `${batchId}-`;
+  const kept = current.filter((toast) => !toast.id.startsWith(batchPrefix));
+  const entries = buildArenaBuyEffectToastEntries(lines, batchId);
+  return mergeArenaBuyEffectToasts(kept, entries, maxVisible);
 }
 
 export type BuildSimpleProjectedEffectLinesInput = BuildArenaBuyProjectedEffectLinesArgs;
