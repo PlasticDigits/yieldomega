@@ -54,4 +54,24 @@ test.describe("Anvil Arena wallet writes", () => {
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
   });
+
+  test("DOUB buy shows post-buy effect toasts on /", async ({ page }) => {
+    await gotoArena(page);
+    await expect(page.getByText("Loading contract reads…")).toBeHidden({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+    await connectArenaWallet(page);
+    await waitArenaSaleLive(page);
+
+    const buyPanel = arenaBuyPanel(page);
+    await expect(arenaBuyCharmButton(page)).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+    await setCharmSliderMin(page);
+    await arenaBuyCharmButton(page).click();
+    await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+    await expect(page.getByTestId("arena-buy-effect-toast").first()).toBeVisible({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+  });
 });

@@ -70,14 +70,31 @@ Layout priorities:
 - **Last Buy primary:** `ArenaTimerHero` sits in the primary console column with the largest timer treatment.
 - **Podium carousel:** `ArenaTimerPodiumCarousel` cycles one podium timer/scoring view at a time on the play surface (four-card grid lives on **`/arena/protocol`** only).
 - **Inline CHARM buy:** the buy panel remains visible in the primary column with text entry, slider, min/max controls, pay picker, and direct **Buy CHARM** CTA; no modal-first buy flow.
+- **Post-buy effect toasts:** after a successful buy on **`/`**, [`ArenaEffectToastStack`](../../frontend/src/pages/arena/ArenaEffectToastStack.tsx) overlays one glass toast per effect line (timer, XP, level, WarBow, flag, Last Buyer); copy reuses [`buildArenaBuyProjectedEffectLines`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) / [`buildArenaBuyActualEffectLines`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) ([#337](https://gitlab.com/PlasticDigits/yieldomega/-/issues/337)).
 - **Buy hub metrics:** CHARM price (DOUB), **0.99–10 CHARM** range, and DOUB-buy **CRED yield** appear in the buy panel and projected-effects pills — **no** separate `arena-command-console__decision-row` strip or in-page **`ArenaSubnav`** ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320); see `arenaCommandConsoleStatic.test.ts`).
 - **Secondary operations:** `ArenaCharmCredCard`, `ArenaTimerChips` (Time Booster · Defended Streak · WarBow), and `ArenaWarbowHeroPanel` sit in the secondary operations rail.
 - **Removed chrome (do not document as shipped):** `ArenaSubnav`, `arena-command-console__decision-row` tiles ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)).
 - **Characters and art:** existing bunny + sniper-shark assets remain recognizable but render as low-opacity cyberminimalist console accents; consumed Arena scene backplates use the dark command-console SVGs from #297, not the older bright arcade JPG pack.
 
-Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants §291](../testing/invariants-and-business-logic.md#frontend-arena-command-console-gitlab-291) · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** in [invariants §297](../testing/invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297). QA: [manual checklist §291](../testing/manual-qa-checklists.md#manual-qa-issue-291) · [manual checklist §297](../testing/manual-qa-checklists.md#manual-qa-issue-297).
+Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants §291](../testing/invariants-and-business-logic.md#frontend-arena-command-console-gitlab-291) · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** in [invariants §297](../testing/invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297) · **`INV-FRONTEND-337-BUY-EFFECT-TOASTS`** in [invariants §337](../testing/invariants-and-business-logic.md#frontend-post-buy-effect-toasts-gitlab-337). QA: [manual checklist §291](../testing/manual-qa-checklists.md#manual-qa-issue-291) · [manual checklist §297](../testing/manual-qa-checklists.md#manual-qa-issue-297) · [manual checklist §337](../testing/manual-qa-checklists.md#manual-qa-issue-337).
 
-Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
+<a id="post-buy-effect-toasts-gitlab-337"></a>
+
+### Post-buy effect toasts (GitLab [#337](https://gitlab.com/PlasticDigits/yieldomega/-/issues/337))
+
+After a successful CHARM buy on the play route, the UI shows a compact glass toast stack (`data-testid="arena-buy-effect-toast"`) anchored inside **`arena-command-console`** — no layout shift on the timer or buy panel.
+
+| Concern | Behavior |
+|---------|----------|
+| Copy source | Indexer buy row via **`buildArenaBuyActualEffectLines`** when the viewer’s buy is indexed head; otherwise latched checkout preview via **`buildArenaBuyProjectedEffectLines`** |
+| Stack cap | 4 visible toasts; oldest dropped on overflow |
+| Dismiss | Auto (~4s), independent per toast; **`prefers-reduced-motion`** skips enter animation |
+| SFX | Optional subdued **`charmed_confirm`** on first toast only (sparse policy [#297](https://gitlab.com/PlasticDigits/yieldomega/-/issues/297)) |
+| Scope | **`/`** play route only (`ArenaSimplePage`); AUDIT optional/out-of-scope |
+
+Components: [`ArenaEffectToastStack.tsx`](../../frontend/src/pages/arena/ArenaEffectToastStack.tsx) · [`useArenaBuyEffectToasts.ts`](../../frontend/src/pages/arena/useArenaBuyEffectToasts.ts) · CSS in [`yieldomega-glass-arena.css`](../../frontend/src/styles/yieldomega-glass-arena.css).
+
+Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** · **`INV-FRONTEND-337-BUY-EFFECT-TOASTS`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md), [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
 
 <a id="arena-production-components-gitlab-292"></a>
 
