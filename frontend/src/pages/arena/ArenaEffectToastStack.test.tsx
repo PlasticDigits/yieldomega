@@ -43,4 +43,26 @@ describe("ArenaEffectToastStack (#337)", () => {
     expect(ARENA_BUY_EFFECT_TOAST_DISMISS_MS).toBeLessThanOrEqual(5000);
     expect(ARENA_BUY_EFFECT_TOAST_STAGGER_MS).toBeGreaterThan(0);
   });
+
+  it("renders nothing when toast list is empty (sad path)", () => {
+    const html = renderToStaticMarkup(
+      createElement(ArenaEffectToastStack, {
+        toasts: [],
+        onDismiss: () => {},
+        reduceMotion: true,
+      }),
+    );
+    expect(html).toBe("");
+  });
+
+  it("applies level-up tone class for level transition lines", () => {
+    const html = renderToStaticMarkup(
+      createElement(ArenaEffectToastStack, {
+        toasts: [{ id: "lvl", line: "L2 -> Level 3" }],
+        onDismiss: () => {},
+        reduceMotion: true,
+      }),
+    );
+    expect(html).toContain("arena-buy-effect-toast--level");
+  });
 });

@@ -63,4 +63,32 @@ describe("WhileYouWereAwayModal (#338)", () => {
     expect(html).toContain('data-testid="wywa-rank-delta"');
     expect(html).toContain("Back to play");
   });
+
+  it("omits wallet rank and congratulations when wallet is disconnected (sad path)", () => {
+    const html = renderToStaticMarkup(
+      createElement(WhileYouWereAwayModal, {
+        summary,
+        connectedWallet: undefined,
+        onDismiss: () => {},
+      }),
+    );
+
+    expect(html).toContain('data-testid="while-you-were-away-modal"');
+    expect(html).not.toContain('data-testid="wywa-rank-delta"');
+    expect(html).not.toContain('data-testid="wywa-congrats"');
+    expect(html).not.toContain("Your wallet");
+  });
+
+  it("omits congratulations when connected wallet did not podium-win (sad path)", () => {
+    const html = renderToStaticMarkup(
+      createElement(WhileYouWereAwayModal, {
+        summary,
+        connectedWallet: "0xcccccccccccccccccccccccccccccccccccccccc",
+        onDismiss: () => {},
+      }),
+    );
+
+    expect(html).toContain('data-testid="wywa-rank-delta"');
+    expect(html).not.toContain('data-testid="wywa-congrats"');
+  });
 });

@@ -27,7 +27,7 @@ vi.mock("canvas-confetti", () => ({
 
 import { LevelUpCelebrationPopover } from "./LevelUpCelebrationPopover";
 
-describe("LevelUpCelebrationPopover", () => {
+describe("LevelUpCelebrationPopover (#335)", () => {
   beforeEach(() => {
     useReducedMotionMock.mockReturnValue(false);
   });
