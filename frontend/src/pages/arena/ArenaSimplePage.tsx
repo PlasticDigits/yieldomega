@@ -62,7 +62,9 @@ import { WarbowClaimFlagButton } from "@/components/WarbowClaimFlagButton";
 import { useArenaSimplePageSfx } from "@/pages/arena/useArenaSimplePageSfx";
 import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { ArenaBuyProjectedEffectsPills } from "@/pages/arena/ArenaBuyProjectedEffectsPills";
+import { ArenaEffectToastStack } from "@/pages/arena/ArenaEffectToastStack";
 import { buildArenaBuyProjectedEffectLines } from "@/pages/arena/arenaBuyProjectedEffects";
+import { useArenaBuyEffectToasts } from "@/pages/arena/useArenaBuyEffectToasts";
 import {
   type PodiumReadRow,
   usePodiumReads,
@@ -104,6 +106,32 @@ function emptySimpleProjectedEffectsLatch(): SimpleProjectedEffectsLatch {
     activeDefendedStreak: undefined,
     warbowPendingFlagOwner: undefined,
   };
+}
+
+function buildSimplePageProjectedEffectLines(args: {
+  latch: SimpleProjectedEffectsLatch;
+  session: ReturnType<typeof useArenaSaleSession>;
+  recentBuys: readonly BuyItem[] | null;
+  playerLevelRaw: bigint | undefined;
+  xpTowardNext: bigint | undefined;
+}): readonly string[] {
+  const { latch, session, recentBuys, playerLevelRaw, xpTowardNext } = args;
+  return buildArenaBuyProjectedEffectLines({
+    charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
+    charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
+    secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
+    timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
+    activeDefendedStreak: session.activeDefendedStreak ?? latch.activeDefendedStreak,
+    recentBuys,
+    previewPolicy: session.buyPreviewPolicy,
+    plantWarBowFlag: session.plantWarBowFlag,
+    flagOwnerAddr: session.warbowPendingFlagOwner ?? latch.warbowPendingFlagOwner,
+    flagPlantAtSec: session.warbowPendingFlagPlantAt,
+    walletAddress: session.walletAddress,
+    playerLevel: playerLevelRaw,
+    xpTowardNext,
+    formatRivalWallet: (addr) => shortAddress(addr),
+  });
 }
 
 function buildWarbowTargets(
@@ -424,14 +452,46 @@ export function ArenaSimplePage({
 
   useWarbowPodiumLiveInvalidation(tc, queryClient, setBuyFeedRefreshNonce);
 
+  const xpTowardNextBigint =
+    playerWalletStats?.xp_toward_next !== undefined
+      ? BigInt(playerWalletStats.xp_toward_next)
+      : undefined;
+
+  const { toasts: buyEffectToasts, dismissToast: dismissBuyEffectToast, onBuySuccess: onBuyEffectToastSuccess } =
+    useArenaBuyEffectToasts({
+      recentBuys,
+      walletAddress: session.walletAddress,
+      previewPolicy: session.buyPreviewPolicy,
+      playerLevel: playerLevelRaw,
+      reduceMotion: Boolean(prefersReducedMotion),
+    });
+
   useEffect(() => {
     const wasBusy = prevBuySubmitBusyRef.current;
     prevBuySubmitBusyRef.current = session.buySubmitBusy;
     if (wasBusy && !session.buySubmitBusy && session.buyError === null) {
       setBuyFeedRefreshNonce((n) => n + 1);
       invalidateArenaWalletStatsQueries(queryClient);
+      onBuyEffectToastSuccess(
+        buildSimplePageProjectedEffectLines({
+          latch: simpleProjectedEffectsLatchRef.current,
+          session,
+          recentBuys,
+          playerLevelRaw,
+          xpTowardNext: xpTowardNextBigint,
+        }),
+      );
     }
-  }, [queryClient, session.buyError, session.buySubmitBusy]);
+  }, [
+    onBuyEffectToastSuccess,
+    playerLevelRaw,
+    queryClient,
+    recentBuys,
+    session,
+    session.buyError,
+    session.buySubmitBusy,
+    xpTowardNextBigint,
+  ]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -450,29 +510,17 @@ export function ArenaSimplePage({
 
   const buyProjectedEffects = useMemo(() => {
     const latch = simpleProjectedEffectsLatchRef.current;
-    return buildArenaBuyProjectedEffectLines({
-      charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
-      charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
-      secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
-      timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
-      activeDefendedStreak: session.activeDefendedStreak ?? latch.activeDefendedStreak,
+    return buildSimplePageProjectedEffectLines({
+      latch,
+      session,
       recentBuys,
-      previewPolicy: session.buyPreviewPolicy,
-      plantWarBowFlag: session.plantWarBowFlag,
-      flagOwnerAddr: session.warbowPendingFlagOwner ?? latch.warbowPendingFlagOwner,
-      flagPlantAtSec: session.warbowPendingFlagPlantAt,
-      walletAddress: session.walletAddress,
-      playerLevel: playerLevelRaw,
-      xpTowardNext:
-        playerWalletStats?.xp_toward_next !== undefined
-          ? BigInt(playerWalletStats.xp_toward_next)
-          : undefined,
-      formatRivalWallet: (addr) => shortAddress(addr),
+      playerLevelRaw,
+      xpTowardNext: xpTowardNextBigint,
     });
   }, [
     recentBuys,
     playerLevelRaw,
-    playerWalletStats?.xp_toward_next,
+    xpTowardNextBigint,
     session.activeDefendedStreak,
     session.buyCheckoutCharmWeightWad,
     session.buyPreviewPolicy,
@@ -1209,6 +1257,12 @@ export function ArenaSimplePage({
           />
         </div>
       ) : null}
+
+      <ArenaEffectToastStack
+        toasts={buyEffectToasts}
+        onDismiss={dismissBuyEffectToast}
+        reduceMotion={Boolean(prefersReducedMotion)}
+      />
 
       <FooterSiteLinksCard />
       <FeatureMechanicModal feature={featureModal} onClose={() => setFeatureModal(null)} />

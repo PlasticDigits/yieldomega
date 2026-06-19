@@ -1020,6 +1020,23 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
 
 **Doc map:** [frontend design §290/#297](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) · [sound recommendations](../frontend/sound-effects-recommendations.md) · [art README](../../frontend/public/art/README.md) · [invariants — #297](invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297) · [play skills](../../skills/README.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
+<a id="manual-qa-issue-337"></a>
+
+## Post-buy effect toasts (GitLab #337)
+
+**Goal:** After a successful CHARM buy on **`/`**, verify compact glass toasts confirm timer/XP/level/WarBow effects without shifting the buy panel or timer layout.
+
+### Checklist
+
+- [ ] Connect wallet on live sale; submit a DOUB (or CRED) buy at minimum valid CHARM.
+- [ ] One toast per projected/actual effect appears (`data-testid="arena-buy-effect-toast"`); stack caps at 4.
+- [ ] Toasts auto-dismiss within ~5s without user action; no modal or buy-panel layout shift.
+- [ ] Desktop / tablet / mobile: toast stack overlays command console safely (screenshots attached to issue).
+- [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`;
+  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/anvil-arena-03-wallet-writes.spec.ts`.
+
+**Doc map:** [arena views §337](../frontend/arena-views.md#post-buy-effect-toasts-gitlab-337) · [invariants — #337](invariants-and-business-logic.md#frontend-post-buy-effect-toasts-gitlab-337) · [play-time-arena-doub skill](../../skills/play-time-arena-doub/SKILL.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
+
 <a id="manual-qa-issue-298"></a>
 
 ## Frontend UX docs + E2E redesign gate (GitLab #298)

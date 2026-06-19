@@ -277,4 +277,83 @@
   .yga-active-player__dot {
     animation: none;
   }
+
+  .arena-buy-effect-toast {
+    animation: none;
+    transition: opacity 120ms ease;
+  }
+}
+
+/* Post-buy effect toasts — play route overlay (#337) */
+.arena-effect-toast-stack {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  z-index: 12;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.35rem;
+  width: min(18rem, calc(100% - 1.3rem));
+  pointer-events: none;
+}
+
+.arena-buy-effect-toast {
+  pointer-events: none;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.42rem 0.62rem;
+  border: 1px solid var(--yga-glass-border);
+  border-radius: 0.55rem;
+  background: var(--yga-glass-fill-strong);
+  backdrop-filter: blur(var(--yga-glass-blur)) saturate(1.12);
+  box-shadow: var(--yga-glass-inset), var(--yga-glass-shadow);
+  color: var(--arena-console-ink);
+  font-family: var(--yga-font-data);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arena-buy-effect-toast--xp {
+  border-color: rgba(45, 212, 168, 0.34);
+  color: var(--yga-emerald);
+}
+
+.arena-buy-effect-toast--timer {
+  border-color: rgba(126, 241, 255, 0.28);
+  color: var(--yga-teal-live);
+}
+
+.arena-buy-effect-toast--level {
+  border-color: rgba(232, 192, 74, 0.34);
+  color: var(--yga-gold);
+}
+
+.arena-buy-effect-toast--warbow {
+  border-color: rgba(139, 124, 246, 0.34);
+  color: var(--yga-purple);
+}
+
+.arena-buy-effect-toast--flag {
+  border-color: rgba(255, 177, 77, 0.34);
+  color: var(--yga-warning);
+}
+
+@media (max-width: 720px) {
+  .arena-effect-toast-stack {
+    right: 0.45rem;
+    bottom: 0.45rem;
+    width: min(16rem, calc(100% - 0.9rem));
+  }
+
+  .arena-buy-effect-toast {
+    font-size: 0.68rem;
+    padding: 0.36rem 0.52rem;
+  }
 }
