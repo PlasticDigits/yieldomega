@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ARENA_BUY_EFFECT_TOAST_DISMISS_MS,
@@ -90,7 +91,7 @@ export function ArenaEffectToastStack({ toasts, onDismiss, reduceMotion }: Props
   const visible = toasts.slice(-ARENA_BUY_EFFECT_TOAST_MAX_VISIBLE);
   if (visible.length === 0) return null;
 
-  return (
+  const stack = (
     <div
       className="arena-effect-toast-stack"
       aria-live="polite"
@@ -110,4 +111,7 @@ export function ArenaEffectToastStack({ toasts, onDismiss, reduceMotion }: Props
       </AnimatePresence>
     </div>
   );
+
+  if (typeof document === "undefined") return stack;
+  return createPortal(stack, document.body);
 }

@@ -76,6 +76,21 @@ export async function selectPayWith(
   await expect(trigger).toHaveAttribute("aria-label", labelPattern);
 }
 
+/** Advance Anvil clock so wallet buy cooldown gates clear between serial E2E buys. */
+export async function warpAnvilPastBuyCooldown(): Promise<void> {
+  const rpc = process.env.VITE_RPC_URL ?? "http://127.0.0.1:8545";
+  for (const [method, params] of [
+    ["anvil_increaseTime", [120]],
+    ["anvil_mine", ["0x2"]],
+  ] as const) {
+    await fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+  }
+}
+
 /** Sets minimum valid spend so `charmWadSelected` resolves and the buy CTA enables. */
 export async function setCharmSliderMin(page: Page): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
