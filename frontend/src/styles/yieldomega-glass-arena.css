@@ -351,7 +351,8 @@
 @media (max-width: 720px) {
   .arena-effect-toast-stack {
     right: max(0.45rem, env(safe-area-inset-right, 0px));
-    bottom: max(0.45rem, env(safe-area-inset-bottom, 0px));
+    /* Clear fixed bottom `.app-header` (3.95rem) + small gap (#337 review). */
+    bottom: calc(max(0.4rem, env(safe-area-inset-bottom, 0px)) + 3.95rem + 0.35rem);
     width: min(16rem, calc(100vw - 0.9rem));
   }
 
