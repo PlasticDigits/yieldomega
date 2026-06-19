@@ -14,6 +14,7 @@ import {
   arenaBuyerStatsApiPath,
   arenaActivityApiPath,
   arenaPlatformUsageApiPath,
+  arenaSessionSummaryApiPath,
   arenaWarbowPendingRevengePath,
   arenaPrizeDistributionsApiPath,
   arenaPrizePayoutsApiPath,
@@ -58,6 +59,18 @@ describe("arenaPlatformUsageApiPath", () => {
     );
     expect(arenaPlatformUsageApiPath(10, 40, "sale")).toBe(
       "/v1/arena/platform-usage?limit=10&offset=40&velocity_window=sale",
+    );
+  });
+});
+
+describe("arenaSessionSummaryApiPath", () => {
+  it("targets session-summary with since_ms and optional wallet (#338)", () => {
+    expect(arenaSessionSummaryApiPath(1_700_000_000_000)).toBe(
+      "/v1/arena/session-summary?since_ms=1700000000000",
+    );
+    const wallet = "0xdddddddddddddddddddddddddddddddddddddddd";
+    expect(arenaSessionSummaryApiPath(1_700_000_000_000, wallet)).toBe(
+      `/v1/arena/session-summary?since_ms=1700000000000&wallet=${wallet}`,
     );
   });
 });

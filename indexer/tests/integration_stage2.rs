@@ -620,6 +620,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     api_arena_activity_smoke(&pool).await;
     api_arena_warbow_pending_revenge_smoke(&pool).await;
     api_platform_usage_smoke(&pool).await;
+    api_session_summary_smoke(&pool).await;
     api_buys_cursor_smoke(&pool).await;
     api_buy_via_kumbaya_pay_kind_smoke(&pool).await;
 
@@ -1589,6 +1590,194 @@ async fn api_platform_usage_smoke(pool: &sqlx::PgPool) {
     assert!(j.get("warbow").and_then(|w| w.get("steals")).is_some());
     assert!(j.get("velocity").and_then(|v| v.get("window")).is_some());
     assert!(j.get("wallets").and_then(|w| w.get("items")).is_some());
+}
+
+/// `GET /v1/arena/session-summary` — absent-session aggregates ([#338](https://gitlab.com/PlasticDigits/yieldomega/-/issues/338)).
+async fn api_session_summary_smoke(pool: &sqlx::PgPool) {
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    let since_ms = (1_700_000_000i64 - 3600) * 1000;
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/arena/session-summary?since_ms={since_ms}&wallet=0xdddddddddddddddddddddddddddddddddddddddd"
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert!(j.get("elapsed_ms").is_some());
+    assert!(j.get("total_buys").is_some());
+    assert!(j.get("unique_players").is_some());
+    assert!(j.get("podium_epochs_ended").is_some());
+    assert!(j.get("wallet_summary").is_some());
+
+    let future_ms = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64 + 3600)
+        .unwrap_or(0))
+        * 1000;
+    let bad = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/session-summary?since_ms={future_ms}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(bad.status(), StatusCode::BAD_REQUEST);
+
+    let bad_wallet = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/session-summary?since_ms={since_ms}&wallet=0xbad"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(bad_wallet.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn arena_session_summary_fixture_since_activity() {
+    let Some(url) = pg_url() else {
+        eprintln!("skip arena_session_summary_fixture: set YIELDOMEGA_PG_TEST_URL");
+        return;
+    };
+
+    let _pg = pg_integration_lock().await;
+
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
+        .await
+        .expect("connect_and_migrate");
+
+    clear_arena_index_for_test(&pool).await;
+
+    let alice = addr_byte(0xa1);
+    let alice_hex = format!("{alice:#x}");
+    let bob = addr_byte(0xb2);
+    let block = 800u64;
+    let now_sec = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(1_700_200_000);
+    let since_ts = now_sec.saturating_sub(7200);
+    let activity_ts = now_sec.saturating_sub(3600);
+
+    let mk_buy = |tx_id: u64, buyer: Address, ts: u64, doub: u128| -> DecodedLog {
+        let mut log = sample_log_tx(
+            block + tx_id,
+            tx_id,
+            1,
+            DecodedEvent::ArenaBuy {
+                buyer,
+                charm_wad: U256::from(1_000_000_000_000_000_000u128),
+                doub_paid: U256::from(doub),
+                new_deadline: U256::from(ts + 900),
+                total_doub_raised_after: U256::from(doub),
+                buy_index: U256::from(tx_id),
+                actual_seconds_added: U256::from(120u64),
+                timer_hard_reset: false,
+                paid_with_cred: false,
+            },
+        );
+        log.block_timestamp = Some(ts);
+        log
+    };
+
+    let logs = vec![
+        mk_buy(1, alice, activity_ts, DOUB_1000),
+        mk_buy(2, bob, activity_ts + 10, DOUB_100),
+        sample_log_tx(
+            block + 3,
+            3,
+            1,
+            DecodedEvent::ArenaPodiumEpochRolled {
+                category: 0,
+                epoch: U256::from(1u8),
+                first: alice,
+                second: bob,
+                third: addr_byte(0xb3),
+                pool_paid: U256::from(700u128),
+            },
+        ),
+    ];
+    let mut podium_log = logs[2].clone();
+    podium_log.block_timestamp = Some(activity_ts + 20);
+
+    for log in [logs[0].clone(), logs[1].clone(), podium_log] {
+        persist_decoded_log_autocommit(&pool, &log)
+            .await
+            .expect("persist session summary fixture");
+    }
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    let since_ms = (since_ts * 1000) as i64;
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/arena/session-summary?since_ms={since_ms}&wallet={alice_hex}"
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert_eq!(j.get("total_buys").and_then(|v| v.as_str()), Some("2"));
+    assert_eq!(j.get("unique_players").and_then(|v| v.as_str()), Some("2"));
+    assert_eq!(j.get("podium_updates").and_then(|v| v.as_str()), Some("1"));
+    let epochs = j
+        .get("podium_epochs_ended")
+        .and_then(|v| v.as_array())
+        .expect("podium_epochs_ended");
+    assert_eq!(epochs.len(), 1);
+    assert_eq!(epochs[0].get("podium").and_then(|v| v.as_str()), Some("last_buy"));
+    let wallet = j.get("wallet_summary").expect("wallet_summary");
+    assert_eq!(wallet.get("buy_count").and_then(|v| v.as_str()), Some("1"));
+    assert_eq!(wallet.get("wins").and_then(|v| v.as_str()), Some("1"));
+    assert!(wallet.get("rank_delta").is_some());
+
+    let future_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64 + 3_600_000)
+        .unwrap_or(0);
+    let empty = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/session-summary?since_ms={future_ms}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(empty.status(), StatusCode::BAD_REQUEST);
 }
 
 /// Cursor pagination on `GET /v1/arena/buys` ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
