@@ -20,6 +20,8 @@ type Props = {
   countdownKind?: "open" | "round";
   /** Spoken summary for assistive tech; overrides `countdownKind` + built-in remainder when set. */
   countdownAriaLabel?: string;
+  /** When set, shown instead of `—` while `secondsRemaining` is undefined. */
+  countdownPlaceholder?: string;
   /** Inline copy shown directly under the countdown digits. */
   foot?: ReactNode;
 };
@@ -55,6 +57,7 @@ export function ArenaTimerHero({
   eyebrow,
   countdownKind = "round",
   countdownAriaLabel,
+  countdownPlaceholder,
   foot,
 }: Props) {
   const urgency = timerUrgencyClass(secondsRemaining);
@@ -123,7 +126,7 @@ export function ArenaTimerHero({
           data-testid="arena-simple-timer"
         >
           {split === null ? (
-            <span className="arena-simple__timer-digits">—</span>
+            <span className="arena-simple__timer-digits">{countdownPlaceholder ?? "—"}</span>
           ) : (
             <>
               {split.days > 0 && (

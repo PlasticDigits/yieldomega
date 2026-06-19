@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchLegacyArenaChainTimer, type ArenaChainTimer } from "@/lib/indexerApi";
+import { PODIUM_TIMER_AWAITING_FIRST_BUY } from "@/pages/arena/arenaPodiumTimerDisplay";
+import { fetchArenaTimers } from "@/lib/indexerApi";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 
@@ -12,20 +13,24 @@ export type HeroTimerState = {
   blockTimestampSec: number;
   timerCapSec: number;
   readBlockNumber: bigint;
+  /** Last Buy (`podium_timer_armed[0]`); false when epoch timer not started ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)). */
+  lastBuyTimerArmed?: boolean;
   /** `Math.floor(Date.now() / 1000)` at the moment this snapshot was stored — not stale state. */
   fetchedAtSec: number;
 };
 
-function snapshotFromIndexerChainTimer(data: ArenaChainTimer): Omit<HeroTimerState, "fetchedAtSec"> {
-  const rawSale = data.sale_start_sec;
+function snapshotFromArenaTimers(data: NonNullable<Awaited<ReturnType<typeof fetchArenaTimers>>>): Omit<HeroTimerState, "fetchedAtSec"> {
+  const rawSale = data.arena_start_sec;
   const saleStartSec =
     rawSale !== undefined && rawSale !== "" ? Number(rawSale) : 0;
+  const armed = data.podium_timer_armed?.[0];
   return {
     saleStartSec: Number.isFinite(saleStartSec) ? saleStartSec : 0,
-    deadlineSec: Number(data.deadline_sec),
+    deadlineSec: Number(data.last_buy_deadline_sec),
     blockTimestampSec: Number(data.block_timestamp_sec),
     timerCapSec: Number(data.timer_cap_sec),
     readBlockNumber: BigInt(data.read_block_number),
+    lastBuyTimerArmed: armed,
   };
 }
 
@@ -46,6 +51,8 @@ function conservativeSkewWallMinusChainSec(fetchedAtSec: number, blockTimestampS
 export type UseArenaHeroTimerResult = {
   heroTimer: HeroTimerState | null;
   secondsRemaining: number | undefined;
+  /** Copy for hero when Last Buy timer is unarmed ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)). */
+  countdownPlaceholder: string | undefined;
   /**
    * Same `wallClockSec - skewWallMinusChain` used for the primary hero countdown (not necessarily integer).
    * Use for wallet buy cooldown so it stays consistent with `secondsRemaining`.
@@ -84,6 +91,17 @@ export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): 
       setChainNowSec(undefined);
       return;
     }
+    if (ht.lastBuyTimerArmed === false) {
+      setSecondsRemaining(undefined);
+      const skew = skewWallMinusChainRef.current;
+      if (skew == null || !Number.isFinite(skew)) {
+        setChainNowSec(undefined);
+        return;
+      }
+      const wallSec = Math.floor(Date.now() / 1000);
+      setChainNowSec(wallSec - skew);
+      return;
+    }
     const skew = skewWallMinusChainRef.current;
     if (skew == null || !Number.isFinite(skew)) {
       setSecondsRemaining(undefined);
@@ -105,9 +123,9 @@ export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): 
       try {
         const fetchedAtSec = Math.floor(Date.now() / 1000);
         let base: Omit<HeroTimerState, "fetchedAtSec"> | null = null;
-        const data = await fetchLegacyArenaChainTimer();
+        const data = await fetchArenaTimers();
         if (data) {
-          const fromIdx = snapshotFromIndexerChainTimer(data);
+          const fromIdx = snapshotFromArenaTimers(data);
           if (isFiniteHeroBase(fromIdx)) {
             base = fromIdx;
           }
@@ -192,6 +210,8 @@ export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): 
   return {
     heroTimer,
     secondsRemaining,
+    countdownPlaceholder:
+      heroTimer?.lastBuyTimerArmed === false ? PODIUM_TIMER_AWAITING_FIRST_BUY : undefined,
     chainNowSec,
     isBusy,
     refresh,

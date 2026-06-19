@@ -23,10 +23,12 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 
 Onchain table: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol) ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)). **Scoring hooks** (Time Booster totals, Defended Streak, WarBow BP) use **Last Buy** timer only; per-category params govern prize settlement deadlines.
 
-Each qualifying **buy** extends **all four** podium deadlines. Timers **diverge** when categories roll on different schedules ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)).
+**Epoch arm model ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)):** Per category, settlement timers are **unarmed** after `startArena()` and after each `rollPodiumEpoch(cat)` until the **first qualifying buy** in that epoch (level-gated per [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)): L1 arms Last Buy; L2+ Time Booster; L3+ Defended Streak; L4+ WarBow. First arm sets `podiumDeadline[cat] = now + podiumInitialTimerSec[cat]` then applies that buy’s extension / hard-reset band. Unarmed epochs **do not** autoroll. Indexer exposes `podium_timer_armed[]` on `GET /v1/arena/timers` (schema ≥ 2.17.0); play UI shows **awaiting first buy** until armed.
+
+Each qualifying **buy** extends **all armed** podium deadlines for categories the buyer unlocks. Timers **diverge** when categories roll on different schedules ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)).
 
 - **`lastBuyEpoch`** increments on Last Buy **hard reset**; emits **`LastBuyEpochStarted`**. Permissionless **`rollPodiumEpoch(0)`** after expiry settles Last Buy prizes but does **not** bump `lastBuyEpoch` (CHARM/CRED epochs roll only on hard reset).
-- **`podiumEpoch[cat]`** increments on **`rollPodiumEpoch(cat)`** when `block.timestamp > podiumDeadline[cat]`.
+- **`podiumEpoch[cat]`** increments on **`rollPodiumEpoch(cat)`** when the timer is **armed** and `block.timestamp > podiumDeadline[cat]`.
 - Arena is **always live** when not **`paused`** — no `endSale` or `redeemCharms`.
 
 ## Podium settlement
@@ -41,7 +43,7 @@ On **`rollPodiumEpoch(category)`** (permissionless after deadline):
 
 **WarBow (cat 3):** steps 1–5 apply on **`rollPodiumEpoch`** / autoroll — on-chain top-3 from live BP leaderboard pays **4∶2∶1**; emits **`WarbowPodiumFinalized`**. Owner **`finalizeWarbowPodium`** is **superseded** (reverts) ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)). Live BP resets via **`warbowBpGeneration`** on roll.
 
-**Always-live autoroll ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** When not **`paused`**, buys and WarBow actions call **`_autorollExpiredPodiums()`** before proceeding — any category with **`block.timestamp > podiumDeadline[cat]`** rolls in one tx (no **`TimeArena: timer expired`** gate on Last Buy).
+**Always-live autoroll ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** When not **`paused`**, buys and WarBow actions call **`_autorollExpiredPodiums()`** before proceeding — any **armed** category with **`block.timestamp > podiumDeadline[cat]`** rolls in one tx (unarmed categories are skipped; [#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)).
 
 ## DOUB prize routing (per buy) — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)
 

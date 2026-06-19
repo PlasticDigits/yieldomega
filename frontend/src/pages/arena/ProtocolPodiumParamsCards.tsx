@@ -80,7 +80,7 @@ export function ProtocolPodiumParamsCards(props: {
               <dt>{humanizeKvLabel("epoch")}</dt>
               <dd>{row.epoch ?? "—"}</dd>
               <dt>Time remaining</dt>
-              <dd>{formatTimerDdHhMmSs(row.secondsRemaining)}</dd>
+              <dd>{row.timerDisplay}</dd>
               <dt>{humanizeKvLabel("timerExtensionSec")}</dt>
               <dd>{formatTimerDdHhMmSs(row.timerExtensionSec)}</dd>
               <dt>{humanizeKvLabel("initialTimerSec")}</dt>

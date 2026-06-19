@@ -152,6 +152,7 @@ fn arena_head_snapshot() -> TimecurveHeadSnapshot {
             last_buy_epoch: "1".into(),
             podium_epochs: ["1", "0", "0", "2"].map(String::from),
             podium_deadlines_sec: ["1", "2", "3", "4"].map(String::from),
+            podium_timer_armed: [false, true, true, false],
         },
         sale_ended: false,
         sale_state: TimecurveSaleStateSnapshot {

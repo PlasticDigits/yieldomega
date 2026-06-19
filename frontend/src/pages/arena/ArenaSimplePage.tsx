@@ -931,6 +931,7 @@ export function ArenaSimplePage({
         panelHeader={
           <ArenaTimerHero
             secondsRemaining={heroCountdownSec}
+            countdownPlaceholder={podiumSlideMeta.countdownPlaceholder}
             countdownKind="round"
             foot={timerHeroFoot}
           />
@@ -957,6 +958,7 @@ export function ArenaSimplePage({
       {timerCarousel ?? (
         <ArenaTimerHero
           secondsRemaining={heroCountdownSec}
+          countdownPlaceholder={session.heroCountdownPlaceholder}
           countdownKind={session.phase === "saleStartPending" ? "open" : "round"}
           foot={timerHeroFoot}
         />

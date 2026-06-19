@@ -13,6 +13,7 @@ const timers: ArenaTimersResponse = {
   paused: false,
   total_doub_raised: "0",
   podium_deadlines_sec: ["1900", "2500", "2600", "2700"],
+  podium_timer_armed: [true, true, true, true],
 };
 
 describe("podiumAuditSecondsRemaining", () => {
@@ -22,6 +23,11 @@ describe("podiumAuditSecondsRemaining", () => {
 
   it("uses podium deadline for non-last-buy categories", () => {
     expect(podiumAuditSecondsRemaining(3, timers, 1000)).toBe(1700);
+  });
+
+  it("returns undefined when timer unarmed", () => {
+    const unarmed = { ...timers, podium_timer_armed: [false, true, true, true] };
+    expect(podiumAuditSecondsRemaining(0, unarmed, 1000)).toBeUndefined();
   });
 
   it("floors at zero when past deadline", () => {

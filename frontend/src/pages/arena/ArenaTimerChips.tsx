@@ -3,6 +3,11 @@
 import { addresses } from "@/lib/addresses";
 import { type ArenaFeatureKey } from "@/lib/arenaProgression";
 import type { BuyItem } from "@/lib/indexerApi";
+import {
+  formatPodiumChipTimerDisplay,
+  isPodiumTimerArmed,
+  podiumCountdownSec,
+} from "@/pages/arena/arenaPodiumTimerDisplay";
 import { ArenaPodiumTimerChip } from "@/pages/arena/ArenaPodiumTimerChip";
 import { PODIUM_CONTRACT_TO_UX_CATEGORY } from "@/pages/arena/arenaSimplePodiumRanking";
 import { useArenaTimersQuery } from "@/pages/arena/useArenaSaleState";
@@ -70,13 +75,15 @@ export function ArenaTimerChips({
   const data = indexerData ?? null;
   const now = data ? Number(data.block_timestamp_sec) : Math.floor(Date.now() / 1000);
   const deadlines = data?.podium_deadlines_sec ?? [];
+  const armedFlags = data?.podium_timer_armed;
 
   return PODIUM_CHIPS.map((chip) => {
     const idx = chip.contractIndex;
     const categoryIndex = chip.categoryIndex;
     const podiumRow = podiumRows[categoryIndex];
-    const dl = data ? Number(deadlines[idx] ?? 0) : undefined;
-    const rem = dl !== undefined ? Math.max(0, dl - now) : undefined;
+    const armed = isPodiumTimerArmed(armedFlags, idx);
+    const dl = data && armed !== false ? Number(deadlines[idx] ?? 0) : undefined;
+    const rem = podiumCountdownSec(armed, dl, data ? now : undefined);
 
     return (
       <ArenaPodiumTimerChip
@@ -97,6 +104,7 @@ export function ArenaTimerChips({
         onFeatureHelp={onFeatureHelp}
         onOpenWalletProfile={onOpenWalletProfile}
         countdownRemainingSec={rem}
+        countdownDisplay={formatPodiumChipTimerDisplay(armed, rem)}
         showFeatureHelp={chip.contractIndex !== 0}
         testId={"testId" in chip ? chip.testId : undefined}
         ariaLabel={"ariaLabel" in chip ? chip.ariaLabel : undefined}

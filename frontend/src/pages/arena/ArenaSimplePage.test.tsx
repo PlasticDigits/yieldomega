@@ -140,6 +140,7 @@ function baseSession(overrides: Partial<UseArenaSaleSession> = {}): UseArenaSale
     buyCharmBonusPreviewLines: [],
     preStartCountdownSec: undefined,
     saleCountdownSec: 120,
+    heroCountdownPlaceholder: undefined,
     chainNowSec: 1_700_000_000,
     timerExtensionPreviewSec: 60,
     buyPreviewPolicy: undefined,

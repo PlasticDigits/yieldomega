@@ -35,7 +35,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 ## Timer
 
-Per-category **prize settlement** deadlines (`podiumDeadline[cat]`, `podiumEpoch[cat]`). One buy extends **all four** by category-specific rules ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)):
+Per-category **prize settlement** deadlines (`podiumDeadline[cat]`, `podiumEpoch[cat]`, `podiumTimerArmed[cat]`). Timers **arm on the first qualifying buy** in each epoch (level-gated per [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)); until armed, UI/indexer show **awaiting first buy** ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)). Armed buys extend categories the buyer unlocks by category-specific rules ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)):
 
 | Cat | Podium | Extension | Hard reset | Initial |
 |-----|--------|-----------|------------|---------|

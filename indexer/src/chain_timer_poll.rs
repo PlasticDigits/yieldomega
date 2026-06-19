@@ -184,6 +184,7 @@ mod tests {
                 last_buy_epoch: last_buy_epoch.into(),
                 podium_epochs,
                 podium_deadlines_sec,
+                podium_timer_armed: [true; 4],
             },
             sale_ended: false,
             podium_contract: std::array::from_fn(|_| PodiumRpcRow {

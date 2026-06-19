@@ -54,6 +54,8 @@ export type ArenaPodiumTimerChipProps = {
   /** When false, timer bay owns the feature tutorial trigger (Last Buy bay). */
   showFeatureHelp?: boolean;
   countdownRemainingSec?: number;
+  /** Override chip countdown copy (e.g. awaiting first buy). */
+  countdownDisplay?: string;
   className?: string;
   testId?: string;
   ariaLabel?: string;
@@ -78,6 +80,7 @@ export function ArenaPodiumTimerChip({
   showCountdown = true,
   showFeatureHelp = true,
   countdownRemainingSec,
+  countdownDisplay,
   className,
   testId,
   ariaLabel,
@@ -149,9 +152,11 @@ export function ArenaPodiumTimerChip({
             <span className="arena-timer-chips__chip" data-testid={`arena-timer-chip-${contractIndex}`}>
               <span className="arena-timer-chips__label">{CHIP_COUNTDOWN_LABEL}</span>
               <span className="arena-timer-chips__value">
-                {countdownRemainingSec !== undefined
-                  ? formatPodiumChipCountdown(countdownRemainingSec)
-                  : "—"}
+                {countdownDisplay !== undefined
+                  ? countdownDisplay
+                  : countdownRemainingSec !== undefined
+                    ? formatPodiumChipCountdown(countdownRemainingSec)
+                    : "—"}
               </span>
             </span>
           ) : (

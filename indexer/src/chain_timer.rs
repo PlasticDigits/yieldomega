@@ -32,6 +32,8 @@ pub const SEL_ARENA_START: [u8; 4] = [0x07, 0xf2, 0x87, 0x15];
 pub const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
 pub const SEL_TIMER_CAP: [u8; 4] = [0x0f, 0x63, 0x25, 0x76];
 pub const SEL_PODIUM_DEADLINE: [u8; 4] = [0xab, 0x8a, 0x6e, 0xb3];
+/// `podiumTimerArmed(uint256)` — per-category settlement timer armed ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)).
+pub const SEL_PODIUM_TIMER_ARMED: [u8; 4] = [0x60, 0x20, 0x95, 0x40];
 pub const SEL_PODIUM: [u8; 4] = [0x14, 0x58, 0xd4, 0xad];
 pub const SEL_LAST_BUY_EPOCH: [u8; 4] = [0x6a, 0x9e, 0xa0, 0x67];
 /// `podiumEpoch(uint256)` — public array getter on `TimeArena` (not `uint8`).
@@ -81,6 +83,8 @@ pub struct ChainTimerSnapshot {
     /// `podiumEpoch(cat)` for categories 0–3 at `read_block_number`.
     pub podium_epochs: [String; 4],
     pub podium_deadlines_sec: [String; 4],
+    /// `podiumTimerArmed(cat)` at `read_block_number` ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)).
+    pub podium_timer_armed: [bool; 4],
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -116,6 +120,10 @@ fn decode_return_u256(data: &[u8]) -> Result<U256> {
         ));
     }
     Ok(U256::from_be_slice(&data[data.len() - 32..]))
+}
+
+fn decode_return_bool(data: &[u8]) -> Result<bool> {
+    Ok(!decode_return_u256(data)?.is_zero())
 }
 
 fn decode_return_address(data: &[u8]) -> Result<Address> {
@@ -353,6 +361,31 @@ async fn eth_call_u256(
     decode_return_u256(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
+async fn eth_call_bool(
+    providers: &[ReqwestProvider],
+    contract: Address,
+    block_id: BlockId,
+    input: Bytes,
+    label: &str,
+    metrics: &RpcMetrics,
+) -> Result<bool> {
+    let raw = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::EthCall,
+        RpcCaller::ChainTimer,
+        |p| {
+            let req = TransactionRequest::default()
+                .to(contract)
+                .input(input.clone().into());
+            async move { p.call(&req).block(block_id).await }
+        },
+    )
+    .await
+    .wrap_err_with(|| format!("{label} eth_call"))?;
+    decode_return_bool(&raw).wrap_err_with(|| format!("decode {label}"))
+}
+
 async fn eth_call_address(
     providers: &[ReqwestProvider],
     contract: Address,
@@ -411,6 +444,9 @@ async fn poll_once_multicall(
     let i_podium_dl: [usize; 4] = std::array::from_fn(|cat| {
         batch.push_u8_arg(arena, SEL_PODIUM_DEADLINE, cat as u8)
     });
+    let i_podium_armed: [usize; 4] = std::array::from_fn(|cat| {
+        batch.push_u8_arg(arena, SEL_PODIUM_TIMER_ARMED, cat as u8)
+    });
     let i_last_buy_epoch = batch.push_selector(arena, SEL_LAST_BUY_EPOCH);
     let i_podium_ep: [usize; 4] = std::array::from_fn(|cat| {
         batch.push_u8_arg(arena, SEL_PODIUM_EPOCH, cat as u8)
@@ -464,6 +500,12 @@ async fn poll_once_multicall(
         podium_deadlines[cat] = u256_to_decimal_string(dl);
     }
 
+    let mut podium_timer_armed = [false; 4];
+    for cat in 0..4 {
+        podium_timer_armed[cat] = decode_return_bool(&results[i_podium_armed[cat]])
+            .wrap_err_with(|| format!("podiumTimerArmed({cat})"))?;
+    }
+
     let last_buy_epoch =
         decode_return_u256(&results[i_last_buy_epoch]).wrap_err("lastBuyEpoch")?;
 
@@ -511,6 +553,7 @@ async fn poll_once_multicall(
         last_buy_epoch: u256_to_decimal_string(last_buy_epoch),
         podium_epochs,
         podium_deadlines_sec: podium_deadlines,
+        podium_timer_armed,
     };
 
     let sale_state = sale_state_from_returns(
@@ -638,6 +681,20 @@ async fn poll_once_sequential(
         podium_deadlines[cat as usize] = u256_to_decimal_string(dl);
     }
 
+    let mut podium_timer_armed = [false; 4];
+    for cat in 0u8..=3 {
+        let armed = eth_call_bool(
+            providers,
+            arena,
+            block_id,
+            encode_u8_call(SEL_PODIUM_TIMER_ARMED, cat),
+            &format!("podiumTimerArmed({cat})"),
+            metrics,
+        )
+        .await?;
+        podium_timer_armed[cat as usize] = armed;
+    }
+
     let last_buy_epoch = eth_call_u256(
         providers,
         arena,
@@ -730,6 +787,7 @@ async fn poll_once_sequential(
         last_buy_epoch: u256_to_decimal_string(last_buy_epoch),
         podium_epochs,
         podium_deadlines_sec: podium_deadlines,
+        podium_timer_armed,
     };
 
     let sale_state = crate::sale_state::poll_sale_state_at_block(
