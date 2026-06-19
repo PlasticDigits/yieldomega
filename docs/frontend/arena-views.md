@@ -186,7 +186,9 @@ Invariants: **`INV-ARENA-PROGRESSION-*`** in [invariants §299](../testing/invar
 
 Participant addresses on **play `/`** and **`/arena/protocol`** open **`WalletProfileModal`** via **`AddressInline` `onOpenProfile`** (not block explorer). Stats: **`GET /v1/arena/wallet/{address}/stats`**. Modal includes **View on explorer** as a secondary link.
 
-Modal sections (from indexer aggregates): **Overview**, **Podium wins**, **Spending**, **XP / Level**, **WarBow**, **Referrals**, **Fun facts**. Loading / error / indexer-unset states use shared placeholders ([#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)). Layout: [`WalletProfileModal.tsx`](../../frontend/src/components/WalletProfileModal.tsx), [`WalletProfileModalSections.tsx`](../../frontend/src/components/WalletProfileModalSections.tsx), [`walletProfileFormat.ts`](../../frontend/src/lib/walletProfileFormat.ts).
+Modal sections (from indexer aggregates): **Overview**, **Podium wins**, **Spending**, **XP / Level**, **Level history** ([#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)), **WarBow**, **Referrals**, **Fun facts**. Loading / error / indexer-unset states use shared placeholders ([#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)). Layout: [`WalletProfileModal.tsx`](../../frontend/src/components/WalletProfileModal.tsx), [`WalletProfileModalSections.tsx`](../../frontend/src/components/WalletProfileModalSections.tsx), [`walletProfileFormat.ts`](../../frontend/src/lib/walletProfileFormat.ts).
+
+**Level history:** `GET /v1/arena/wallet/{address}/stats` field **`level_history`** (schema **≥ 2.18.0**) — five rows (`level` `"1"`…`"5"`, **`reached_at`** UTC ISO-8601 or `null`). Level 1 = first indexed buy; levels 2–5 = earliest **`ArenaLevelUp`** per tier. Frontend renders local time via **`formatWalletProfileIso8601`**; missing milestones show em dash (**`—`**). Progression tier short labels reuse [`arenaProgression.ts`](../../frontend/src/lib/arenaProgression.ts).
 
 | Surface | Component |
 |---------|-----------|

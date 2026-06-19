@@ -158,7 +158,7 @@ Schema **≥ 2.7.0** (`x-schema-version`) for `target_epoch` on buy rows. Ingest
 
 ### Wallet stats (`GET /v1/arena/wallet/{address}/stats`, GitLab [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255))
 
-Schema **≥ 2.4.0** (`x-schema-version`). SQL aggregations over buys, podium payouts, XP, CRED, WarBow tables — full bonus stats (no stub zeros). Map: **`INV-INDEXER-255-WALLET-STATS`** · [design — wallet stats](../docs/indexer/design.md#arena-wallet-stats-http-gitlab-255) · [invariants](../docs/testing/invariants-and-business-logic.md) · [arena-views](../docs/frontend/arena-views.md).
+Schema **≥ 2.4.0** (`x-schema-version`); **`level_history`** (levels 1–5 milestone UTC timestamps) requires **≥ 2.18.0** ([#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)). SQL aggregations over buys, podium payouts, XP, CRED, WarBow, and level-up tables — full bonus stats (no stub zeros). Map: **`INV-INDEXER-255-WALLET-STATS`**, **`INV-INDEXER-336-WALLET-LEVEL-HISTORY`** · [design — wallet stats](../docs/indexer/design.md#arena-wallet-stats-http-gitlab-255) · [invariants](../docs/testing/invariants-and-business-logic.md) · [arena-views](../docs/frontend/arena-views.md).
 
 ### SQLx migrations
 

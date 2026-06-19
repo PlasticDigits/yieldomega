@@ -852,6 +852,12 @@ export type ArenaTimersResponse = {
   referral_cred_flat_wad?: string;
 };
 
+export type ArenaWalletLevelHistoryEntry = {
+  level: string;
+  /** UTC ISO-8601 milestone time; `null` when not yet reached (schema ≥ 2.18.0, #336). */
+  reached_at: string | null;
+};
+
 export type ArenaWalletStats = {
   address: string;
   epochs_participated: number;
@@ -898,6 +904,8 @@ export type ArenaWalletStats = {
   longest_defended_streak: string;
   podium_win_rate: string;
   rank_distribution: Record<"1" | "2" | "3", string>;
+  /** Progression milestone timestamps — levels 1–5 (#336, schema ≥ 2.18.0). */
+  level_history?: ArenaWalletLevelHistoryEntry[];
 };
 
 export type ArenaWalletPrizeWon = {

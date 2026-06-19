@@ -7,6 +7,7 @@ import type { ArenaWalletStats } from "@/lib/indexerApi";
 import {
   WalletProfileBalancesSection,
   WalletProfileFunFactsSection,
+  WalletProfileLevelHistorySection,
   WalletProfileOverviewSection,
   WalletProfilePodiumWinsSection,
   WalletProfileReferralsSection,
@@ -41,6 +42,13 @@ const mockStats: ArenaWalletStats = {
   longest_defended_streak: "4",
   podium_win_rate: "0.5000",
   rank_distribution: { "1": "1", "2": "0", "3": "0" },
+  level_history: [
+    { level: "1", reached_at: "2023-11-14T22:13:20Z" },
+    { level: "2", reached_at: "2023-11-15T10:00:00Z" },
+    { level: "3", reached_at: null },
+    { level: "4", reached_at: null },
+    { level: "5", reached_at: null },
+  ],
 };
 
 const mockBalances: WalletProfileBalancesSnapshot = {
@@ -74,6 +82,7 @@ describe("WalletProfileModalSections (GitLab #258)", () => {
     expect(html).toContain("Podium wins");
     expect(html).toContain("Spending");
     expect(html).toContain("XP / Level");
+    expect(html).toContain("Level history");
     expect(html).toContain("WarBow");
     expect(html).toContain("Referrals");
     expect(html).toContain("Fun facts");
@@ -102,6 +111,20 @@ describe("WalletProfileModalSections (GitLab #258)", () => {
     expect(html).toContain("Level");
     expect(html).toContain("3");
     expect(html).toContain("1,200");
+  });
+
+  it("renders level history with local timestamps and placeholders (#336)", () => {
+    const html = renderToStaticMarkup(
+      createElement(WalletProfileLevelHistorySection, { data: mockStats }),
+    );
+    expect(html).toContain("Level history");
+    expect(html).toContain("Level 1 · Last Buy");
+    expect(html).toContain("Level 2 · Booster");
+    expect(html).toContain("Level 3 · Streak");
+    expect(html).not.toContain("Level 3 · Level 3");
+    expect(html).toContain("—");
+    const expectedL1 = new Date("2023-11-14T22:13:20Z").toLocaleString();
+    expect(html).toContain(expectedL1);
   });
 
   it("renders WarBow steals and guards", () => {

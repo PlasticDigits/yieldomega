@@ -91,7 +91,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 | DOUB buy | Connect wallet; slider + **Buy** succeeds; vault balances move per 100% podium routing (25% × 4 · 70/20/10 epoch tranches; Forge / explorer). |
 | CRED | After DOUB buy, epoch pool accrues; **claim** prior epoch when eligible. |
 | CRED pay ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) | Select **CRED** in buy picker; balance + burn preview; **Buy** calls `buyWithCred`; insufficient CRED disables submit with copy. |
-| Wallet profile ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)) | Click participant **`AddressInline`** on live buy row or podium winner → **`WalletProfileModal`** opens; sections Overview / Podium wins / Spending / XP / WarBow / Referrals / Fun facts load from **`GET /v1/arena/wallet/{address}/stats`**. |
+| Wallet profile ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258), level history [#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)) | Click participant **`AddressInline`** on live buy row or podium winner → **`WalletProfileModal`** opens; sections Overview / Podium wins / Spending / XP / **Level history** / WarBow / Referrals / Fun facts load from **`GET /v1/arena/wallet/{address}/stats`**. |
 | Referrals | Register code on `/referrals`; referred buy shows in `GET /v1/referrals/applied`. |
 | WarBow | Steal/guard txs spend DOUB (no CL8Y burn path). |
 
