@@ -32,7 +32,7 @@ Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol)
 | Parameter | Cat 0 Last Buy | Cat 1 Time Booster | Cat 2 Defended Streak | Cat 3 WarBow | Notes |
 |-----------|----------------|--------------------|-----------------------|--------------|-------|
 | `podiumTimerExtensionSec` | `120` | `60` | `90` | `300` | Per buy when not in hard-reset band ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) |
-| `podiumInitialTimerSec` | `86_400` (24 h) | `43_200` (12 h) | `64_800` (18 h) | `172_800` (48 h) | After `startArena` / `rollPodiumEpoch(cat)` |
+| `podiumInitialTimerSec` | `86_400` (24 h) | `43_200` (12 h) | `64_800` (18 h) | `172_800` (48 h) | Applied on **first qualifying buy** that arms the epoch ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)); not at `startArena` / roll |
 | `podiumTimerCapSec` | `345_600` (96 h) | `172_800` (48 h) | `259_200` (72 h) | `691_200` (192 h) | `4 × initialTimerSec[cat]` |
 | Hard-reset band | `< 780s` → `900s` | `< 240s` → `300s` | `< 510s` → `600s` | `< 3300s` → `3600s` | `podiumResetBelowRemainingSec` / `podiumResetToRemainingSec` |
 | Legacy shims | `timerExtensionSec` / `initialTimerSec` / `timerCapSec` mirror cat 0 | — | — | — | ABI compat |

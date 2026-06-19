@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# GitLab #271 — per-podium timer params on fresh Anvil DeployDev.
+# GitLab #271 / #330 — per-podium timer params; arm on first qualifying buy.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -34,6 +34,22 @@ cast_u256() {
     cast call "${addr}" "${sig}" "$@" --rpc-url "${RPC}" | awk '{print $1}'
   else
     cast call "${addr}" "${sig}" --rpc-url "${RPC}" | awk '{print $1}'
+  fi
+}
+
+cast_bool() {
+  local addr="$1" sig="$2"
+  shift 2
+  local raw
+  if [[ $# -gt 0 ]]; then
+    raw="$(cast call "${addr}" "${sig}" "$@" --rpc-url "${RPC}")"
+  else
+    raw="$(cast call "${addr}" "${sig}" --rpc-url "${RPC}")"
+  fi
+  if [[ "${raw}" == "true" || "${raw}" == "0x1" || "${raw}" == "0x0000000000000000000000000000000000000000000000000000000000000001" ]]; then
+    echo "true"
+  else
+    echo "false"
   fi
 }
 
@@ -88,44 +104,47 @@ cast send "${DOUB}" "approve(address,uint256)" "${TA}" "100000000000000000000000
 start="$(cast_u256 "${TA}" "arenaStart()(uint256)")"
 [[ "${start}" != "0" ]] || die "arenaStart is zero"
 
-prev_dl=""
 for c in 0 1 2 3; do
   init="$(cast_u256 "${TA}" "podiumInitialTimerSec(uint256)(uint256)" "${c}")"
   ext="$(cast_u256 "${TA}" "podiumTimerExtensionSec(uint256)(uint256)" "${c}")"
   below="$(cast_u256 "${TA}" "podiumResetBelowRemainingSec(uint256)(uint256)" "${c}")"
   reset_to="$(cast_u256 "${TA}" "podiumResetToRemainingSec(uint256)(uint256)" "${c}")"
+  armed="$(cast_bool "${TA}" "podiumTimerArmed(uint256)(bool)" "${c}")"
   dl="$(cast_u256 "${TA}" "podiumDeadline(uint256)(uint256)" "${c}")"
-  want_dl="$(python3 -c "print(int('${start}') + ${EXPECTED_INIT[$c]})")"
 
   assert_eq "${init}" "${EXPECTED_INIT[$c]}" "podiumInitialTimerSec[${c}]"
   assert_eq "${ext}" "${EXPECTED_EXT[$c]}" "podiumTimerExtensionSec[${c}]"
   assert_eq "${below}" "${EXPECTED_RESET_BELOW[$c]}" "podiumResetBelowRemainingSec[${c}]"
   assert_eq "${reset_to}" "${EXPECTED_RESET_TO[$c]}" "podiumResetToRemainingSec[${c}]"
-  assert_eq "${dl}" "${want_dl}" "podiumDeadline[${c}] at startArena"
-
-  if [[ -n "${prev_dl}" && "${dl}" == "${prev_dl}" ]]; then
-    die "podiumDeadline[${c}] equals previous category — expected distinct initial deadlines"
-  fi
-  prev_dl="${dl}"
+  assert_eq "${armed}" "false" "podiumTimerArmed[${c}] at startArena"
+  assert_eq "${dl}" "0" "podiumDeadline[${c}] unarmed at startArena"
 done
 
-before=()
-for c in 0 1 2 3; do
-  before[c]="$(cast_u256 "${TA}" "podiumDeadline(uint256)(uint256)" "${c}")"
-done
+assert_eq "$(cast_u256 "${TA}" "deadline()(uint256)")" "0" "Last Buy deadline unarmed at startArena"
 
 cast send "${TA}" "buy(uint256)" "${WAD}" --from "${ALICE}" --unlocked --rpc-url "${RPC}" >/dev/null
 
-for c in 0 1 2 3; do
-  after="$(cast_u256 "${TA}" "podiumDeadline(uint256)(uint256)" "${c}")"
-  want_after="$(python3 -c "print(int('${before[$c]}') + ${EXPECTED_EXT[$c]})")"
-  assert_eq "${after}" "${want_after}" "podiumDeadline[${c}] after buy (+${EXPECTED_EXT[$c]}s)"
+assert_eq "$(cast_bool "${TA}" "podiumTimerArmed(uint256)(bool)" "0")" "true" "Last Buy armed after first buy"
+assert_false_other="$(cast_bool "${TA}" "podiumTimerArmed(uint256)(bool)" "1")"
+assert_eq "${assert_false_other}" "false" "Time Booster unarmed after level-1 buy"
+
+lb_dl="$(cast_u256 "${TA}" "podiumDeadline(uint256)(uint256)" "0")"
+buy_ts="$(cast block latest --rpc-url "${RPC}" --json | jq -r '.timestamp')"
+buy_ts="$(python3 -c "print(int('${buy_ts}', 0))")"
+want_lb="$(python3 -c "print(int('${buy_ts}') + ${EXPECTED_INIT[0]} + ${EXPECTED_EXT[0]})")"
+assert_eq "${lb_dl}" "${want_lb}" "Last Buy deadline after first buy (init+ext)"
+
+# Time Booster hard-reset band: arm with level-2 buy, then warp near expiry.
+for _ in $(seq 1 20); do
+  lvl="$(cast call "${TA}" "level(address)(uint256)" "${ALICE}" --rpc-url "${RPC}" | awk '{print $1}')"
+  [[ "${lvl}" -ge 2 ]] && break
+  cast send "${TA}" "buy(uint256)" "10000000000000000000" --from "${ALICE}" --unlocked --rpc-url "${RPC}" >/dev/null
+  cast rpc anvil_increaseTime 301 --rpc-url "${RPC}" >/dev/null
+  cast rpc anvil_mine 1 --rpc-url "${RPC}" >/dev/null
 done
+cast send "${TA}" "buy(uint256)" "${WAD}" --from "${ALICE}" --unlocked --rpc-url "${RPC}" >/dev/null
+assert_eq "$(cast_bool "${TA}" "podiumTimerArmed(uint256)(bool)" "1")" "true" "Time Booster armed after level-2 buy"
 
-epoch_before="$(cast_u256 "${TA}" "lastBuyEpoch()(uint256)")"
-assert_eq "${epoch_before}" "0" "lastBuyEpoch before Last Buy hard reset"
-
-# Time Booster hard-reset band: remaining < 240s → snap to 300s from now.
 booster_dl="$(cast_u256 "${TA}" "podiumDeadline(uint256)(uint256)" "1")"
 warp_to="$(python3 -c "print(int('${booster_dl}') - 200)")"
 cast rpc anvil_setNextBlockTimestamp "${warp_to}" --rpc-url "${RPC}" >/dev/null
@@ -140,8 +159,8 @@ now_ts="$(python3 -c "print(int('${now_ts}', 0))")"
 want_booster="$(python3 -c "print(int('${now_ts}') + ${EXPECTED_RESET_TO[1]})")"
 assert_eq "${after_booster}" "${want_booster}" "Time Booster hard-reset band (240→300s)"
 
-log "forge test --match-contract TimeArenaTest (#271 subset)"
+log "forge test --match-contract TimeArenaTest (#271/#330 subset)"
 cd "${ROOT}/contracts"
-FOUNDRY_PROFILE=ci forge test --match-test "test_start_arena_initial_deadlines_differ_by_category|test_multi_podium_deadline_extend|test_time_booster_hard_reset_band_240_to_300|test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer|test_defended_streak_uses_last_buy_timer_not_other_podium|test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll" --silent
+FOUNDRY_PROFILE=ci forge test --match-test "test_start_arena_timers_unarmed|test_no_autoroll_before_timer_armed|test_per_category_arm_on_first_qualifying_buy|test_multi_podium_deadline_extend|test_time_booster_hard_reset_band_240_to_300|test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer|test_defended_streak_uses_last_buy_timer_not_other_podium|test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll|test_level_1_gates_timers|test_level_2_gates_timers" --silent
 
 echo "=== verify-podium-timers-anvil: OK ==="

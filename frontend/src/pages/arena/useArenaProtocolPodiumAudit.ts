@@ -10,13 +10,20 @@ import {
 } from "@/pages/arena/podiumCopy";
 import { useArenaTimersQuery } from "@/pages/arena/useArenaSaleState";
 import type { PodiumReadRow } from "@/pages/arena/usePodiumReads";
+import {
+  formatPodiumHeroTimerDisplay,
+  isPodiumTimerArmed,
+  podiumCountdownSec,
+} from "@/pages/arena/arenaPodiumTimerDisplay";
 
 export type ProtocolPodiumAuditRow = {
   uxIndex: number;
   label: string;
   contractCategoryIndex: number;
   epoch: string | undefined;
+  timerArmed: boolean | undefined;
   secondsRemaining: number | undefined;
+  timerDisplay: string;
   timerExtensionSec: number | undefined;
   initialTimerSec: number | undefined;
   timerCapSec: number | undefined;
@@ -57,15 +64,16 @@ export function podiumAuditSecondsRemaining(
   if (!timerData || chainNowSec === undefined || !Number.isFinite(chainNowSec)) {
     return undefined;
   }
+  const armed = isPodiumTimerArmed(timerData.podium_timer_armed, contractCategoryIndex);
+  if (armed === false) {
+    return undefined;
+  }
   const deadlineRaw =
     contractCategoryIndex === 0
       ? timerData.last_buy_deadline_sec
       : timerData.podium_deadlines_sec[contractCategoryIndex];
   const deadline = Number(deadlineRaw ?? 0);
-  if (!Number.isFinite(deadline)) {
-    return undefined;
-  }
-  return Math.max(0, Math.floor(deadline - chainNowSec));
+  return podiumCountdownSec(armed, deadline, chainNowSec);
 }
 
 /**
@@ -136,16 +144,20 @@ export function useArenaProtocolPodiumAudit(
       const apiRow = indexerRowForContractCat(indexerRows, contractCategoryIndex);
       const winners = podiumRow?.winners ?? [ZERO_WINNER, ZERO_WINNER, ZERO_WINNER];
       const values = podiumRow?.values ?? (["0", "0", "0"] as const);
+      const timerArmed = isPodiumTimerArmed(timerData?.podium_timer_armed, contractCategoryIndex);
+      const secondsRemaining = podiumAuditSecondsRemaining(
+        contractCategoryIndex,
+        timerData ?? undefined,
+        chainNowSec,
+      );
       return {
         uxIndex,
         label,
         contractCategoryIndex,
         epoch: podiumRow?.epoch,
-        secondsRemaining: podiumAuditSecondsRemaining(
-          contractCategoryIndex,
-          timerData ?? undefined,
-          chainNowSec,
-        ),
+        timerArmed,
+        secondsRemaining,
+        timerDisplay: formatPodiumHeroTimerDisplay(timerArmed, secondsRemaining),
         timerExtensionSec: readTimerSec(contractCategoryIndex, 0),
         initialTimerSec: readTimerSec(contractCategoryIndex, 1),
         timerCapSec: readTimerSec(contractCategoryIndex, 2),

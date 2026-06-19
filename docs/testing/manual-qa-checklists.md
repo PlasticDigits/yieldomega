@@ -410,14 +410,15 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 ### Checklist
 
 - [ ] **`FOUNDRY_PROFILE=ci forge test --match-contract TimeArenaTest`** — includes `test_start_arena_initial_deadlines_differ_by_category`, `test_multi_podium_deadline_extend`, `test_time_booster_hard_reset_band_240_to_300`, scoring hook tests.
-- [ ] **`bash scripts/verify-podium-timers-anvil.sh`** — fresh Anvil DeployDev: distinct initial deadlines, per-category extensions, Time Booster hard-reset band.
+- [ ] Fresh arena (no buys): play `/` and `/arena/protocol` show **awaiting first buy** on timer chips / hero (not counting down from `startArena`) ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)).
+- [ ] **`bash scripts/verify-podium-timers-anvil.sh`** — unarmed at start; arm on first buy; per-category extensions; Time Booster hard-reset band.
 - [ ] After `startArena`, four `podiumDeadline[i]` differ (24h / 12h / 18h / 48h offsets from `arenaStart`).
 - [ ] One buy extends cats by +120 / +60 / +90 / +300 respectively (`test_multi_podium_deadline_extend`).
 - [ ] Time Booster: remaining &lt; 240s → snap to 300s from `block.timestamp`, not +60s extension.
 - [ ] WarBow BP reset bonus requires **Last Buy** hard reset, not WarBow timer band alone.
 - [ ] Defended streak window uses Last Buy remaining, not other podium timers.
 - [ ] `lastBuyEpoch` bumps only on Last Buy hard reset; other podium hard resets do not roll CHARM/CRED epoch.
-- [ ] **`GET /v1/arena/timers`** (with indexer + Anvil): `podium_deadlines_sec` has four distinct values at arena start.
+- [ ] **`GET /v1/arena/timers`** (with indexer + Anvil): `podium_timer_armed` (schema ≥ 2.17.0) reflects unarmed until first qualifying buy; `podium_deadlines_sec` zero when unarmed.
 - [ ] **`/arena`** timer chips (`ArenaTimerChips`) show distinct countdowns for Time Booster / Defended Streak / WarBow.
 - [ ] Buy checkout preview shows Last Buy timer/scoring effects; settlement note: all four podium deadlines extend per [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol).
 

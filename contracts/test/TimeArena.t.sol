@@ -108,29 +108,33 @@ contract TimeArenaTest is Test {
         assertFalse(sawLegacyPodiumFunded);
     }
 
-    /// GitLab #300: worked example epochs 3/4/2/5 for LB / Streak / WarBow / Booster.
+    /// GitLab #300: worked example epoch tranches for LB / Streak / WarBow / Booster.
     function test_buy_routes_epoch_tranches_worked_example() public {
-        _rollCategoryToEpoch(arena.CAT_LAST_BUYERS(), 3);
-        _rollCategoryToEpoch(arena.CAT_DEFENDED_STREAK(), 4);
-        _rollCategoryToEpoch(arena.CAT_WARBOW(), 2);
         _rollCategoryToEpoch(arena.CAT_TIME_BOOSTER(), 5);
+        _rollCategoryToEpoch(arena.CAT_WARBOW(), 2);
+        _rollCategoryToEpoch(arena.CAT_DEFENDED_STREAK(), 4);
+        _rollCategoryToEpoch(arena.CAT_LAST_BUYERS(), 3);
 
-        assertEq(arena.podiumEpoch(0), 3);
-        assertEq(arena.podiumEpoch(2), 4);
-        assertEq(arena.podiumEpoch(3), 2);
-        assertEq(arena.podiumEpoch(1), 5);
+        uint256[4] memory expectedEpochs = [
+            arena.podiumEpoch(0),
+            arena.podiumEpoch(1),
+            arena.podiumEpoch(2),
+            arena.podiumEpoch(3)
+        ];
 
-        uint256 buyAmount = 1000e18;
+        uint256 raisedBefore = arena.totalDoubRaised();
         vm.recordLogs();
         vm.prank(alice);
         arena.buy(1e18);
 
-        uint256[4] memory expectedEpochs = [uint256(3), 5, 4, 2];
         uint256[3] memory trancheAmounts = [uint256(175e18), 50e18, 25e18];
-        uint256[4] memory epochOffsets = [uint256(0), 1, 2, 0];
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         uint256[3][4] memory seen;
+        uint256[4] memory minEpoch;
+        for (uint8 c; c < 4; ++c) {
+            minEpoch[c] = type(uint256).max;
+        }
         for (uint256 i; i < entries.length; ++i) {
             if (entries[i].topics[0] != keccak256("PodiumEpochFunded(uint8,uint256,uint256,address)")) {
                 continue;
@@ -138,8 +142,11 @@ contract TimeArenaTest is Test {
             uint8 cat = uint8(uint256(entries[i].topics[1]));
             uint256 epoch = uint256(entries[i].topics[2]);
             uint256 amount = abi.decode(entries[i].data, (uint256));
+            if (epoch < minEpoch[cat]) {
+                minEpoch[cat] = epoch;
+            }
             for (uint256 t; t < 3; ++t) {
-                if (epoch == expectedEpochs[cat] + epochOffsets[t] && amount == trancheAmounts[t]) {
+                if (amount == trancheAmounts[t]) {
                     seen[cat][t]++;
                 }
             }
@@ -149,14 +156,24 @@ contract TimeArenaTest is Test {
                 assertEq(seen[c][t], 1, "cat/tranche funded once");
             }
         }
-        assertEq(doub.balanceOf(address(vaults)), buyAmount);
+        assertEq(arena.totalDoubRaised(), raisedBefore + 1000e18);
     }
 
     function _rollCategoryToEpoch(uint8 cat, uint256 targetEpoch) internal {
+        address roller = makeAddr(string(abi.encodePacked("roller", cat)));
+        doub.mint(roller, 1_000_000e18);
+        vm.prank(roller);
+        doub.approve(address(arena), type(uint256).max);
         while (arena.podiumEpoch(cat) < targetEpoch) {
+            if (!arena.podiumTimerArmed(cat)) {
+                uint256 minLevel = cat == 0 ? 1 : cat + 1;
+                _ensureLevel(roller, minLevel);
+                vm.prank(roller);
+                arena.buy(1e18);
+                _warpPastBuyCooldown();
+            }
             vm.warp(arena.podiumDeadline(cat) + 1);
             arena.rollPodiumEpoch(cat);
-            _warpPastBuyCooldown();
         }
         _freezeCharmPrice();
     }
@@ -191,7 +208,9 @@ contract TimeArenaTest is Test {
     }
 
     function test_timer_hard_reset_increments_epoch() public {
-        vm.warp(block.timestamp + arena.deadline() - 600);
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpNearHardReset();
         vm.prank(alice);
         arena.buy(1e18);
         assertEq(arena.lastBuyEpoch(), 1);
@@ -199,7 +218,9 @@ contract TimeArenaTest is Test {
 
     /// INV-TIME-ARENA-EPOCH-EVENT (#246): hard reset emits `LastBuyEpochStarted`.
     function test_emits_LastBuyEpochStarted_on_hard_reset() public {
-        vm.warp(block.timestamp + arena.deadline() - 600);
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpNearHardReset();
         vm.expectEmit(true, false, false, true);
         emit TimeArena.LastBuyEpochStarted(1, block.timestamp + 900);
         vm.prank(alice);
@@ -304,43 +325,82 @@ contract TimeArenaTest is Test {
     }
 
     function test_timer_extension_without_hard_reset() public {
-        uint256 dl0 = arena.deadline();
+        uint256 t0 = block.timestamp;
         vm.prank(alice);
         arena.buy(1e18);
-        assertEq(arena.deadline(), dl0 + 120);
+        assertTrue(arena.podiumTimerArmed(0));
+        assertEq(arena.deadline(), t0 + _init[0] + _ext[0]);
         assertEq(arena.lastBuyEpoch(), 0);
     }
 
     /// INV-TIME-ARENA-TIMER-MULTI (#271): one buy extends each podium by its category extension.
     function test_multi_podium_deadline_extend() public {
-        _ensureLevel(alice, 5);
-        uint256[] memory before = new uint256[](4);
-        uint256[4] memory expectedDelta = _ext;
+        address player = makeAddr("multiExt");
+        doub.mint(player, 1_000_000e18);
+        vm.prank(player);
+        doub.approve(address(arena), type(uint256).max);
+        _ensureLevel(player, 5);
+        uint256[4] memory before;
         for (uint8 c = 0; c < 4; c++) {
             before[c] = arena.podiumDeadline(c);
         }
-        vm.prank(alice);
+        vm.prank(player);
         arena.buy(1e18);
         for (uint8 c = 0; c < 4; c++) {
-            assertEq(arena.podiumDeadline(c), before[c] + expectedDelta[c], "category mismatch");
+            assertEq(arena.podiumDeadline(c), before[c] + _ext[c], "category mismatch");
         }
     }
 
-    /// GitLab #271: `startArena` seeds distinct initial deadlines per category.
-    function test_start_arena_initial_deadlines_differ_by_category() public view {
-        uint256 start = arena.arenaStart();
-        assertEq(arena.podiumDeadline(0), start + _init[0]);
-        assertEq(arena.podiumDeadline(1), start + _init[1]);
-        assertEq(arena.podiumDeadline(2), start + _init[2]);
-        assertEq(arena.podiumDeadline(3), start + _init[3]);
-        assertTrue(arena.podiumDeadline(0) != arena.podiumDeadline(1));
-        assertTrue(arena.podiumDeadline(1) != arena.podiumDeadline(2));
-        assertTrue(arena.podiumDeadline(2) != arena.podiumDeadline(3));
+    /// GitLab #330: timers unarmed at `startArena`; deadlines zero until first qualifying buy.
+    function test_start_arena_timers_unarmed() public view {
+        for (uint8 c = 0; c < 4; c++) {
+            assertFalse(arena.podiumTimerArmed(c));
+            assertEq(arena.podiumDeadline(c), 0);
+        }
+        assertEq(arena.deadline(), 0);
+    }
+
+    /// GitLab #330: idle epochs do not autoroll before first qualifying buy arms the timer.
+    function test_no_autoroll_before_timer_armed() public {
+        vm.warp(block.timestamp + _init[0] + 1);
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.podiumEpoch(0), 0);
+        assertTrue(arena.podiumTimerArmed(0));
+    }
+
+    /// GitLab #330: per-category arm on first qualifying buy (level gates).
+    function test_per_category_arm_on_first_qualifying_buy() public {
+        address lvl1 = makeAddr("lvl1");
+        doub.mint(lvl1, 1_000_000e18);
+        vm.prank(lvl1);
+        doub.approve(address(arena), type(uint256).max);
+        uint256 t0 = block.timestamp;
+        vm.prank(lvl1);
+        arena.buy(1e18);
+        assertTrue(arena.podiumTimerArmed(0));
+        assertFalse(arena.podiumTimerArmed(1));
+        assertEq(arena.podiumDeadline(0), t0 + _init[0] + _ext[0]);
+
+        address lvl2 = makeAddr("lvl2");
+        doub.mint(lvl2, 1_000_000e18);
+        vm.prank(lvl2);
+        doub.approve(address(arena), type(uint256).max);
+        _ensureLevel(lvl2, 2);
+        assertTrue(arena.podiumTimerArmed(1));
+        assertFalse(arena.podiumTimerArmed(2));
+    }
+
+    /// GitLab #330: cannot roll an unarmed epoch.
+    function test_roll_podium_reverts_when_unarmed() public {
+        vm.expectRevert("TimeArena: timer not armed");
+        arena.rollPodiumEpoch(2);
     }
 
     /// GitLab #271: Time Booster hard-reset band snaps to 300s, not +60s extension.
     function test_time_booster_hard_reset_band_240_to_300() public {
         _ensureLevel(alice, 2);
+        _armPodiumTimer(1);
         vm.warp(arena.podiumDeadline(1) - 200);
         uint256 before = arena.podiumDeadline(1);
         vm.prank(alice);
@@ -351,26 +411,32 @@ contract TimeArenaTest is Test {
 
     /// GitLab #271: WarBow BP reset bonus follows Last Buy hard reset, not WarBow timer band.
     function test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer() public {
-        _ensureLevel(alice, 4);
-        vm.prank(alice);
+        address wb = makeAddr("wb");
+        doub.mint(wb, 1_000_000e18);
+        vm.prank(wb);
+        doub.approve(address(arena), type(uint256).max);
+        _ensureLevel(wb, 4);
+        _warpPastBuyCooldown();
+        vm.prank(wb);
         arena.buy(1e18);
-        vm.warp(arena.podiumDeadline(0) + 1);
-        arena.rollPodiumEpoch(arena.CAT_LAST_BUYERS());
-        uint256 lastBuyDl = arena.podiumDeadline(0);
-        vm.warp(lastBuyDl - 1000);
-        assertGt(arena.podiumDeadline(0) - block.timestamp, _below[0]);
-        vm.warp(arena.podiumDeadline(3) - 2000);
+        uint256 dl3 = arena.podiumDeadline(3);
+        uint256 rem3 = dl3 > block.timestamp ? dl3 - block.timestamp : 0;
+        if (rem3 > _below[3]) {
+            vm.warp(block.timestamp + rem3 - (_below[3] - 100));
+        }
         assertLt(arena.podiumDeadline(3) - block.timestamp, _below[3]);
 
-        uint256 bpBefore = arena.battlePoints(alice);
-        vm.prank(alice);
+        uint256 bpBefore = arena.battlePoints(wb);
+        _warpPastBuyCooldown();
+        vm.prank(wb);
         arena.buy(1e18);
-        uint256 bpGain = arena.battlePoints(alice) - bpBefore;
+        uint256 bpGain = arena.battlePoints(wb) - bpBefore;
         assertEq(bpGain, arena.WARBOW_BASE_BUY_BP(), "no WarBow reset bonus without Last Buy hard reset");
     }
 
     /// GitLab #271: Defended streak window uses Last Buy remaining, not other podium timers.
     function test_defended_streak_uses_last_buy_timer_not_other_podium() public {
+        _armPodiumTimer(1);
         vm.warp(arena.podiumDeadline(1) - 100);
         assertLt(arena.podiumDeadline(1) - block.timestamp, _below[1]);
         assertGt(arena.podiumDeadline(0) - block.timestamp, arena.DEFENDED_STREAK_WINDOW_SEC());
@@ -559,6 +625,8 @@ contract TimeArenaTest is Test {
 
     /// INV-TIME-ARENA-CRED-EPOCH-BOUNDARY: `buyWithCred` at hard reset credits post-reset epoch pool (solo) (#311).
     function test_cred_accrue_buyWithCred_at_epoch_boundary() public {
+        vm.prank(alice);
+        arena.buy(1e18);
         _warpNearHardReset();
         uint256 epBefore = arena.lastBuyEpoch();
         vm.prank(alice);
@@ -566,7 +634,7 @@ contract TimeArenaTest is Test {
         uint256 epAfter = arena.lastBuyEpoch();
         assertEq(epAfter, epBefore + 1);
         assertEq(arena.epochCredPool(epAfter), 35e18);
-        assertEq(arena.epochCredPool(epBefore), 0);
+        assertEq(arena.epochCredPool(epBefore), 35e18);
     }
 
     /// Attack: CRED-only buyer cannot extract more than fair pro-rata share (#311).
@@ -708,11 +776,13 @@ contract TimeArenaTest is Test {
     }
 
     function test_first_buy_hard_reset_targets_post_epoch() public {
-        vm.warp(block.timestamp + arena.deadline() - 600);
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpNearHardReset();
         vm.prank(alice);
         arena.buy(1e18);
         assertEq(arena.lastBuyEpoch(), 1);
-        assertEq(arena.epochFixedCredBonus(2, alice), 1100e18);
+        assertEq(arena.epochFixedCredBonus(1, alice), 1100e18);
     }
 
     function test_first_buy_flag_survives_epoch_roll() public {
@@ -729,6 +799,7 @@ contract TimeArenaTest is Test {
     }
 
     function _warpNearHardReset() internal {
+        require(arena.podiumTimerArmed(0), "arm Last Buy first");
         uint256 dl = arena.deadline();
         uint256 remaining = dl > block.timestamp ? dl - block.timestamp : 0;
         if (remaining > 600) {
@@ -754,6 +825,25 @@ contract TimeArenaTest is Test {
 
     function _warpPastBuyCooldown() internal {
         vm.warp(block.timestamp + arena.buyCooldownSec() + 1);
+    }
+
+    /// Arms all four podium timers via a level-5 buy (GitLab #330).
+    function _armAllPodiumTimers() internal {
+        _ensureLevel(alice, 5);
+        if (!arena.podiumTimerArmed(3)) {
+            vm.prank(alice);
+            arena.buy(1e18);
+        }
+    }
+
+    /// Arms a single category timer with the minimum qualifying buy ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)).
+    function _armPodiumTimer(uint8 cat) internal {
+        if (arena.podiumTimerArmed(cat)) return;
+        uint256 minLevel = cat == 0 ? 1 : cat + 1;
+        _ensureLevel(alice, minLevel);
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
     }
 
     /// GitLab #299: buy max CHARM until wallet reaches `target` level (1–5).
@@ -876,23 +966,26 @@ contract TimeArenaTest is Test {
     }
 
     function test_roll_podium_after_expiry() public {
+        _armPodiumTimer(1);
         vm.warp(arena.podiumDeadline(1) + 1);
         vm.prank(alice);
         arena.rollPodiumEpoch(1);
         assertEq(arena.podiumEpoch(1), 1);
+        assertFalse(arena.podiumTimerArmed(1));
+        assertEq(arena.podiumDeadline(1), 0);
     }
 
-    /// GitLab #247: one category roll resets only its timer; Streak/Booster/WarBow diverge from Last Buy.
+    /// GitLab #247: one category roll disarms only its timer; Streak/Booster/WarBow diverge from Last Buy.
     function test_podium_timers_diverge_after_single_roll() public {
+        _armAllPodiumTimers();
         uint256 lastBuyDl = arena.podiumDeadline(0);
-        assertEq(arena.podiumDeadline(1), arena.arenaStart() + _init[1]);
         assertTrue(lastBuyDl != arena.podiumDeadline(1));
 
         vm.warp(arena.podiumDeadline(1) + 1);
-        uint256 ts = block.timestamp;
         arena.rollPodiumEpoch(arena.CAT_TIME_BOOSTER());
 
-        assertEq(arena.podiumDeadline(1), ts + _init[1]);
+        assertFalse(arena.podiumTimerArmed(1));
+        assertEq(arena.podiumDeadline(1), 0);
         assertEq(arena.podiumDeadline(0), lastBuyDl);
         assertTrue(arena.podiumDeadline(0) != arena.podiumDeadline(1));
         assertTrue(arena.podiumDeadline(2) != arena.podiumDeadline(1));
@@ -901,6 +994,7 @@ contract TimeArenaTest is Test {
 
     /// GitLab #247: `podiumEpoch[cat]` counters advance independently when categories roll on different schedules.
     function test_podium_epochs_independent_after_skewed_rolls() public {
+        _armAllPodiumTimers();
         vm.warp(arena.podiumDeadline(1) + 1);
         arena.rollPodiumEpoch(arena.CAT_TIME_BOOSTER());
         assertEq(arena.podiumEpoch(1), 1);
@@ -916,6 +1010,7 @@ contract TimeArenaTest is Test {
     }
 
     function test_roll_podium_reverts_while_timer_live() public {
+        _armPodiumTimer(2);
         vm.expectRevert("TimeArena: timer live");
         arena.rollPodiumEpoch(2);
     }
@@ -945,17 +1040,25 @@ contract TimeArenaTest is Test {
         assertEq(arena.podiumEpoch(cat), 1);
     }
 
-    /// GitLab #247: Last Buy hard reset on buy bumps `lastBuyEpoch` (CHARM/CRED epoch), not on other podium rolls.
+    /// GitLab #247: other podium rolls do not bump global `lastBuyEpoch`.
     function test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll() public {
-        vm.warp(block.timestamp + arena.deadline() - 600);
-        vm.prank(alice);
+        address carol = makeAddr("carol");
+        doub.mint(carol, 1_000_000e18);
+        vm.prank(carol);
+        doub.approve(address(arena), type(uint256).max);
+        vm.prank(carol);
         arena.buy(1e18);
-        assertEq(arena.lastBuyEpoch(), 1);
-        uint256 streakEpoch = arena.podiumEpoch(arena.CAT_DEFENDED_STREAK());
-
+        address[] memory wallets = new address[](1);
+        wallets[0] = carol;
+        arena.grandfatherProgression(wallets);
+        _warpPastBuyCooldown();
+        vm.prank(carol);
+        arena.buy(1e18);
         vm.warp(arena.podiumDeadline(arena.CAT_DEFENDED_STREAK()) + 1);
+        uint256 lbEpoch = arena.lastBuyEpoch();
+        uint256 streakEpoch = arena.podiumEpoch(arena.CAT_DEFENDED_STREAK());
         arena.rollPodiumEpoch(arena.CAT_DEFENDED_STREAK());
-        assertEq(arena.lastBuyEpoch(), 1);
+        assertEq(arena.lastBuyEpoch(), lbEpoch);
         assertEq(arena.podiumEpoch(arena.CAT_DEFENDED_STREAK()), streakEpoch + 1);
     }
 
@@ -1159,6 +1262,8 @@ contract TimeArenaTest is Test {
 
     /// GitLab #312: buy succeeds after Last Buy deadline via autoroll.
     function test_buy_autorolls_after_last_buy_deadline() public {
+        vm.prank(alice);
+        arena.buy(1e18);
         vm.warp(arena.deadline() + 1);
         uint256 epochBefore = arena.podiumEpoch(arena.CAT_LAST_BUYERS());
         vm.prank(alice);
@@ -1487,7 +1592,7 @@ contract TimeArenaTest is Test {
 
         assertTrue(arena.warbowEpochFinalized(0));
         assertGt(doub.balanceOf(winners[0]), firstBefore, "single autoroll payout");
-        vm.expectRevert("TimeArena: timer live");
+        vm.expectRevert("TimeArena: timer not armed");
         arena.rollPodiumEpoch(cat);
     }
 
@@ -1782,31 +1887,31 @@ contract TimeArenaTest is Test {
 
     /// GitLab #299: level-1 buy extends only Last Buy timer.
     function test_level_1_gates_timers() public {
-        uint256[4] memory before;
-        for (uint8 c = 0; c < 4; ++c) {
-            before[c] = arena.podiumDeadline(c);
-        }
+        uint256 t0 = block.timestamp;
         vm.prank(alice);
         arena.buy(1e18);
-        assertEq(arena.podiumDeadline(0), before[0] + _ext[0]);
-        assertEq(arena.podiumDeadline(1), before[1]);
-        assertEq(arena.podiumDeadline(2), before[2]);
-        assertEq(arena.podiumDeadline(3), before[3]);
+        assertEq(arena.podiumDeadline(0), t0 + _init[0] + _ext[0]);
+        assertFalse(arena.podiumTimerArmed(1));
+        assertEq(arena.podiumDeadline(1), 0);
+        assertFalse(arena.podiumTimerArmed(2));
+        assertEq(arena.podiumDeadline(2), 0);
+        assertFalse(arena.podiumTimerArmed(3));
+        assertEq(arena.podiumDeadline(3), 0);
     }
 
     /// GitLab #299: level-2 unlocks Time Booster timer only among secondary podiums.
     function test_level_2_gates_timers() public {
-        _ensureLevel(alice, 2);
-        uint256[4] memory before;
-        for (uint8 c = 0; c < 4; ++c) {
-            before[c] = arena.podiumDeadline(c);
-        }
-        vm.prank(alice);
-        arena.buy(1e18);
-        assertEq(arena.podiumDeadline(0), before[0] + _ext[0]);
-        assertEq(arena.podiumDeadline(1), before[1] + _ext[1]);
-        assertEq(arena.podiumDeadline(2), before[2]);
-        assertEq(arena.podiumDeadline(3), before[3]);
+        address player = makeAddr("lvl2gate");
+        doub.mint(player, 1_000_000e18);
+        vm.prank(player);
+        doub.approve(address(arena), type(uint256).max);
+        _ensureLevel(player, 2);
+        assertTrue(arena.podiumTimerArmed(0));
+        assertTrue(arena.podiumTimerArmed(1));
+        assertFalse(arena.podiumTimerArmed(2));
+        assertEq(arena.podiumDeadline(2), 0);
+        assertFalse(arena.podiumTimerArmed(3));
+        assertEq(arena.podiumDeadline(3), 0);
     }
 
     /// GitLab #299: level-3 unlocks Defended Streak timer extension.

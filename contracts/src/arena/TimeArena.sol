@@ -101,6 +101,8 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     uint256[4] public podiumDeadline;
     uint256[4] public podiumEpoch;
+    /// @dev Per-category settlement timer armed on first qualifying buy in epoch ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)).
+    bool[4] public podiumTimerArmed;
 
     mapping(address => uint256) public charmWeight;
     mapping(address => uint256) public buyCount;
@@ -197,6 +199,7 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     event WarBowFlagClaimed(address indexed player, uint256 bonusBp);
     event WarbowPodiumFinalized(uint256 indexed epoch, address first, address second, address third);
     event PodiumPoolsToppedUp(address indexed donor, uint256 amountDoubWad);
+    event PodiumTimerArmed(uint8 indexed category, uint256 indexed epoch);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -289,9 +292,10 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         arenaStart = block.timestamp;
         epochAnchorTimestamp = block.timestamp;
         for (uint8 i; i < NUM_PODIUM_CATEGORIES; ++i) {
-            podiumDeadline[i] = block.timestamp + podiumInitialTimerSec[i];
+            podiumTimerArmed[i] = false;
+            podiumDeadline[i] = 0;
         }
-        deadline = podiumDeadline[CAT_LAST_BUYERS];
+        deadline = 0;
         emit ArenaStarted(arenaStart, deadline);
     }
 
@@ -372,6 +376,7 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     function rollPodiumEpoch(uint8 category) external nonReentrant {
         require(category < NUM_PODIUM_CATEGORIES, "TimeArena: bad cat");
+        require(podiumTimerArmed[category], "TimeArena: timer not armed");
         require(block.timestamp > podiumDeadline[category], "TimeArena: timer live");
         _rollPodiumEpoch(category);
     }
@@ -401,9 +406,10 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         podiumVaults.rollEpochTranches(category);
 
         podiumEpoch[category] = epochBefore + 1;
-        podiumDeadline[category] = block.timestamp + podiumInitialTimerSec[category];
+        podiumTimerArmed[category] = false;
+        podiumDeadline[category] = 0;
         if (category == CAT_LAST_BUYERS) {
-            deadline = podiumDeadline[category];
+            deadline = 0;
         }
 
         _clearPodium(category);
@@ -576,6 +582,7 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         _totalBuys += 1;
         nextBuyAllowedAt[buyer] = block.timestamp + buyCooldownSec;
 
+        _armPodiumTimer(CAT_LAST_BUYERS);
         uint256 deadlineBefore = deadline;
         uint256 remainingBefore = deadlineBefore > block.timestamp ? deadlineBefore - block.timestamp : 0;
 
@@ -656,7 +663,19 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         );
     }
 
+    function _armPodiumTimer(uint8 category) internal {
+        if (podiumTimerArmed[category]) return;
+        podiumTimerArmed[category] = true;
+        uint256 dl = block.timestamp + podiumInitialTimerSec[category];
+        podiumDeadline[category] = dl;
+        if (category == CAT_LAST_BUYERS) {
+            deadline = dl;
+        }
+        emit PodiumTimerArmed(category, podiumEpoch[category]);
+    }
+
     function _extendPodiumTimer(uint8 category) internal {
+        _armPodiumTimer(category);
         (uint256 nd,) = TimeMath.extendDeadlineOrResetBelowThreshold(
             podiumDeadline[category],
             block.timestamp,
@@ -847,7 +866,7 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     }
 
     function _willLastBuyHardReset() internal view returns (bool) {
-        if (arenaStart == 0) return false;
+        if (arenaStart == 0 || !podiumTimerArmed[CAT_LAST_BUYERS]) return false;
         uint256 remaining = deadline > block.timestamp ? deadline - block.timestamp : 0;
         return remaining < podiumResetBelowRemainingSec[CAT_LAST_BUYERS];
     }
@@ -903,7 +922,7 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     function _autorollExpiredPodiums() internal {
         for (uint8 cat = 0; cat < NUM_PODIUM_CATEGORIES; ++cat) {
-            if (block.timestamp > podiumDeadline[cat]) {
+            if (podiumTimerArmed[cat] && block.timestamp > podiumDeadline[cat]) {
                 _rollPodiumEpoch(cat);
             }
         }

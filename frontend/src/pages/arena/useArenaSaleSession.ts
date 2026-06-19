@@ -188,6 +188,8 @@ export type UseArenaSaleSession = {
   preStartCountdownSec: number | undefined;
   /** Live sale countdown — uses the shared `useArenaHeroTimer` skew. */
   saleCountdownSec: number | undefined;
+  /** Hero placeholder when Last Buy timer is unarmed ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)). */
+  heroCountdownPlaceholder: string | undefined;
   /** Wall-vs-chain skewed `chain time` shared with the hero timer. */
   chainNowSec: number | undefined;
   /**
@@ -440,6 +442,7 @@ export function useArenaSaleSession(
   const {
     heroTimer,
     secondsRemaining: saleCountdownSec,
+    countdownPlaceholder: heroCountdownPlaceholder,
     chainNowSec: heroChainNowSec,
     refresh: refreshHeroTimer,
     refreshSoft: refreshHeroTimerSoft,
@@ -1689,6 +1692,7 @@ export function useArenaSaleSession(
     buyCharmBonusPreviewLines,
     preStartCountdownSec,
     saleCountdownSec,
+    heroCountdownPlaceholder,
     chainNowSec: heroChainNowSec,
     timerExtensionPreviewSec,
     buyPreviewPolicy,

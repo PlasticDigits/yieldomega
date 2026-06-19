@@ -191,6 +191,7 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
         "last_buy_epoch": h.timer.last_buy_epoch,
         "podium_epochs": h.timer.podium_epochs,
         "podium_deadlines_sec": h.timer.podium_deadlines_sec,
+        "podium_timer_armed": h.timer.podium_timer_armed,
         "charm_price_wad": h.sale_head.charm_price_wad,
         "epoch_charm_anchor_wad": h.sale_head.epoch_charm_anchor_wad,
         "epoch_anchor_timestamp_sec": h.sale_head.epoch_anchor_timestamp_sec,

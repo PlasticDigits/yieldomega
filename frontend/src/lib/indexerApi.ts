@@ -820,6 +820,8 @@ export type ArenaTimersResponse = {
   paused: boolean;
   total_doub_raised: string;
   podium_deadlines_sec: string[];
+  /** Per-category settlement timer armed at head ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330); schema ≥ 2.17.0). */
+  podium_timer_armed?: boolean[];
   /** Arena v2 buy-hub head fields (schema ≥ 2.6.0 · [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
   /** Effective DOUB/CHARM at head (`effectiveCharmPriceWad()` · [#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
   charm_price_wad?: string;
