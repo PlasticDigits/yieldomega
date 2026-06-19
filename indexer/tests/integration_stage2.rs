@@ -1837,7 +1837,7 @@ async fn arena_session_summary_fixture_since_activity() {
         log
     };
 
-    let logs = vec![
+    let logs = [
         mk_buy(1, alice, activity_ts, DOUB_1000),
         mk_buy(2, bob, activity_ts + 10, DOUB_100),
         sample_log_tx(
