@@ -110,8 +110,6 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     mapping(address => uint256) public charmWeight;
     mapping(address => uint256) public buyCount;
-    /// @dev Reserved legacy slot for the retired flat cooldown mapping. Use `nextBuyAllowedAt(user)`.
-    mapping(address => uint256) private _legacyNextBuyAllowedAt;
     mapping(address => uint256) public totalEffectiveTimerSecAdded;
     mapping(address => uint256) public bestDefendedStreak;
     mapping(address => uint256) public activeDefendedStreak;
