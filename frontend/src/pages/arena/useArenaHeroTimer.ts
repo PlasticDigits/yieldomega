@@ -15,7 +15,7 @@ export type HeroTimerState = {
   readBlockNumber: bigint;
   /** Last Buy (`podium_timer_armed[0]`); false when epoch timer not started ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)). */
   lastBuyTimerArmed?: boolean;
-  /** `Math.floor(Date.now() / 1000)` at the moment this snapshot was stored — not stale state. */
+  /** Wall clock sec anchored to indexer `polled_at_ms` when available ([#333](https://gitlab.com/PlasticDigits/yieldomega/-/issues/333)); else local fetch time. */
   fetchedAtSec: number;
 };
 
@@ -121,9 +121,12 @@ export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): 
       }
       if (resetSkew) setIsBusy(true);
       try {
-        const fetchedAtSec = Math.floor(Date.now() / 1000);
-        let base: Omit<HeroTimerState, "fetchedAtSec"> | null = null;
         const data = await fetchArenaTimers();
+        const fetchedAtSec =
+          data?.polled_at_ms != null && Number.isFinite(data.polled_at_ms)
+            ? Math.floor(data.polled_at_ms / 1000)
+            : Math.floor(Date.now() / 1000);
+        let base: Omit<HeroTimerState, "fetchedAtSec"> | null = null;
         if (data) {
           const fromIdx = snapshotFromArenaTimers(data);
           if (isFiniteHeroBase(fromIdx)) {
