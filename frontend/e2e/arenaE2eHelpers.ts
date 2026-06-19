@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, type Page } from "@playwright/test";
+import { ARENA_LAST_CLOSED_AT_KEY } from "../src/lib/arenaSessionClose";
+
+export { ARENA_LAST_CLOSED_AT_KEY };
 
 /** Anvil E2E: fail fast when RPC/env is wrong (was 120s; keep low for local iteration). */
 export const ARENA_E2E_TIMEOUT_MS = 15_000;
@@ -145,4 +148,46 @@ export async function setCharmSliderMin(page: Page): Promise<void> {
   await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
+}
+
+/** Seed absent-session timestamp before navigation (While You Were Away #338). */
+export async function seedArenaLastClosedAt(page: Page, absentMs: number): Promise<void> {
+  await page.addInitScript(
+    ({ key, ts }) => {
+      localStorage.setItem(key, String(ts));
+    },
+    { key: ARENA_LAST_CLOSED_AT_KEY, ts: Date.now() - absentMs },
+  );
+}
+
+/** Navigate timer podium carousel via dot control and assert active slide. */
+export async function gotoCarouselDot(page: Page, dotIndex: number): Promise<void> {
+  const dot = page.getByTestId(`arena-timer-podium-carousel-dot-${dotIndex}`);
+  await expect(dot).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  await dot.click();
+  await expect(dot).toHaveAttribute("aria-selected", "true");
+}
+
+/** Poll indexer session-summary until buys/podium activity since `sinceMs` (WYWA #338). */
+export async function waitIndexerSessionSummaryActivity(
+  sinceMs: number,
+  timeoutMs = 60_000,
+): Promise<void> {
+  const base = process.env.VITE_INDEXER_URL ?? "http://127.0.0.1:3100";
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const res = await fetch(
+      `${base}/v1/arena/session-summary?since_ms=${encodeURIComponent(String(sinceMs))}`,
+    );
+    if (res.ok) {
+      const body = (await res.json()) as { total_buys?: string; podium_updates?: string };
+      const buys = Number(body.total_buys ?? "0");
+      const updates = Number(body.podium_updates ?? "0");
+      if ((Number.isFinite(buys) && buys > 0) || (Number.isFinite(updates) && updates > 0)) {
+        return;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  throw new Error(`indexer session-summary had no activity since ${sinceMs} within ${timeoutMs}ms`);
 }
