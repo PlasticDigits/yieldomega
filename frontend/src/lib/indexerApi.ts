@@ -969,6 +969,52 @@ export async function fetchArenaWalletStats(address: string) {
   return getJson<ArenaWalletStats>(arenaWalletStatsPath(address));
 }
 
+export type ArenaSessionSummaryWinner = {
+  rank: number;
+  address: string | null;
+  prize_doub_wad: string;
+};
+
+export type ArenaSessionSummaryPodiumEpoch = {
+  podium: string;
+  category: number;
+  epoch: string;
+  winners: ArenaSessionSummaryWinner[];
+  pool_paid_doub_wad: string;
+};
+
+export type ArenaSessionSummaryWallet = {
+  address: string;
+  buy_count: string;
+  wins: string;
+  rank_at_since: string | null;
+  rank_now: string | null;
+  rank_delta: string | null;
+};
+
+export type ArenaSessionSummary = {
+  since_ms: string;
+  elapsed_ms: string;
+  total_buys: string;
+  unique_players: string;
+  podium_updates: string;
+  podium_epochs_ended: ArenaSessionSummaryPodiumEpoch[];
+  wallet_summary: ArenaSessionSummaryWallet | null;
+};
+
+export function arenaSessionSummaryApiPath(sinceMs: number, wallet?: string) {
+  const params = new URLSearchParams({ since_ms: String(Math.floor(sinceMs)) });
+  if (wallet?.trim()) {
+    params.set("wallet", wallet.trim().toLowerCase());
+  }
+  return `/v1/arena/session-summary?${params.toString()}`;
+}
+
+/** Absent-session arena summary since browser last close ([#338](https://gitlab.com/PlasticDigits/yieldomega/-/issues/338)). */
+export async function fetchArenaSessionSummary(sinceMs: number, wallet?: string) {
+  return getJson<ArenaSessionSummary>(arenaSessionSummaryApiPath(sinceMs, wallet));
+}
+
 export type ArenaWarbowLatestBpItem = {
   player: string;
   battle_points: string;

@@ -236,12 +236,13 @@ pub async fn persist_decoded_log_conn(
         } => {
             sqlx::query(
                 r#"INSERT INTO idx_arena_podium_epoch (
-                    block_number, tx_hash, log_index, category, epoch,
+                    block_number, block_timestamp, tx_hash, log_index, category, epoch,
                     first_place, second_place, third_place, pool_paid
-                ) VALUES ($1, $2, $3, $4, $5::numeric, $6, $7, $8, $9::numeric)
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric, $7, $8, $9, $10::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
+            .bind(block_ts)
             .bind(&tx_h)
             .bind(log_i)
             .bind(*category as i16)

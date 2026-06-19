@@ -18,6 +18,7 @@ use crate::api_cursor::{
     TimestampBlockLogCursor,
 };
 use crate::arena_platform_usage::arena_platform_usage;
+use crate::arena_session_summary::arena_session_summary;
 use crate::arena_podium_live::{
     fetch_live_podium_conn, last_buy_winner_buy_sec_pool, live_row_has_entrant,
     warbow_top3_from_scores_conn, LivePodiumRow, PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
@@ -41,6 +42,10 @@ pub fn arena_routes() -> axum::Router<AppState> {
         .route(
             "/v1/arena/platform-usage",
             axum::routing::get(arena_platform_usage),
+        )
+        .route(
+            "/v1/arena/session-summary",
+            axum::routing::get(arena_session_summary),
         )
         .route(
             "/v1/arena/wallet/{address}/stats",

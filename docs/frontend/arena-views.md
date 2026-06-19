@@ -132,7 +132,7 @@ The shared primitives used by **`/`** (play), **`/arena/protocol`**, and **`/ref
 must look native to the cyberminimalist glass system while preserving current
 behavior:
 
-- Modals: `WalletProfileModal`, `FeatureMechanicModal`, and other `Modal` users
+- Modals: `WalletProfileModal`, `FeatureMechanicModal`, `WhileYouWereAwayModal`, and other `Modal` users
   share dark tactical surfaces, compact headings, and secondary explorer links.
   Live activity on `/arena/protocol` uses the inline `arena-live-buys-activity`
   feed (not the legacy hero-strip `ArenaBuyModals` list/detail stack retired in
@@ -202,7 +202,23 @@ When a connected wallet crosses **Level 2+** on play **`/`**, [`ArenaSimplePage.
 - `GET /v1/arena/buys` — recent buys
 - `GET /v1/arena/activity` — recent buy / WarBow steal / guard / revenge actions for AUDIT activity ([#292](#arena-production-components-gitlab-292))
 - `GET /v1/arena/wallet/{address}/stats` — participant profile aggregates (XP, buy count, WarBow steals; [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255); schema **≥ 2.4.0**)
+- `GET /v1/arena/session-summary` — absent-session recap for play modal ([#338](https://gitlab.com/PlasticDigits/yieldomega/-/issues/338); schema **≥ 2.18.0**)
 - `GET /v1/arena/podium-pool-donations` — donate-pools AUDIT card ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
+
+<a id="while-you-were-away-modal-gitlab-338"></a>
+
+## While You Were Away modal (GitLab [#338](https://gitlab.com/PlasticDigits/yieldomega/-/issues/338))
+
+On play **`/`**, when the browser has a prior close timestamp (`yieldomega.arena.lastClosedAt.v1` in **`localStorage`**) and the indexer reports arena activity since that time, **`WhileYouWereAwayModal`** opens once per page load. **`visibilitychange`** / **`pagehide`** persist the close time (per-browser, not per-wallet). First visit (no timestamp) and indexer-offline states skip the modal. Connected wallets see congratulations when they placed on ended podium epochs.
+
+| Piece | Path |
+|-------|------|
+| Modal UI | [`WhileYouWereAwayModal.tsx`](../../frontend/src/components/WhileYouWereAwayModal.tsx) |
+| Lifecycle + storage | [`arenaSessionClose.ts`](../../frontend/src/lib/arenaSessionClose.ts), [`useWhileYouWereAway.ts`](../../frontend/src/hooks/useWhileYouWereAway.ts) |
+| Play mount | [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) |
+| Indexer client | [`indexerApi.ts`](../../frontend/src/lib/indexerApi.ts) (`fetchArenaSessionSummary`) |
+
+Invariant: **`INV-FRONTEND-338-WYWA-MODAL`** · **`INV-INDEXER-338-SESSION-SUMMARY`** in [invariants](../testing/invariants-and-business-logic.md#while-you-were-away-gitlab-338). Tests: `WhileYouWereAwayModal.test.tsx`, `arenaSessionClose.test.ts`, `indexerApi.test.ts`, `integration_stage2.rs::arena_session_summary_fixture_since_activity`. Visuals: cyberminimalist glass (**`INV-FRONTEND-294`**) — screenshots in [issue #338 screenshots](../testing/screenshots/issue-338/README.md).
 
 <a id="wallet-profile-modal-gitlab-258"></a>
 
