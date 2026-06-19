@@ -18,6 +18,7 @@ import {
   type ArenaFeatureKey,
   FEATURE_UNLOCK_LEVEL,
   isFeatureUnlocked,
+  shouldShowLevelLock,
 } from "@/lib/arenaProgression";
 import {
   type IndexerWarbowHeroHead,
@@ -99,6 +100,9 @@ export function ArenaWarbowHeroPanel({
   );
   const warbowFlagUnlocked =
     playerLevel !== undefined && isFeatureUnlocked(playerLevel, "warbow_flag");
+  const showWarbowFlagLevelLock =
+    playerLevel !== undefined &&
+    shouldShowLevelLock(playerLevel, FEATURE_UNLOCK_LEVEL.warbow_flag);
   const [targetFilter, setTargetFilter] = useState<TargetFilter>("eligible");
   const [targetSort, setTargetSort] = useState<TargetSort>("bp-desc");
   const targetOptionRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -440,7 +444,7 @@ export function ArenaWarbowHeroPanel({
           </div>
           <p className="muted">Claim after silence.</p>
           {w.isConnected && w.saleActive ? (
-            !warbowFlagUnlocked ? (
+            !warbowFlagUnlocked && showWarbowFlagLevelLock ? (
               <LockedUntilLevel
                 requiredLevel={FEATURE_UNLOCK_LEVEL.warbow_flag}
                 variant="compact"

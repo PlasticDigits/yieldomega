@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { ARENA_PROGRESSION_TIERS, featureKeyForUnlockLevel } from "@/lib/arenaProgression";
+
 /** Indexer `prizes_won[].podium` / `highest_scores[].podium` keys → UX labels. */
 const PODIUM_KEY_LABELS: Record<string, string> = {
   last_buy: "Last Buy",
@@ -10,6 +12,19 @@ const PODIUM_KEY_LABELS: Record<string, string> = {
 
 export function walletProfilePodiumLabel(key: string): string {
   return PODIUM_KEY_LABELS[key] ?? key.replace(/_/g, " ");
+}
+
+/** Short progression tier label for wallet profile level history ([#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)). */
+export function walletProfileLevelLabel(level: number): string {
+  if (level === 1) {
+    return ARENA_PROGRESSION_TIERS[0]?.shortLabel ?? "Last Buy";
+  }
+  const feature = featureKeyForUnlockLevel(level);
+  if (!feature) {
+    return `Level ${level}`;
+  }
+  const tier = ARENA_PROGRESSION_TIERS.find((row) => row.feature === feature);
+  return tier?.shortLabel ?? `Level ${level}`;
 }
 
 /** Indexer `podium_win_rate` is a 0–1 fraction string (e.g. `"0.2500"`). */
@@ -29,6 +44,14 @@ export function formatWalletProfileUnixSec(sec: string | null | undefined): stri
   } catch {
     return "—";
   }
+}
+
+/** UTC ISO-8601 timestamps from wallet stats `level_history` ([#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)). */
+export function formatWalletProfileIso8601(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "—";
+  const ms = Date.parse(iso.trim());
+  if (!Number.isFinite(ms)) return "—";
+  return new Date(ms).toLocaleString();
 }
 
 export function formatWalletProfileRankLabel(rank: number): string {

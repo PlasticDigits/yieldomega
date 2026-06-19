@@ -174,6 +174,70 @@ async fn fetch_cred_balance_wad(pool: &PgPool, wallet: &str) -> Result<String, s
     .await
 }
 
+async fn fetch_first_buy_reached_at_iso(
+    pool: &PgPool,
+    wallet: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"SELECT to_char(
+               MIN(block_timestamp) AT TIME ZONE 'UTC',
+               'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+           )
+           FROM idx_arena_buy
+           WHERE buyer = $1"#,
+    )
+    .bind(wallet)
+    .fetch_one(pool)
+    .await
+}
+
+async fn fetch_level_up_reached_at_iso(
+    pool: &PgPool,
+    wallet: &str,
+) -> Result<std::collections::HashMap<i32, String>, sqlx::Error> {
+    let rows = sqlx::query(
+        r#"SELECT new_level::int AS lvl,
+                  to_char(
+                    MIN(block_timestamp) AT TIME ZONE 'UTC',
+                    'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+                  ) AS reached_at
+           FROM idx_arena_level_up
+           WHERE player = $1 AND new_level >= 2 AND new_level <= 5
+           GROUP BY new_level"#,
+    )
+    .bind(wallet)
+    .fetch_all(pool)
+    .await?;
+    let mut map = std::collections::HashMap::new();
+    for row in rows {
+        let lvl: i32 = row.get("lvl");
+        let reached: Option<String> = row.get("reached_at");
+        if let Some(reached) = reached {
+            map.insert(lvl, reached);
+        }
+    }
+    Ok(map)
+}
+
+fn build_level_history(
+    first_buy: Option<String>,
+    level_ups: std::collections::HashMap<i32, String>,
+) -> Vec<Value> {
+    (1..=5)
+        .map(|lvl| {
+            let reached_at = if lvl == 1 {
+                first_buy.clone()
+            } else {
+                level_ups.get(&lvl).cloned()
+            };
+            json!({
+                "level": lvl.to_string(),
+                "reached_at": reached_at,
+            })
+        })
+        .collect()
+}
+
 async fn fetch_xp_progression(pool: &PgPool, wallet: &str) -> Result<(String, String), sqlx::Error> {
     let rows = sqlx::query(
         r#"SELECT xp_gained::text AS xp_gained
@@ -379,6 +443,10 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
 
     let cred_balance_wad = fetch_cred_balance_wad(pool, wallet).await?;
 
+    let first_buy_reached_at = fetch_first_buy_reached_at_iso(pool, wallet).await?;
+    let level_up_reached_at = fetch_level_up_reached_at_iso(pool, wallet).await?;
+    let level_history = build_level_history(first_buy_reached_at, level_up_reached_at);
+
     Ok(json!({
         "address": wallet,
         "epochs_participated": epochs_participated,
@@ -412,6 +480,7 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
         "longest_defended_streak": longest_defended_streak,
         "podium_win_rate": podium_win_rate,
         "rank_distribution": rank_distribution,
+        "level_history": level_history,
     }))
 }
 
@@ -974,5 +1043,24 @@ mod tests {
     fn pending_cred_pro_rata_plus_bonus() {
         let pending = pending_cred_from_epoch_parts(WAD, WAD * 2, 2, FIRST_BUY_CRED_BONUS_WAD);
         assert_eq!(pending, CRED_PER_BUY_WAD + FIRST_BUY_CRED_BONUS_WAD);
+    }
+
+    #[test]
+    fn build_level_history_orders_levels_and_nulls_unknown() {
+        let mut level_ups = std::collections::HashMap::new();
+        level_ups.insert(2, "2024-01-02T00:00:00Z".into());
+        let history = build_level_history(Some("2024-01-01T00:00:00Z".into()), level_ups);
+        assert_eq!(history.len(), 5);
+        assert_eq!(history[0].get("level").and_then(|v| v.as_str()), Some("1"));
+        assert_eq!(
+            history[0].get("reached_at").and_then(|v| v.as_str()),
+            Some("2024-01-01T00:00:00Z")
+        );
+        assert_eq!(
+            history[1].get("reached_at").and_then(|v| v.as_str()),
+            Some("2024-01-02T00:00:00Z")
+        );
+        assert!(history[2].get("reached_at").map(|v| v.is_null()).unwrap_or(false));
+        assert!(history[4].get("reached_at").map(|v| v.is_null()).unwrap_or(false));
     }
 }

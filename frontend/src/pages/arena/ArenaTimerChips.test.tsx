@@ -49,7 +49,7 @@ describe("ArenaPodiumTimerChip", () => {
     expect(scoreIdx).toBeGreaterThan(prizeIdx);
     expect(identityIdx).toBeGreaterThan(scoreIdx);
     expect(src).toContain("arena-timer-chips__aside");
-    expect(src).toContain("unlocked ? helpButton : null");
+    expect(src).toContain("chipVisuallyUnlocked ? helpButton : null");
     expect(src).not.toMatch(/LockedUntilLevel[\s\S]*?action=\{helpButton\}/);
   });
 });

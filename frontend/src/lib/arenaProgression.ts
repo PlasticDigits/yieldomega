@@ -29,6 +29,39 @@ export function isFeatureUnlocked(level: bigint | number, feature: ArenaFeatureK
   return clampPlayerLevel(level) >= FEATURE_UNLOCK_LEVEL[feature];
 }
 
+/** Immediate next progression tier, or null at max level (#334). */
+export function nextUnlockLevel(playerLevel: bigint | number): number | null {
+  const level = clampPlayerLevel(playerLevel);
+  if (level >= MAX_PLAYER_LEVEL) return null;
+  return level + 1;
+}
+
+/** Show level-lock chrome only on the immediate next unlock tier (#334). */
+export function shouldShowLevelLock(
+  playerLevel: bigint | number | undefined,
+  requiredLevel: number,
+): boolean {
+  if (playerLevel === undefined) return false;
+  const next = nextUnlockLevel(playerLevel);
+  return next !== null && requiredLevel === next;
+}
+
+/**
+ * Podium / carousel lock overlay: Last Buy never locked; disconnected wallets skip
+ * secondary-tier chrome; connected wallets only lock the next unlock tier (#334).
+ */
+export function shouldShowPodiumLevelLock(
+  walletConnected: boolean,
+  viewerLevel: number | undefined,
+  requiredLevel: number,
+  categoryIndex = 0,
+): boolean {
+  if (categoryIndex === 0) return false;
+  if (!walletConnected) return false;
+  if (viewerLevel === undefined) return false;
+  return shouldShowLevelLock(viewerLevel, requiredLevel);
+}
+
 export function lockedUntilLevelCopy(requiredLevel: number): string {
   return `Locked until Level ${requiredLevel}`;
 }

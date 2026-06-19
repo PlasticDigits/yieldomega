@@ -216,6 +216,12 @@ export type ArenaSaleState = {
 const ZERO_DEC = "0";
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
+/** Prefer indexer poll instant when schema ≥ 2.18.0 exposes it ([#333](https://gitlab.com/PlasticDigits/yieldomega/-/issues/333)). */
+function arenaTimersPolledAtMs(t: Pick<ArenaTimersResponse, "polled_at_ms">): number {
+  const ms = t.polled_at_ms;
+  return typeof ms === "number" && Number.isFinite(ms) ? ms : Date.now();
+}
+
 /** Builds legacy sale-state shape from `GET /v1/arena/timers` for RPC row mappers (#266). */
 export async function fetchLegacyArenaSaleState(): Promise<ArenaSaleState | null> {
   const t = await fetchArenaTimers();
@@ -227,7 +233,7 @@ export async function fetchLegacyArenaSaleState(): Promise<ArenaSaleState | null
   return {
     read_block_number: t.read_block_number,
     block_timestamp_sec: t.block_timestamp_sec,
-    polled_at_ms: Date.now(),
+    polled_at_ms: arenaTimersPolledAtMs(t),
     sale_start_sec: t.arena_start_sec,
     deadline_sec: t.last_buy_deadline_sec,
     ended: false,
@@ -318,7 +324,7 @@ export async function fetchLegacyArenaChainTimer(): Promise<ArenaChainTimer | nu
     block_timestamp_sec: t.block_timestamp_sec,
     timer_cap_sec: t.timer_cap_sec,
     read_block_number: t.read_block_number,
-    polled_at_ms: Date.now(),
+    polled_at_ms: arenaTimersPolledAtMs(t),
   };
 }
 
@@ -820,6 +826,8 @@ export type ArenaBuyItem = {
 export type ArenaTimersResponse = {
   read_block_number: string;
   block_timestamp_sec: string;
+  /** Unix millis when the head poller last refreshed this snapshot (schema ≥ 2.18.0 · [#333](https://gitlab.com/PlasticDigits/yieldomega/-/issues/333)). */
+  polled_at_ms?: number;
   last_buy_deadline_sec: string;
   timer_cap_sec: string;
   arena_start_sec: string;
@@ -842,6 +850,12 @@ export type ArenaTimersResponse = {
   timer_extension_sec?: string;
   time_arena_buy_router?: string;
   referral_cred_flat_wad?: string;
+};
+
+export type ArenaWalletLevelHistoryEntry = {
+  level: string;
+  /** UTC ISO-8601 milestone time; `null` when not yet reached (schema ≥ 2.18.0, #336). */
+  reached_at: string | null;
 };
 
 export type ArenaWalletStats = {
@@ -890,6 +904,8 @@ export type ArenaWalletStats = {
   longest_defended_streak: string;
   podium_win_rate: string;
   rank_distribution: Record<"1" | "2" | "3", string>;
+  /** Progression milestone timestamps — levels 1–5 (#336, schema ≥ 2.18.0). */
+  level_history?: ArenaWalletLevelHistoryEntry[];
 };
 
 export type ArenaWalletPrizeWon = {

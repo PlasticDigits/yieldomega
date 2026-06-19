@@ -91,7 +91,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 | DOUB buy | Connect wallet; slider + **Buy** succeeds; vault balances move per 100% podium routing (25% × 4 · 70/20/10 epoch tranches; Forge / explorer). |
 | CRED | After DOUB buy, epoch pool accrues; **claim** prior epoch when eligible. |
 | CRED pay ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) | Select **CRED** in buy picker; balance + burn preview; **Buy** calls `buyWithCred`; insufficient CRED disables submit with copy. |
-| Wallet profile ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)) | Click participant **`AddressInline`** on live buy row or podium winner → **`WalletProfileModal`** opens; sections Overview / Podium wins / Spending / XP / WarBow / Referrals / Fun facts load from **`GET /v1/arena/wallet/{address}/stats`**. |
+| Wallet profile ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258), level history [#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)) | Click participant **`AddressInline`** on live buy row or podium winner → **`WalletProfileModal`** opens; sections Overview / Podium wins / Spending / XP / **Level history** / WarBow / Referrals / Fun facts load from **`GET /v1/arena/wallet/{address}/stats`**. |
 | Referrals | Register code on `/referrals`; referred buy shows in `GET /v1/referrals/applied`. |
 | WarBow | Steal/guard txs spend DOUB (no CL8Y burn path). |
 
@@ -1019,6 +1019,23 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
   workers for visual routes as needed.
 
 **Doc map:** [frontend design §290/#297](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) · [sound recommendations](../frontend/sound-effects-recommendations.md) · [art README](../../frontend/public/art/README.md) · [invariants — #297](invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297) · [play skills](../../skills/README.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
+
+<a id="manual-qa-issue-337"></a>
+
+## Post-buy effect toasts (GitLab #337)
+
+**Goal:** After a successful CHARM buy on **`/`**, verify compact glass toasts confirm timer/XP/level/WarBow effects without shifting the buy panel or timer layout.
+
+### Checklist
+
+- [ ] Connect wallet on live sale; submit a DOUB (or CRED) buy at minimum valid CHARM.
+- [ ] One toast per projected/actual effect appears (`data-testid="arena-buy-effect-toast"`); stack caps at 4.
+- [ ] Toasts auto-dismiss within ~5s without user action; no modal or buy-panel layout shift.
+- [ ] Desktop / tablet / mobile: toast stack overlays command console safely (screenshots attached to issue).
+- [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`;
+  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/anvil-arena-03-wallet-writes.spec.ts`.
+
+**Doc map:** [arena views §337](../frontend/arena-views.md#post-buy-effect-toasts-gitlab-337) · [invariants — #337](invariants-and-business-logic.md#frontend-post-buy-effect-toasts-gitlab-337) · [play-time-arena-doub skill](../../skills/play-time-arena-doub/SKILL.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
 <a id="manual-qa-issue-298"></a>
 

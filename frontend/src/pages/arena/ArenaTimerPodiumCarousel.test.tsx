@@ -63,11 +63,13 @@ describe("timerPodiumCarouselSlots", () => {
 });
 
 describe("isTimerPodiumSlideLocked", () => {
-  it("locks secondary podiums until the wallet reaches the required level", () => {
+  it("locks only the immediate next unlock tier (#334)", () => {
     expect(isTimerPodiumSlideLocked(0, 1, true, 1)).toBe(false);
+    expect(isTimerPodiumSlideLocked(1, 2, true, 1)).toBe(true);
+    expect(isTimerPodiumSlideLocked(2, 3, true, 1)).toBe(false);
     expect(isTimerPodiumSlideLocked(3, 4, true, 3)).toBe(true);
     expect(isTimerPodiumSlideLocked(3, 4, true, 4)).toBe(false);
-    expect(isTimerPodiumSlideLocked(3, 4, false, undefined)).toBe(true);
+    expect(isTimerPodiumSlideLocked(3, 4, false, undefined)).toBe(false);
   });
 });
 

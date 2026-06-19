@@ -136,6 +136,10 @@ Integration tests in `tests/integration_stage2.rs` run only when **`YIELDOMEGA_P
 
 Legacy **`GET /v1/timecurve/platform-usage`** is **not** served. Use **`GET /v1/arena/platform-usage`** (schema **≥ 2.12.0**). Map: [design — platform usage](../docs/indexer/design.md#arena-platform-usage-http-gitlab-231) · **`INV-INDEXER-319-PLATFORM-USAGE`** · [invariants §319](../docs/testing/invariants-and-business-logic.md#indexer-registry-cleanup-gitlab-319).
 
+### Arena head timers (`GET /v1/arena/timers`, GitLab [#333](https://gitlab.com/PlasticDigits/yieldomega/-/issues/333))
+
+Schema **≥ 2.18.0** (`x-schema-version`) adds **`polled_at_ms`** — unix millis when the head poller last refreshed the snapshot (same instant as internal `ChainTimerSnapshot.polled_at_ms`). Frontend hero countdown and legacy sale-state mappers prefer this over client `Date.now()` ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). Idle poll spacing keeps `polled_at_ms` within **3s** of wall clock when RPC is healthy (**`INV-INDEXER-308-TIMER-FRESHNESS`**). **503** `{ "error": "chain_timer_unavailable" }` when the poller snapshot is unset. Map: [design — arena timers](../docs/indexer/design.md#arena-timers-http-gitlab-216) · **`INV-INDEXER-308-TIMER-FRESHNESS`**.
+
 ### Live podiums (`GET /v1/arena/podiums`, GitLab [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273))
 
 Schema **≥ 2.5.0** live leaders, **≥ 2.8.0** prize preview (`x-schema-version`). UX-ordered rows (**Last Buy · WarBow · Defended Streak · Time Booster**) with head **`epoch`** per category. Ingest fills **`idx_arena_podium_live`** (block-tagged **`podium()`** snapshots) and WarBow **`idx_warbow_epoch_score`** rollups. **`podium_prediction: true`** only when winners are DB-derived. Each row includes **`active_pool_balance_doub_wad`** and **`prize_places_doub_wad`** (4∶2∶1 split of active pool at **`read_block_number`**) — [#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302). Anvil smoke: `bash scripts/verify-podium-live-anvil.sh` · `bash scripts/verify-podium-prize-preview-anvil.sh`. Map: **`INV-INDEXER-PODIUM-PREDICT-LIVE`**, **`INV-INDEXER-PODIUM-PRIZE-PREVIEW`** · [design — live podiums](../docs/indexer/design.md#arena-podiums-http) · [invariants](../docs/testing/invariants-and-business-logic.md) · play skill [`skills/play-active-time-arena`](../skills/play-active-time-arena/SKILL.md).
@@ -154,7 +158,7 @@ Schema **≥ 2.7.0** (`x-schema-version`) for `target_epoch` on buy rows. Ingest
 
 ### Wallet stats (`GET /v1/arena/wallet/{address}/stats`, GitLab [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255))
 
-Schema **≥ 2.4.0** (`x-schema-version`). SQL aggregations over buys, podium payouts, XP, CRED, WarBow tables — full bonus stats (no stub zeros). Map: **`INV-INDEXER-255-WALLET-STATS`** · [design — wallet stats](../docs/indexer/design.md#arena-wallet-stats-http-gitlab-255) · [invariants](../docs/testing/invariants-and-business-logic.md) · [arena-views](../docs/frontend/arena-views.md).
+Schema **≥ 2.4.0** (`x-schema-version`); **`level_history`** (levels 1–5 milestone UTC timestamps) requires **≥ 2.18.0** ([#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)). SQL aggregations over buys, podium payouts, XP, CRED, WarBow, and level-up tables — full bonus stats (no stub zeros). Map: **`INV-INDEXER-255-WALLET-STATS`**, **`INV-INDEXER-336-WALLET-LEVEL-HISTORY`** · [design — wallet stats](../docs/indexer/design.md#arena-wallet-stats-http-gitlab-255) · [invariants](../docs/testing/invariants-and-business-logic.md) · [arena-views](../docs/frontend/arena-views.md).
 
 ### SQLx migrations
 

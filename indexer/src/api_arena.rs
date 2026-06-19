@@ -183,6 +183,7 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
     let body = json!({
         "read_block_number": h.timer.read_block_number,
         "block_timestamp_sec": h.timer.block_timestamp_sec,
+        "polled_at_ms": h.timer.polled_at_ms,
         "last_buy_deadline_sec": h.timer.deadline_sec,
         "timer_cap_sec": h.timer.timer_cap_sec,
         "arena_start_sec": h.timer.sale_start_sec,
