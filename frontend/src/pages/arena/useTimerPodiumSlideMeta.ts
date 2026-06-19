@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { addresses } from "@/lib/addresses";
-import { clampPlayerLevel } from "@/lib/arenaProgression";
+import { clampPlayerLevel, shouldShowPodiumLevelLock } from "@/lib/arenaProgression";
 import {
   formatTimerSectionTitle,
   type SaleSessionPhase,
@@ -26,9 +26,7 @@ export function isTimerPodiumSlideLocked(
   walletConnected: boolean,
   viewerLevel: number | undefined,
 ): boolean {
-  if (categoryIndex === 0) return false;
-  if (!walletConnected) return true;
-  return viewerLevel !== undefined && viewerLevel < requiredLevel;
+  return shouldShowPodiumLevelLock(walletConnected, viewerLevel, requiredLevel, categoryIndex);
 }
 
 export function useTimerPodiumSlideMeta(

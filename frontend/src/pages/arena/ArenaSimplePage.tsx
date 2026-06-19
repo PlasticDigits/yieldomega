@@ -38,6 +38,7 @@ import {
   FEATURE_UNLOCK_LEVEL,
   featureKeyForUnlockLevel,
   isFeatureUnlocked,
+  shouldShowLevelLock,
   readFeatureTutorialSeen,
 } from "@/lib/arenaProgression";
 import { useArenaPlayerLevel } from "@/hooks/useArenaPlayerLevel";
@@ -329,6 +330,9 @@ export function ArenaSimplePage({
   const prevLevelRef = useRef<number | undefined>(undefined);
   const warbowUnlocked =
     playerLevelRaw !== undefined && isFeatureUnlocked(playerLevelRaw as bigint, "warbow");
+  const showWarbowLevelLock =
+    playerLevelRaw !== undefined &&
+    shouldShowLevelLock(Number(playerLevelRaw), FEATURE_UNLOCK_LEVEL.warbow);
   const warbowFlagUnlocked =
     playerLevelRaw !== undefined && isFeatureUnlocked(playerLevelRaw as bigint, "warbow_flag");
   const warbowFlagDisabled =
@@ -1152,7 +1156,7 @@ export function ArenaSimplePage({
           </ChainMismatchWriteBarrier>
         </div>
 
-        {!warbowUnlocked ? (
+        {showWarbowLevelLock ? (
           <div
             className="arena-command-console__hub-warbow"
             data-testid="arena-command-console-warbow"

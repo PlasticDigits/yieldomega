@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { zeroAddress } from "viem";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { clampPlayerLevel, type ArenaFeatureKey } from "@/lib/arenaProgression";
+import {
+  clampPlayerLevel,
+  shouldShowPodiumLevelLock,
+  type ArenaFeatureKey,
+} from "@/lib/arenaProgression";
 import type { BuyItem } from "@/lib/indexerApi";
 import { rankingRowsForPodium, usePodiumScoreClock } from "./arenaSimplePodiumRanking";
 import { PODIUM_LABELS, podiumFeatureForUxIndex } from "./podiumCopy";
@@ -122,10 +126,13 @@ function SimplePodiumCard({
     recentBuys,
     onOpenWalletProfile,
   );
-  const locked =
-    categoryIndex !== 0 &&
-    (!walletConnected || (viewerLevel !== undefined && viewerLevel < requiredLevel));
-  const lockedForConnection = locked && !walletConnected;
+  const locked = shouldShowPodiumLevelLock(
+    walletConnected,
+    viewerLevel,
+    requiredLevel,
+    categoryIndex,
+  );
+  const lockedForConnection = false;
 
   const cardClassName = [
     "podium-block",

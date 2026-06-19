@@ -114,26 +114,25 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("ranking-list__item--you");
   });
 
-  it("locks secondary podiums when wallet is not connected", () => {
+  it("does not lock secondary podiums when wallet is not connected (#334)", () => {
     const html = renderSimplePodiums({ address: undefined });
     expect(html).not.toContain('data-testid="arena-podium-lock-0"');
-    expect(html).toContain('data-testid="arena-podium-lock-1"');
-    expect(html).toContain('data-testid="arena-podium-lock-2"');
-    expect(html).toContain('data-testid="arena-podium-lock-3"');
-    expect(html).toContain("Connect wallet");
-    expect(html).toContain("Connect wallet to buy CHARM.");
-    expect(html).not.toContain("Locked until Level");
+    expect(html).not.toContain('data-testid="arena-podium-lock-1"');
+    expect(html).not.toContain('data-testid="arena-podium-lock-2"');
+    expect(html).not.toContain('data-testid="arena-podium-lock-3"');
+    expect(html).not.toContain("Connect wallet to buy CHARM.");
   });
 
-  it("locks secondary podiums above the connected wallet level", () => {
+  it("locks only the immediate next unlock tier for connected wallets (#334)", () => {
     const html = renderSimplePodiums({ address: ALICE, playerLevel: 1 });
     expect(html).not.toContain('data-testid="arena-podium-lock-0"');
-    expect(html).toContain('data-testid="arena-podium-lock-1"');
-    expect(html).toContain('data-testid="arena-podium-lock-2"');
     expect(html).toContain('data-testid="arena-podium-lock-3"');
-    expect(html).toContain("Locked until Level 4");
-    expect(html).toContain("Locked until Level 3");
+    expect(html).not.toContain('data-testid="arena-podium-lock-2"');
+    expect(html).not.toContain('data-testid="arena-podium-lock-1"');
     expect(html).toContain("Locked until Level 2");
+    expect(html).toContain("Time Booster");
+    expect(html).not.toContain("Locked until Level 3");
+    expect(html).not.toContain("Locked until Level 4");
     expect(html).not.toContain("Connect wallet to buy CHARM.");
   });
 
