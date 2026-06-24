@@ -31,11 +31,21 @@ def charm_bounds(tc: Contract) -> tuple[int, int]:
 
 
 def sale_ended(w3: Web3, tc: Contract) -> bool:
-    """True when TimeArena is paused or past its global deadline."""
+    """True when TimeArena is paused, not started, or past the armed Last Buy deadline.
+
+    ``deadline == 0`` means the Last Buy timer is not armed (pre-first-buy or after a
+    podium roll). On-chain buys still succeed via ``_requireLive`` — do not treat that
+    as sale ended (swarm bots otherwise exit before the first buy sets the timer).
+    """
     if bool(tc.functions.paused().call()):
         return True
+    if int(tc.functions.arenaStart().call()) == 0:
+        return True
+    deadline = int(tc.functions.deadline().call())
+    if deadline == 0:
+        return False
     head_ts = int(w3.eth.get_block("latest")["timestamp"])
-    return head_ts > int(tc.functions.deadline().call())
+    return head_ts > deadline
 
 
 def charm_for_buy(tc: Contract, desired: int) -> int:

@@ -10,13 +10,17 @@ import time
 from timearena_bot.actions import (
     account_from_config,
     approve_if_needed,
-    buy,
-    mint_mock_reserve,
     print_dry,
     warbow_steal,
 )
 from timearena_bot.config import BotConfig
-from timearena_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec, sale_ended
+from timearena_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, loop_mean_sec, sale_ended
+from timearena_bot.strategies.warbow_setup import (
+    WARBOW_MIN_LEVEL,
+    player_level,
+    seed_warbow_steal_band,
+    steal_band_state,
+)
 from web3 import Web3
 from web3.contract import Contract
 
@@ -24,6 +28,14 @@ from web3.contract import Contract
 _DEFAULT_VICTIM_PK = (
     "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 )
+
+
+def _ensure_doub_balance(asset: Contract, address: str, min_wei: int, label: str) -> None:
+    bal = int(asset.functions.balanceOf(Web3.to_checksum_address(address)).call())
+    if bal < min_wei:
+        raise RuntimeError(
+            f"{label} DOUB balance {bal} < {min_wei}; swarm bootstrap must fund wallets (no minter on attacker)"
+        )
 
 
 def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
@@ -45,13 +57,22 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
 
     mean = loop_mean_sec("YIELDOMEGA_PVP_MEAN_SEC", "120")
     print(
-        f"pvp: loop victim {victim.address} buys + attacker {attacker.address} steals; "
-        f"mean inter-cycle={mean}s"
+        f"pvp: loop victim {victim.address} buys + attacker {attacker.address} warbowSteal "
+        f"(level ≥ {WARBOW_MIN_LEVEL}, 2×–10× BP band); mean inter-cycle={mean}s"
     )
 
     if not send:
         print_dry("pvp", "would fund victim buys then warbowSteal from attacker (loop)")
         return
+
+    lo, hi = charm_bounds(tc)
+    min_need = asset_amount_for_charm(tc, lo)
+    max_need = asset_amount_for_charm(tc, hi)
+    _ensure_doub_balance(asset, victim.address, max_need * 8, "victim")
+    _ensure_doub_balance(asset, attacker.address, max_need * 8 + int(tc.functions.WARBOW_STEAL_DOUB().call()), "attacker")
+
+    approve_if_needed(w3, asset, victim, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
+    approve_if_needed(w3, asset, attacker, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
 
     while True:
         if sale_ended(w3, tc):
@@ -59,48 +80,19 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
             return
 
         try:
-            mint_mock_reserve(
-                w3,
-                asset,
-                attacker,
-                victim.address,
-                10**30,
-                gas_multiplier=cfg.gas_multiplier,
-                send=True,
-            )
-            mint_mock_reserve(
-                w3,
-                asset,
-                attacker,
-                attacker.address,
-                10**22,
-                gas_multiplier=cfg.gas_multiplier,
-                send=True,
-            )
+            atk_lvl = player_level(tc, attacker.address)
+            vic_lvl = player_level(tc, victim.address)
+            if atk_lvl < WARBOW_MIN_LEVEL or vic_lvl < WARBOW_MIN_LEVEL:
+                print(f"pvp: leveling (victim L{vic_lvl}, attacker L{atk_lvl}) → L{WARBOW_MIN_LEVEL}+")
+            seed_warbow_steal_band(w3, tc, victim, attacker, cfg)
 
-            approve_if_needed(w3, asset, victim, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
-            for i in range(3):
-                lo, hi = charm_bounds(tc)
-                charm = charm_for_buy(tc, hi if i < 2 else lo)
-                need = asset_amount_for_charm(tc, charm)
-                bal = int(asset.functions.balanceOf(victim.address).call())
-                if bal < need:
-                    print(f"Victim balance too low ({bal}); mint failed?")
-                    raise RuntimeError("victim underfunded")
+            vbp, abp, ok = steal_band_state(tc, victim.address, attacker.address)
+            print(f"pvp: BP before steal victim={vbp} attacker={abp} (attacker L{player_level(tc, attacker.address)})")
+            if not ok:
+                raise RuntimeError(
+                    f"steal band not met (need victim BP in [2×, 10×] attacker BP; got {vbp} vs {abp})"
+                )
 
-                buy(w3, tc, victim, charm, gas_multiplier=cfg.gas_multiplier, send=True)
-
-            vbp = int(tc.functions.battlePoints(victim.address).call())
-            abp = int(tc.functions.battlePoints(attacker.address).call())
-            print(f"BP before steal: victim={vbp} attacker={abp}")
-            if vbp < 2 * max(abp, 1):
-                print("Onchain 2× minimum may revert steal; add more victim buys or reset Anvil.")
-                raise RuntimeError("2x minimum not met")
-            if vbp > 10 * max(abp, 1):
-                print("Onchain 10× cap may revert steal; victim BP is too far above attacker for the band.")
-                raise RuntimeError("10x cap exceeded")
-
-            approve_if_needed(w3, asset, attacker, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
             warbow_steal(
                 w3,
                 tc,
