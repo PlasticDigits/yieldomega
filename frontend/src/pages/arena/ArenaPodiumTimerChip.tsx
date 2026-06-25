@@ -57,6 +57,8 @@ export type ArenaPodiumTimerChipProps = {
   countdownRemainingSec?: number;
   /** Override chip countdown copy (e.g. awaiting first buy). */
   countdownDisplay?: string;
+  /** E2E hook when timer is expired/settling ([#343](https://gitlab.com/PlasticDigits/yieldomega/-/issues/343)). */
+  transitionTestId?: string;
   className?: string;
   testId?: string;
   ariaLabel?: string;
@@ -82,6 +84,7 @@ export function ArenaPodiumTimerChip({
   showFeatureHelp = true,
   countdownRemainingSec,
   countdownDisplay,
+  transitionTestId,
   className,
   testId,
   ariaLabel,
@@ -156,7 +159,10 @@ export function ArenaPodiumTimerChip({
         </span>
         <div className="arena-timer-chips__aside">
           {showCountdown ? (
-            <span className="arena-timer-chips__chip" data-testid={`arena-timer-chip-${contractIndex}`}>
+            <span
+              className="arena-timer-chips__chip"
+              data-testid={transitionTestId ?? `arena-timer-chip-${contractIndex}`}
+            >
               <span className="arena-timer-chips__label">{CHIP_COUNTDOWN_LABEL}</span>
               <span className="arena-timer-chips__value">
                 {countdownDisplay !== undefined

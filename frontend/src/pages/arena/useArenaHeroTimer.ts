@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { conservativeSkewWallMinusChainSec } from "@/pages/arena/arenaChainNow";
 import { PODIUM_TIMER_AWAITING_FIRST_BUY } from "@/pages/arena/arenaPodiumTimerDisplay";
 import { fetchArenaTimers } from "@/lib/indexerApi";
 import { indexerBaseUrl } from "@/lib/addresses";
@@ -41,11 +42,6 @@ function isFiniteHeroBase(base: Omit<HeroTimerState, "fetchedAtSec">): boolean {
     Number.isFinite(base.blockTimestampSec) &&
     Number.isFinite(base.timerCapSec)
   );
-}
-
-/** Wall clock minus chain head time (seconds), captured once per anchor; subtract 1 so we assume the round ends one second sooner. */
-function conservativeSkewWallMinusChainSec(fetchedAtSec: number, blockTimestampSec: number): number {
-  return fetchedAtSec - blockTimestampSec - 1;
 }
 
 export type UseArenaHeroTimerResult = {

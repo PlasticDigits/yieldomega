@@ -43,6 +43,44 @@ Hooks: [`usePodiumReads`](../../frontend/src/pages/arena/usePodiumReads.ts), [`u
 
 Invariant: **`INV-FRONTEND-301-INDEXER-FIRST-DISPLAY`** · static gate `indexerFirstDisplay.test.ts` · [indexer design §301](../indexer/design.md#indexer-first-api-guidelines-gitlab-301) · [e2e-anvil §301](../testing/e2e-anvil.md#indexer-first-vs-minimal-e2e-gitlab-301).
 
+<a id="play-route-transition-ux-gitlab-343"></a>
+
+## Play-route transition UX (GitLab [#343](https://gitlab.com/PlasticDigits/yieldomega/-/issues/343))
+
+Podium timers on **`/`** derive a small UX state machine from indexer head fields — not frozen `00:00` placeholders during rollovers. Parent gap analysis: [#342](https://gitlab.com/PlasticDigits/yieldomega/-/issues/342).
+
+### State model
+
+| UX state | On-chain / indexer signals | UI |
+|----------|------------------------------|-----|
+| `unarmed` | `podium_timer_armed[cat] === false` | `awaiting first buy` copy ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)) |
+| `live` | armed, `deadline > chainNowSec` | normal countdown |
+| `expired-pending-roll` | armed, deadline at/before `chainNowSec`, ingest caught up | `00:00` + **waiting for settlement** foot; optional **`rollPodiumEpoch`** CTA behind `ChainMismatchWriteBarrier` |
+| `settling` | armed, expired, `indexed_through_block < read_block_number` ([#344](https://gitlab.com/PlasticDigits/yieldomega/-/issues/344)) | **Settling podium** foot + `aria-busy` |
+| `epoch-advanced` | epoch bumped since expiry latch, fresh deadline | **New epoch started** foot (transient) |
+| `syncing` | missing skew/deadline or suspicious future deadline | muted sync copy — degrades safely on bad indexer data |
+| `claimable` (wallet) | `claimable_cred_epoch` on wallet stats | handled on `ArenaCharmCredCard` — not mixed into podium timers |
+
+On-chain events → indexer tables → HTTP fields: see [time-arena.md § Podium epoch roll](../product/time-arena.md) (`PodiumEpochRolled`, `podium_deadlines_sec`, `podium_epochs` on `GET /v1/arena/podiums`).
+
+### Shared `chainNowSec`
+
+Hero and side-chip countdowns use the same wall-vs-chain skew anchor from [`useArenaHeroTimer`](../../frontend/src/pages/arena/useArenaHeroTimer.ts) (`polled_at_ms` + `block_timestamp_sec` via [`arenaChainNow.ts`](../../frontend/src/pages/arena/arenaChainNow.ts)). [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) and [`useTimerPodiumSlideMeta`](../../frontend/src/pages/arena/useTimerPodiumSlideMeta.ts) take `chainNowSec` from the sale session — **not** raw `block_timestamp_sec` at last poll.
+
+Pure derivation: [`arenaTransitionState.ts`](../../frontend/src/pages/arena/arenaTransitionState.ts) · epoch latch: [`usePodiumEpochLatch.ts`](../../frontend/src/pages/arena/usePodiumEpochLatch.ts).
+
+### E2E hooks
+
+| `data-testid` | State |
+|---------------|-------|
+| `arena-timer-expired-pending-roll` | expired, ingest caught up |
+| `arena-timer-settling` | expired + ingest lag |
+| `arena-timer-epoch-advanced` | post-roll epoch bump |
+| `arena-podium-roll-cta` | permissionless roll button |
+| `arena-timer-transition-foot` | settlement copy under hero digits |
+
+Invariant: **`INV-FRONTEND-343-TRANSITION-UX`** · `arenaTransitionState.test.ts` · `indexerFirstDisplay.test.ts` (skew guard) · play skill [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md).
+
 ## Unified arena page (GitLab [#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256))
 
 | Surface | Component | Notes |

@@ -50,6 +50,7 @@ import { ArenaTimerPodiumCarousel } from "@/pages/arena/ArenaTimerPodiumCarousel
 import { useTimerPodiumSlideMeta } from "@/pages/arena/useTimerPodiumSlideMeta";
 import { ArenaTimerChips } from "@/pages/arena/ArenaTimerChips";
 import { ArenaTimerHero } from "@/pages/arena/ArenaTimerHero";
+import { ArenaPodiumRollCta } from "@/pages/arena/ArenaPodiumRollCta";
 import { ArenaCharmCredCard } from "@/pages/arena/ArenaCharmCredCard";
 import { ArenaWarbowGatePreview } from "@/pages/arena/ArenaWarbowGatePreview";
 import {
@@ -396,8 +397,10 @@ export function ArenaSimplePage({
     decimals: session.decimals,
     podiumPayoutPreview: podiumReads.podiumPayoutPreview,
     lastBuyCountdownSec: heroSecondsRemaining,
+    chainNowSec: session.chainNowSec,
     walletConnected: session.walletConnected,
     playerLevel: playerLevelRaw,
+    podiumRows: podiumReads.data,
   });
 
   const timerSectionTitle = podiumSlideMeta.title;
@@ -944,6 +947,28 @@ export function ArenaSimplePage({
       ? "Stay on this page — it switches to Live automatically."
       : undefined;
 
+  const timerTransitionFoot =
+    session.phase === "saleActive" && podiumSlideMeta.transitionFoot ? (
+      <>
+        <span>{podiumSlideMeta.transitionFoot}</span>
+        {podiumSlideMeta.showRollCta ? (
+          <ArenaPodiumRollCta
+            contractIndex={podiumSlideMeta.slot.contractIndex}
+            disabled={session.arenaPaused === true}
+          />
+        ) : null}
+      </>
+    ) : undefined;
+
+  const timerHeroProps = {
+    secondsRemaining: heroCountdownSec,
+    countdownKind: session.phase === "saleStartPending" ? ("open" as const) : ("round" as const),
+    foot: timerHeroFoot,
+    transitionUxState: session.phase === "saleActive" ? podiumSlideMeta.transitionState : undefined,
+    transitionTestId: session.phase === "saleActive" ? podiumSlideMeta.transitionTestId : undefined,
+    transitionFoot: timerTransitionFoot,
+  };
+
   const timerPanelLocked =
     session.phase === "saleActive" && Boolean(podiumReads.data) && podiumSlideMeta.locked;
   const timerEpochCorner = (
@@ -971,10 +996,8 @@ export function ArenaSimplePage({
       <ArenaTimerPodiumCarousel
         panelHeader={
           <ArenaTimerHero
-            secondsRemaining={heroCountdownSec}
+            {...timerHeroProps}
             countdownPlaceholder={podiumSlideMeta.countdownPlaceholder}
-            countdownKind="round"
-            foot={timerHeroFoot}
           />
         }
         activeIndex={podiumCarouselIndex}
@@ -998,10 +1021,8 @@ export function ArenaSimplePage({
     <div className="arena-simple__timer-panel-stack">
       {timerCarousel ?? (
         <ArenaTimerHero
-          secondsRemaining={heroCountdownSec}
+          {...timerHeroProps}
           countdownPlaceholder={session.heroCountdownPlaceholder}
-          countdownKind={session.phase === "saleStartPending" ? "open" : "round"}
-          foot={timerHeroFoot}
         />
       )}
     </div>
@@ -1217,6 +1238,7 @@ export function ArenaSimplePage({
             recentBuys={recentBuys}
             activeDefendedStreak={session.activeDefendedStreak}
             podiumNowUnixSec={tickerWallNowSec}
+            chainNowSec={session.chainNowSec}
             onFeatureHelp={openFeatureHelp}
             onOpenWalletProfile={onOpenWalletProfile}
           />

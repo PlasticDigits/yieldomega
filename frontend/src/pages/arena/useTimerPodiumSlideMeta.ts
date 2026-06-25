@@ -12,13 +12,14 @@ import {
   TIMER_PODIUM_CAROUSEL_SLOTS,
   normalizeTimerPodiumSlideIndex,
 } from "@/pages/arena/timerPodiumCarouselSlots";
+import { PODIUM_TIMER_AWAITING_FIRST_BUY } from "@/pages/arena/arenaPodiumTimerDisplay";
 import {
-  isPodiumTimerArmed,
-  PODIUM_TIMER_AWAITING_FIRST_BUY,
-  podiumCountdownSec,
-} from "@/pages/arena/arenaPodiumTimerDisplay";
+  buildPodiumTransitionMeta,
+  type PodiumTransitionUxState,
+} from "@/pages/arena/arenaTransitionState";
 import { useArenaTimersQuery } from "@/pages/arena/useArenaSaleState";
-import type { PodiumPayoutPreview } from "@/pages/arena/usePodiumReads";
+import type { PodiumPayoutPreview, PodiumReadRow } from "@/pages/arena/usePodiumReads";
+import { usePodiumEpochLatch } from "@/pages/arena/usePodiumEpochLatch";
 
 export function isTimerPodiumSlideLocked(
   categoryIndex: number,
@@ -36,8 +37,11 @@ export function useTimerPodiumSlideMeta(
     decimals: number;
     podiumPayoutPreview?: PodiumPayoutPreview | null;
     lastBuyCountdownSec?: number;
+    /** Shared skew anchor from `useArenaHeroTimer` ([#343](https://gitlab.com/PlasticDigits/yieldomega/-/issues/343)). */
+    chainNowSec?: number;
     walletConnected: boolean;
     playerLevel?: bigint | number;
+    podiumRows?: readonly PodiumReadRow[] | undefined;
   },
 ) {
   const activeIndex = normalizeTimerPodiumSlideIndex(slideIndex);
@@ -65,22 +69,44 @@ export function useTimerPodiumSlideMeta(
     [opts.decimals, opts.phase, opts.podiumPayoutPreview, payoutPreview, slot.categoryIndex],
   );
 
-  const countdownSec = useMemo(() => {
+  const currentEpoch = opts.podiumRows?.[slot.categoryIndex]?.epoch;
+  const preliminaryTransitionMeta = useMemo(() => {
     if (opts.phase !== "saleActive") {
-      return opts.lastBuyCountdownSec;
-    }
-    if (!timerData) return undefined;
-    const armed = isPodiumTimerArmed(timerData.podium_timer_armed, slot.contractIndex);
-    if (armed === false) {
       return undefined;
     }
-    const now = Number(timerData.block_timestamp_sec);
-    if (slot.contractIndex === 0 && opts.lastBuyCountdownSec !== undefined) {
-      return opts.lastBuyCountdownSec;
+    return buildPodiumTransitionMeta({
+      contractIndex: slot.contractIndex,
+      timerData: timerData ?? undefined,
+      chainNowSec: opts.chainNowSec,
+      currentEpoch,
+      heroDisplay: true,
+    });
+  }, [currentEpoch, opts.chainNowSec, opts.phase, slot.contractIndex, timerData]);
+
+  const latchedEpoch = usePodiumEpochLatch(
+    preliminaryTransitionMeta?.transitionState ?? "syncing",
+    currentEpoch,
+  );
+  const transitionMeta = useMemo(() => {
+    if (opts.phase !== "saleActive") {
+      return undefined;
     }
-    const deadline = Number(timerData.podium_deadlines_sec[slot.contractIndex] ?? 0);
-    return podiumCountdownSec(armed, deadline, now);
-  }, [opts.lastBuyCountdownSec, opts.phase, slot.contractIndex, timerData]);
+    return buildPodiumTransitionMeta({
+      contractIndex: slot.contractIndex,
+      timerData: timerData ?? undefined,
+      chainNowSec: opts.chainNowSec,
+      latchedEpoch,
+      currentEpoch,
+      heroDisplay: true,
+    });
+  }, [currentEpoch, latchedEpoch, opts.chainNowSec, opts.phase, slot.contractIndex, timerData]);
+
+  const countdownSec =
+    opts.phase !== "saleActive"
+      ? opts.lastBuyCountdownSec
+      : slot.contractIndex === 0 && opts.lastBuyCountdownSec !== undefined
+        ? opts.lastBuyCountdownSec
+        : transitionMeta?.countdownSec;
 
   const locked = isTimerPodiumSlideLocked(
     slot.categoryIndex,
@@ -91,8 +117,7 @@ export function useTimerPodiumSlideMeta(
   const lockedForConnection = locked && !opts.walletConnected;
 
   const countdownPlaceholder =
-    opts.phase === "saleActive" &&
-    isPodiumTimerArmed(timerData?.podium_timer_armed, slot.contractIndex) === false
+    opts.phase === "saleActive" && transitionMeta?.transitionState === "unarmed"
       ? PODIUM_TIMER_AWAITING_FIRST_BUY
       : undefined;
 
@@ -102,8 +127,14 @@ export function useTimerPodiumSlideMeta(
     title,
     countdownSec,
     countdownPlaceholder,
+    transitionState: transitionMeta?.transitionState,
+    transitionFoot: transitionMeta?.transitionFoot,
+    transitionTestId: transitionMeta?.transitionTestId,
+    showRollCta: transitionMeta?.showRollCta ?? false,
     locked,
     lockedForConnection,
     viewerLevel,
   };
 }
+
+export type { PodiumTransitionUxState };
