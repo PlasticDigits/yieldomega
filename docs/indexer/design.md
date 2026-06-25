@@ -105,6 +105,13 @@ Fresh databases use migration [`20240601000000_arena_v2.up.sql`](../../indexer/m
 | `idx_arena_paused_set` | `PausedSet` history ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
 | `idx_arena_warbow_podium_finalized` | `WarbowPodiumFinalized` ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
 | `idx_arena_warbow_flag_claimed` | `WarBowFlagClaimed` ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317)) |
+| `idx_arena_podium_timer_armed` | `PodiumTimerArmed` — per-category timer arm transitions ([#346](https://gitlab.com/PlasticDigits/yieldomega/-/issues/346)) |
+
+<a id="ingest-log-order-gitlab-346"></a>
+
+#### Ingest log ordering + PodiumTimerArmed ([GitLab #346](https://gitlab.com/PlasticDigits/yieldomega/-/issues/346))
+
+Before the decode/persist loop, ingestion sorts each block's `eth_getLogs` rows by **`(block_number, transaction_index, log_index)`** so global heads (e.g. **`last_buy_epoch`** on **`Buy`**) match onchain execution order when RPC returns misordered rows ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278) risk). **`PodiumTimerArmed`** is decoded into **`idx_arena_podium_timer_armed`** for indexed history beyond head-poller **`podiumTimerArmed`** reads. Map: **`INV-INDEXER-346-INGEST-LOG-ORDER`** · [`ingestion.rs`](../../indexer/src/ingestion.rs) · [`integration_stage2.rs::last_buy_epoch_order_independent_on_shuffled_logs`](../../indexer/tests/integration_stage2.rs).
 
 <a id="ingest-side-effects-gitlab-317"></a>
 

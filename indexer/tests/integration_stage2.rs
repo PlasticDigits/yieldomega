@@ -483,6 +483,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             third: addr_byte(0xb3),
             pool_paid: u2,
         }),
+        next(DecodedEvent::ArenaPodiumTimerArmed {
+            category: 0,
+            epoch: u1,
+        }),
         next(DecodedEvent::ArenaWarbowSteal {
             attacker: alice,
             victim: addr_byte(0xb2),
@@ -588,6 +592,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(count_where(&pool, "idx_arena_paused_set", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_podium_epoch", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_arena_podium_timer_armed", 100).await,
+        1
+    );
     assert_eq!(count_where(&pool, "idx_arena_warbow_steal", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_warbow_guard", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_warbow_revenge", 100).await, 1);
@@ -656,6 +664,14 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 0);
     assert_eq!(
         count_where(&pool, "idx_arena_last_buy_epoch_started", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_arena_podium_epoch", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_arena_podium_timer_armed", 100).await,
         0
     );
     assert_eq!(
@@ -1824,6 +1840,118 @@ async fn last_buy_epoch_global_assignment_non_resetting_participant() {
         Some(1)
     );
     assert_eq!(j.get("buy_count").and_then(|v| v.as_i64()), Some(1));
+}
+
+/// Misordered same-block logs must not mis-tag `last_buy_epoch` ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278), [#346](https://gitlab.com/PlasticDigits/yieldomega/-/issues/346)).
+#[tokio::test]
+async fn last_buy_epoch_order_independent_on_shuffled_logs() {
+    let Some(url) = pg_url() else {
+        eprintln!("skip last_buy_epoch_order_independent: set YIELDOMEGA_PG_TEST_URL");
+        return;
+    };
+
+    let _pg = pg_integration_lock().await;
+
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
+        .await
+        .expect("connect_and_migrate");
+
+    let alice = addr_byte(0xa1);
+    let bob = addr_byte(0xb2);
+    let bob_hex = format!("{bob:#x}");
+    let block = 700u64;
+    let ts = 1_700_300_000u64;
+
+    let mk_buy = |tx_id: u64, log_index: u64, buyer: Address, hard_reset: bool| -> DecodedLog {
+        let mut log = sample_log_tx(
+            block,
+            tx_id,
+            log_index,
+            DecodedEvent::ArenaBuy {
+                buyer,
+                charm_wad: U256::from(1_000_000_000_000_000_000u128),
+                doub_paid: U256::from(DOUB_100),
+                new_deadline: U256::from(ts + 900),
+                total_doub_raised_after: U256::from(DOUB_100),
+                buy_index: U256::from(tx_id),
+                actual_seconds_added: U256::from(120u64),
+                timer_hard_reset: hard_reset,
+                paid_with_cred: false,
+            },
+        );
+        log.block_timestamp = Some(ts + tx_id);
+        log
+    };
+
+    let epoch_start = {
+        let mut log = sample_log_tx(
+            block,
+            2,
+            1,
+            DecodedEvent::ArenaLastBuyEpochStarted {
+                epoch: U256::from(1u8),
+                deadline: U256::from(ts + 900),
+            },
+        );
+        log.block_timestamp = Some(ts + 2);
+        log
+    };
+    let mut alice_reset_buy = mk_buy(2, 2, alice, true);
+    alice_reset_buy.tx_hash = epoch_start.tx_hash;
+
+    // `(transaction_index, log_index, log)` — mirrors ingestion sort key after `eth_getLogs`.
+    let canonical: Vec<(u64, u64, DecodedLog)> = vec![
+        (1, 1, mk_buy(1, 1, alice, false)),
+        (2, 1, epoch_start.clone()),
+        (2, 2, alice_reset_buy),
+        (3, 1, mk_buy(3, 1, bob, false)),
+    ];
+
+    async fn persist_in_canonical_order(pool: &sqlx::PgPool, canonical: &[(u64, u64, DecodedLog)], order: &[usize]) {
+        clear_arena_index_for_test(pool).await;
+        let mut rows: Vec<(u64, u64, &DecodedLog)> = order
+            .iter()
+            .map(|&idx| {
+                let (tx_i, log_i, ref log) = canonical[idx];
+                (tx_i, log_i, log)
+            })
+            .collect();
+        rows.sort_by_key(|a| (a.2.block_number, a.0, a.1));
+
+        let mut conn = pool.acquire().await.expect("acquire");
+        let mut head = LastBuyEpochHead::INITIAL;
+        for (_, _, log) in rows {
+            persist_decoded_log_conn(&mut conn, &mut head, log)
+                .await
+                .expect("persist canonical-order fixture");
+        }
+    }
+
+    let bob_epoch_after = || async {
+        sqlx::query_scalar::<_, i64>("SELECT last_buy_epoch FROM idx_arena_buy WHERE buyer = $1")
+            .bind(&bob_hex)
+            .fetch_one(&pool)
+            .await
+            .expect("bob buy epoch")
+    };
+
+    // Without sort, RPC mis-order mis-tags epoch 0 for Bob.
+    clear_arena_index_for_test(&pool).await;
+    let mut conn = pool.acquire().await.expect("acquire");
+    let mut head = LastBuyEpochHead::INITIAL;
+    for &idx in &[0usize, 3, 1, 2] {
+        persist_decoded_log_conn(&mut conn, &mut head, &canonical[idx].2)
+            .await
+            .expect("persist misordered fixture");
+    }
+    drop(conn);
+    assert_eq!(bob_epoch_after().await, 0);
+
+    // Two shuffles → same canonical ingest order → Bob in epoch 1.
+    for order in [&[3usize, 0, 2, 1][..], &[0, 1, 2, 3]] {
+        persist_in_canonical_order(&pool, &canonical, order).await;
+        assert_eq!(bob_epoch_after().await, 1, "order={order:?}");
+    }
 }
 
 /// `GET /v1/arena/platform-usage` aggregates buys + WarBow ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).

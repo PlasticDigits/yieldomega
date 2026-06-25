@@ -71,6 +71,7 @@ mod contracts {
                 address third,
                 uint256 poolPaid
             );
+            event PodiumTimerArmed(uint8 indexed category, uint256 indexed epoch);
             event CredClaimed(address indexed user, uint256 indexed epoch, uint256 amount);
             event FirstBuyCredScheduled(address indexed buyer, uint256 indexed targetEpoch, uint256 amount);
             event XpGained(address indexed player, uint256 amount, uint256 newLevel);
@@ -194,6 +195,10 @@ pub enum DecodedEvent {
         second: Address,
         third: Address,
         pool_paid: U256,
+    },
+    ArenaPodiumTimerArmed {
+        category: u8,
+        epoch: U256,
     },
     ArenaLastBuyEpochStarted {
         epoch: U256,
@@ -377,6 +382,14 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 second: e.second,
                 third: e.third,
                 pool_paid: e.poolPaid,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::PodiumTimerArmed::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::PodiumTimerArmed::decode_log(log, true) {
+            return DecodedEvent::ArenaPodiumTimerArmed {
+                category: e.category,
+                epoch: e.epoch,
             };
         }
     }

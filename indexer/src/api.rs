@@ -21,7 +21,7 @@ use crate::api_validate::valid_0x_address20;
 use crate::chain_timer::TimecurveHeadSnapshot;
 use crate::rpc_metrics::RpcMetrics;
 
-const SCHEMA_VERSION: &str = "2.19.0";
+const SCHEMA_VERSION: &str = "2.20.0";
 
 #[derive(Clone)]
 pub struct AppState {
