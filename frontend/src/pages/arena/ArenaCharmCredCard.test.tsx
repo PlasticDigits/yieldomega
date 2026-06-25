@@ -5,19 +5,36 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { executeClaimCred } from "@/lib/arenaCharmCredClaim";
 import { ArenaCharmCredCard } from "./ArenaCharmCredCard";
 
 const mockWalletStats = vi.fn();
 
 vi.mock("@/hooks/useWalletStats", () => ({
   useWalletStats: () => mockWalletStats(),
+  invalidateArenaWalletStatsQueries: vi.fn(),
 }));
 
 const mockUseAccount = vi.fn();
+const mockWriteContractAsync = vi.fn();
+const mockUseConfig = vi.fn();
+const mockUseQueryClient = vi.fn();
 
 vi.mock("wagmi", () => ({
   useAccount: () => mockUseAccount(),
-  useWriteContract: () => ({ writeContractAsync: async () => {}, isPending: false }),
+  useConfig: () => mockUseConfig(),
+  useWriteContract: () => ({
+    writeContractAsync: mockWriteContractAsync,
+    isPending: false,
+  }),
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => mockUseQueryClient(),
+}));
+
+vi.mock("@/lib/realtimeTransaction", () => ({
+  waitForWriteReceipt: vi.fn(),
 }));
 
 vi.mock("@/components/ArenaXpHero", () => ({
@@ -108,5 +125,63 @@ describe("ArenaCharmCredCard (GitLab #321)", () => {
     const src = readFileSync(resolve(__dirname, "ArenaCharmCredCard.tsx"), "utf8");
     expect(src).not.toMatch(/useReadContract\(/);
     expect(src).toContain("useWalletStats");
+  });
+
+  it("wires claim through executeClaimCred with receipt wait and stats invalidation (#347)", () => {
+    const src = readFileSync(resolve(__dirname, "ArenaCharmCredCard.tsx"), "utf8");
+    expect(src).toContain("executeClaimCred");
+    expect(src).toContain("waitForWriteReceipt");
+    expect(src).toContain("invalidateArenaWalletStatsQueries");
+    expect(src).toContain("claimSubmitting");
+    expect(src).toContain("friendlyRevertFromUnknown");
+  });
+
+  it("executeClaimCred waits for receipt then invalidates wallet stats (#347)", async () => {
+    const writeContractAsync = vi.fn().mockResolvedValue("0xabc");
+    const waitForWriteReceipt = vi.fn().mockResolvedValue({ status: "success" });
+    const invalidateArenaWalletStatsQueries = vi.fn();
+    const queryClient = { invalidateQueries: vi.fn() };
+    const wagmiConfig = { chains: [] };
+
+    await executeClaimCred({
+      arena: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+      claimEpoch: 4n,
+      abi: [],
+      writeContractAsync,
+      wagmiConfig: wagmiConfig as never,
+      queryClient: queryClient as never,
+      waitForWriteReceipt,
+      invalidateArenaWalletStatsQueries,
+    });
+
+    expect(writeContractAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "claimCred",
+        args: [4n],
+      }),
+    );
+    expect(waitForWriteReceipt).toHaveBeenCalledWith(wagmiConfig, { hash: "0xabc" });
+    expect(invalidateArenaWalletStatsQueries).toHaveBeenCalledWith(queryClient);
+  });
+
+  it("executeClaimCred does not invalidate on reverted receipt (#347)", async () => {
+    const writeContractAsync = vi.fn().mockResolvedValue("0xdef");
+    const waitForWriteReceipt = vi.fn().mockResolvedValue({ status: "reverted" });
+    const invalidateArenaWalletStatsQueries = vi.fn();
+
+    await expect(
+      executeClaimCred({
+        arena: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+        claimEpoch: 2n,
+        abi: [],
+        writeContractAsync,
+        wagmiConfig: { chains: [] } as never,
+        queryClient: { invalidateQueries: vi.fn() } as never,
+        waitForWriteReceipt,
+        invalidateArenaWalletStatsQueries,
+      }),
+    ).rejects.toThrow(/reverted/i);
+
+    expect(invalidateArenaWalletStatsQueries).not.toHaveBeenCalled();
   });
 });

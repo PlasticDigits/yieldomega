@@ -163,6 +163,22 @@ Component: [`ArenaCharmCredCard.tsx`](../../frontend/src/pages/arena/ArenaCharmC
 
 Claim helper: [`arenaCharmCredClaim.ts`](../../frontend/src/lib/arenaCharmCredClaim.ts). Empty / loading copy uses **`EmptyDataPlaceholder`** ([#200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200)). Invariant: **`INV-FRONTEND-257-CHARM-CRED-CARD`**. Play skill: [play-time-arena-doub § CRED claim](../../skills/play-time-arena-doub/SKILL.md).
 
+<a id="claim-cred-post-tx-lifecycle-gitlab-347"></a>
+
+### Claim CRED post-transaction lifecycle (GitLab [#347](https://gitlab.com/PlasticDigits/yieldomega/-/issues/347))
+
+Parent gap analysis: [#342](https://gitlab.com/PlasticDigits/yieldomega/-/issues/342). Mirrors **`claimWarBowFlag`** receipt + invalidation pattern from [`useArenaSaleSession.ts`](../../frontend/src/pages/arena/useArenaSaleSession.ts).
+
+| Step | Behavior |
+|------|----------|
+| Submit | `claimCred(endedEpoch)` via wallet RPC |
+| Receipt | **`waitForWriteReceipt`** before clearing pending UI |
+| Refresh | **`invalidateArenaWalletStatsQueries`** — indexer-first; no RPC balance mirrors |
+| Errors | Reverted receipt or wallet error → no invalidation; **`friendlyRevertFromUnknown`** copy under claim button |
+| Abuse | Button disabled while write + receipt pending (no double-submit) |
+
+Invariant: **`INV-FRONTEND-347-CLAIM-CRED-LIFECYCLE`**. Tests: `arenaCharmCredClaim.test.ts`, `ArenaCharmCredCard.test.tsx`.
+
 <a id="arena-player-progression-gitlab-299"></a>
 
 ## Arena player progression (GitLab [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299))

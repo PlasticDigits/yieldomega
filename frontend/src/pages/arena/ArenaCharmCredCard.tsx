@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 import { ArenaWalletHelpModal } from "@/components/ArenaWalletHelpModal";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useConfig, useWriteContract } from "wagmi";
 import { ArenaXpHero } from "@/components/ArenaXpHero";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import { PageSection } from "@/components/ui/PageSection";
-import { useWalletStats } from "@/hooks/useWalletStats";
+import { invalidateArenaWalletStatsQueries, useWalletStats } from "@/hooks/useWalletStats";
 import { timeArenaReadAbi } from "@/lib/abis";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
-import { canClaimCred } from "@/lib/arenaCharmCredClaim";
+import { canClaimCred, executeClaimCred } from "@/lib/arenaCharmCredClaim";
+import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
+import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import {
   ARENA_LAST_BUY_WALLET_LOCK_LEVEL,
   isArenaLastBuyWalletSurfaceUnlocked,
@@ -83,12 +86,17 @@ export function ArenaCharmCredCard({
   podiumRows = null,
 }: ArenaCharmCredCardProps = {}) {
   const [walletHelpOpen, setWalletHelpOpen] = useState(false);
+  const [claimSubmitting, setClaimSubmitting] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const walletHelpCopy = walletCharmCredHelpCopy();
+  const wagmiConfig = useConfig();
+  const queryClient = useQueryClient();
   const { address, isConnected } = useAccount();
   const arena = addresses.timeArena;
   const indexerOn = Boolean(indexerBaseUrl());
   const { data: stats, isLoading, isFetching } = useWalletStats(address);
   const { writeContractAsync, isPending: claimWritePending } = useWriteContract();
+  const claimPending = claimWritePending || claimSubmitting;
 
   const lastBuyEpoch = useMemo(
     () => (stats?.last_buy_epoch !== undefined ? BigInt(stats.last_buy_epoch) : undefined),
@@ -101,7 +109,7 @@ export function ArenaCharmCredCard({
     return BigInt(raw);
   }, [stats?.claimable_cred_epoch]);
 
-  const claimPending = useMemo(() => {
+  const claimableCredWad = useMemo(() => {
     const raw = stats?.claimable_cred;
     if (raw === undefined) return undefined;
     return BigInt(raw);
@@ -116,7 +124,7 @@ export function ArenaCharmCredCard({
   const claimReady = canClaimCred({
     address,
     claimEpoch,
-    claimPending,
+    claimPending: claimableCredWad,
   });
 
   const walletHelpButton = (
@@ -194,7 +202,7 @@ export function ArenaCharmCredCard({
           type="button"
           className="btn-primary arena-charm-cred-card__claim"
           data-testid="arena-charm-cred-claim"
-          disabled={!claimReady || claimWritePending || !address}
+          disabled={!claimReady || claimPending || !address}
           title={
             claimReady
               ? undefined
@@ -203,18 +211,37 @@ export function ArenaCharmCredCard({
                 : "Nothing to claim from the last ended epoch."
           }
           onClick={() => {
-            if (claimEpoch === undefined || !arena) return;
-            void writeContractAsync({
-              address: arena,
-              abi: timeArenaReadAbi,
-              functionName: "claimCred",
-              args: [claimEpoch],
-            });
+            if (claimEpoch === undefined || !arena || claimPending) return;
+            void (async () => {
+              setClaimSubmitting(true);
+              setClaimError(null);
+              try {
+                await executeClaimCred({
+                  arena,
+                  claimEpoch,
+                  abi: timeArenaReadAbi,
+                  writeContractAsync,
+                  wagmiConfig,
+                  queryClient,
+                  waitForWriteReceipt,
+                  invalidateArenaWalletStatsQueries,
+                });
+              } catch (e) {
+                setClaimError(friendlyRevertFromUnknown(e));
+              } finally {
+                setClaimSubmitting(false);
+              }
+            })();
           }}
         >
           Claim CRED
         </button>
       </ChainMismatchWriteBarrier>
+      {claimError ? (
+        <p className="muted arena-charm-cred-card__claim-error" role="alert">
+          {claimError}
+        </p>
+      ) : null}
       {!claimReady && isConnected && claimEpoch !== undefined ? (
         <p
           className="muted arena-charm-cred-card__claim-hint"
