@@ -254,6 +254,22 @@ pub async fn persist_decoded_log_conn(
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::ArenaPodiumTimerArmed { category, epoch } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_podium_timer_armed (
+                    block_number, block_timestamp, tx_hash, log_index, category, epoch
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(*category as i16)
+            .bind(u256_dec(*epoch))
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::ArenaWarbowSteal {
             attacker,
             victim,

@@ -30,6 +30,20 @@ use crate::rpc_http::{
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 use crate::rpc_poll_health::RpcPollHealth;
 
+/// Canonical `(block_number, transaction_index, log_index)` sort key for `eth_getLogs` rows.
+pub(crate) fn rpc_log_sort_key(lg: &alloy_rpc_types::Log) -> (u64, u64, u64) {
+    (
+        lg.block_number.unwrap_or(0),
+        lg.transaction_index.unwrap_or(u64::MAX),
+        lg.log_index.unwrap_or(u64::MAX),
+    )
+}
+
+/// Sort logs before decode/persist so epoch heads and same-block ordering match chain execution.
+pub(crate) fn sort_rpc_logs_canonical(logs: &mut [alloy_rpc_types::Log]) {
+    logs.sort_by_key(rpc_log_sort_key);
+}
+
 /// Best-effort `eth_blockNumber` across fallback RPCs — only for stalled-ingestion diagnostics.
 async fn rpc_tip_block_number_for_logs(
     providers: &[ReqwestProvider],
@@ -371,6 +385,9 @@ pub async fn run(
                 "ingestion: fetched block + logs"
             );
 
+            let mut logs = logs;
+            sort_rpc_logs_canonical(&mut logs);
+
             let block_hash: B256 = block.header.hash;
             let pointer_next = ChainPointer {
                 block_number: next,
@@ -485,7 +502,59 @@ pub async fn run(
 #[cfg(test)]
 mod ingestion_tests {
     use super::*;
+    use alloy_primitives::{Address, Bytes, LogData};
+    use alloy_rpc_types::Log as RpcLog;
     use crate::reorg::ChainPointer;
+
+    fn sample_rpc_log(block: u64, tx_index: u64, log_index: u64) -> RpcLog {
+        RpcLog {
+            inner: alloy_primitives::Log {
+                address: Address::ZERO,
+                data: LogData::new_unchecked(vec![], Bytes::new()),
+            },
+            block_hash: None,
+            block_number: Some(block),
+            block_timestamp: None,
+            transaction_hash: None,
+            transaction_index: Some(tx_index),
+            log_index: Some(log_index),
+            removed: false,
+        }
+    }
+
+    #[test]
+    fn sort_rpc_logs_canonical_orders_block_tx_log_index() {
+        let mut logs = vec![
+            sample_rpc_log(10, 2, 1),
+            sample_rpc_log(10, 1, 3),
+            sample_rpc_log(10, 1, 1),
+            sample_rpc_log(9, 9, 9),
+            sample_rpc_log(10, 2, 0),
+        ];
+        logs.reverse();
+        sort_rpc_logs_canonical(&mut logs);
+        let keys: Vec<_> = logs.iter().map(rpc_log_sort_key).collect();
+        assert_eq!(
+            keys,
+            vec![
+                (9, 9, 9),
+                (10, 1, 1),
+                (10, 1, 3),
+                (10, 2, 0),
+                (10, 2, 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn sort_rpc_logs_canonical_is_stable_for_equal_keys() {
+        let a = sample_rpc_log(5, 1, 2);
+        let b = sample_rpc_log(5, 1, 2);
+        let mut logs = vec![a.clone(), b.clone()];
+        sort_rpc_logs_canonical(&mut logs);
+        assert_eq!(logs.len(), 2);
+        assert_eq!(rpc_log_sort_key(&logs[0]), rpc_log_sort_key(&logs[1]));
+    }
 
     #[test]
     fn next_block_genesis_sentinel_uses_effective_start() {

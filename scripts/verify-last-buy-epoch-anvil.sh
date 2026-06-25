@@ -44,7 +44,7 @@ wait_indexer_sync() {
   local want="$1"
   for _ in $(seq 1 90); do
     local tip
-    tip="$(curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/status" | jq -r '.chain_pointer.block_number // 0')"
+    tip="$(curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/status" | jq -r '.max_indexed_block // 0')"
     if [[ "${tip}" -ge "${want}" ]]; then
       return 0
     fi
@@ -87,6 +87,9 @@ wait_indexer_sync "$(cast block-number --rpc-url "${RPC}")"
 
 epoch0_rows="$(psql "${PG_URL}" -tAc "SELECT COUNT(*) FROM idx_arena_buy WHERE last_buy_epoch = 0")"
 [[ "${epoch0_rows}" -ge 1 ]] || die "expected epoch-0 buy row"
+
+armed_rows="$(psql "${PG_URL}" -tAc "SELECT COUNT(*) FROM idx_arena_podium_timer_armed WHERE category = 0")"
+[[ "${armed_rows}" -ge 1 ]] || die "expected idx_arena_podium_timer_armed row for Last Buy (category 0)"
 
 # Hard reset → epoch 1 (Alice), then Bob buys in epoch 1
 deadline="$(cast_u256 "${TA}" "deadline()(uint256)")"
