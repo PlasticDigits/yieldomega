@@ -152,6 +152,7 @@ The indexer must **never** be authority for balances or winners ([overview](over
 
 - **Incorrect podium ranking in indexer** — User **trusts** wrong info; may **mis-time** buys or WarBow actions (**wasted gas** on revert or suboptimal play).
 - **Stale timer display** — User delays a buy; **onchain** `deadline` / `podiumDeadline[cat]` remain source of truth.
+- <a id="ingest-lag-vs-head-poller-gitlab-344"></a>**Head poller ahead of ingest ([#344](https://gitlab.com/PlasticDigits/yieldomega/-/issues/344))** — **`GET /v1/arena/timers`** and **`GET /v1/arena/podiums`** expose **`read_block_number`** (RPC head snapshot) and **`indexed_through_block`** (`chain_pointer`). When **`indexed_through_block` < `read_block_number`**, deadline/epoch fields from the head poller may show a new epoch before **`PodiumEpochRolled`**, live podium rows, or activity reflect it. Clients should not treat head-only fields as “final” until ingest catches up; compare the two block fields for a sync indicator. Map: **`INV-INDEXER-344-INGEST-LAG`** · [design — arena timers](../indexer/design.md#arena-timers-http-gitlab-216).
 
 **TimeArena roll-specific**
 

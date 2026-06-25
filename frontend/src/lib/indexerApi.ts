@@ -385,6 +385,8 @@ export type ArenaBuyRoutingSummary = {
 export type ArenaPodiumsResponse = {
   sale_ended?: boolean;
   read_block_number: string;
+  /** Latest block fully ingested (`chain_pointer`; schema ≥ 2.19.0 · [#344](https://gitlab.com/PlasticDigits/yieldomega/-/issues/344)). */
+  indexed_through_block?: string;
   polled_at_ms?: number;
   rows: ArenaPodiumApiRow[];
   buy_routing?: ArenaBuyRoutingSummary;
@@ -834,6 +836,8 @@ export type ArenaBuyItem = {
 
 export type ArenaTimersResponse = {
   read_block_number: string;
+  /** Latest block fully ingested (`chain_pointer`; schema ≥ 2.19.0 · [#344](https://gitlab.com/PlasticDigits/yieldomega/-/issues/344)). */
+  indexed_through_block?: string;
   block_timestamp_sec: string;
   /** Unix millis when the head poller last refreshed this snapshot (schema ≥ 2.18.0 · [#333](https://gitlab.com/PlasticDigits/yieldomega/-/issues/333)). */
   polled_at_ms?: number;

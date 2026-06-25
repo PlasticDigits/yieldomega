@@ -29,6 +29,19 @@ use crate::arena_podium_participants;
 use crate::arena_wallet_stats;
 use crate::arena_warbow_pending_revenge;
 
+/// Latest block fully ingested (`chain_pointer.block_number`) for arena lag visibility ([#344](https://gitlab.com/PlasticDigits/yieldomega/-/issues/344)).
+async fn indexed_through_block(pool: &sqlx::PgPool) -> Result<String, sqlx::Error> {
+    let row = sqlx::query("SELECT value FROM indexer_state WHERE key = 'chain_pointer'")
+        .fetch_optional(pool)
+        .await?;
+    let Some(r) = row else {
+        return Ok("0".into());
+    };
+    let v: serde_json::Value = r.try_get("value")?;
+    let block = v.get("block_number").and_then(|n| n.as_u64()).unwrap_or(0);
+    Ok(block.to_string())
+}
+
 pub fn arena_routes() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/v1/arena/timers", axum::routing::get(arena_timers))
@@ -185,8 +198,13 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
         )
             .into_response();
     };
+    let indexed_through_block = match indexed_through_block(&state.pool).await {
+        Ok(v) => v,
+        Err(e) => return internal_db_error_response("GET /v1/arena/timers", e),
+    };
     let body = json!({
         "read_block_number": h.timer.read_block_number,
+        "indexed_through_block": indexed_through_block,
         "block_timestamp_sec": h.timer.block_timestamp_sec,
         "polled_at_ms": h.timer.polled_at_ms,
         "last_buy_deadline_sec": h.timer.deadline_sec,
@@ -389,12 +407,18 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         &h.future_pool_balance_doub_wad,
     );
 
+    let indexed_through_block = match indexed_through_block(&state.pool).await {
+        Ok(v) => v,
+        Err(e) => return internal_db_error_response("GET /v1/arena/podiums", e),
+    };
+
     (
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
         Json(json!({
             "rows": rows,
             "read_block_number": h.timer.read_block_number,
+            "indexed_through_block": indexed_through_block,
             "sale_ended": h.sale_ended,
             "buy_routing": buy_routing,
         })),
