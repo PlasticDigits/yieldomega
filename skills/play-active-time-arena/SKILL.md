@@ -6,7 +6,7 @@ description: Route agents to the right TimeArena playbook from onchain paused/li
 # Play active Time Arena
 
 1. Read **`TimeArena.paused()`** and **`deadline()`** vs `block.timestamp`.
-2. If **paused** → do not submit buys; surface governance status.
+2. If **paused** → do not submit buys, **`rollPodiumEpoch`**, **`claimCred`**, or **`topUpPodiumPools`**; surface governance status ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)).
 3. If **Last Buy timer expired** while unpaused → the next buy or WarBow action **autorolls** expired podiums (always-live; no manual `rollPodiumEpoch(0)` gate) ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)).
 4. If **live** → use [`play-time-arena-doub/SKILL.md`](play-time-arena-doub/SKILL.md) on the unified **`/`** play surface ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)).
 5. **Player level (#299):** read **`level(address)`** — caps at **5**; gates **your** buy side effects (Last Buy → Time Booster → Streak → WarBow → flag). UI lock copy: `Locked until Level N`. Full matrix: [arena-v2 § XP](../../docs/product/arena-v2.md#xp) · [invariants §299](../../docs/testing/invariants-and-business-logic.md#arena-player-progression-gitlab-299).

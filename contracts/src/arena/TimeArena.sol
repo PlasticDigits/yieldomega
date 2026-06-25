@@ -401,14 +401,15 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     /// @notice Permissionless DOUB top-up across all eight prize vaults (no admin take; GitLab #261).
     function topUpPodiumPools(uint256 amountDoubWad) external nonReentrant {
+        _requireLive();
         require(amountDoubWad > 0, "TimeArena: zero amount");
-        require(arenaStart > 0, "TimeArena: not started");
         uint256 received = _pullDoubExact(msg.sender, amountDoubWad);
         _routeDoubPrizeTopUp(received);
         emit PodiumPoolsToppedUp(msg.sender, received);
     }
 
     function claimCred(uint256 epoch) external nonReentrant {
+        _requireLive();
         require(address(playCred) != address(0), "TimeArena: no cred");
         require(epoch < lastBuyEpoch, "TimeArena: epoch active");
         uint256 weight = epochCharmWad[epoch][msg.sender];
@@ -426,6 +427,7 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     }
 
     function rollPodiumEpoch(uint8 category) external nonReentrant {
+        _requireLive();
         require(category < NUM_PODIUM_CATEGORIES, "TimeArena: bad cat");
         require(podiumTimerArmed[category], "TimeArena: timer not armed");
         require(block.timestamp > podiumDeadline[category], "TimeArena: timer live");
