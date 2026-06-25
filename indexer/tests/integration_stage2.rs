@@ -257,6 +257,10 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         timers.get("charm_price_wad").and_then(|v| v.as_str()),
         Some("1000000000000000000")
     );
+    assert!(
+        timers.get("indexed_through_block").and_then(|v| v.as_str()).is_some(),
+        "timers missing indexed_through_block"
+    );
     let armed = timers
         .get("podium_timer_armed")
         .and_then(|v| v.as_array())
@@ -668,6 +672,75 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
 
     api_http_smoke(&pool).await;
     arena_podiums_live_predictions_smoke(&pool).await;
+    api_arena_ingest_lag_fields_smoke(&pool).await;
+}
+
+/// `indexed_through_block` lags `read_block_number` when ingest trails head poller ([#344](https://gitlab.com/PlasticDigits/yieldomega/-/issues/344)).
+async fn api_arena_ingest_lag_fields_smoke(pool: &sqlx::PgPool) {
+    let bh = b256_lo(50);
+    upsert_indexed_block(pool, 50, bh)
+        .await
+        .expect("upsert block 50");
+    save_chain_pointer(
+        pool,
+        &ChainPointer {
+            block_number: 50,
+            block_hash: bh,
+        },
+    )
+    .await
+    .expect("save pointer at 50");
+
+    let mut head = arena_head_snapshot();
+    head.timer.read_block_number = "100".into();
+    head.sale_state.read_block_number = "100".into();
+
+    let chain_timer = Arc::new(RwLock::new(Some(head)));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    for path in ["/v1/arena/timers", "/v1/arena/podiums"] {
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder().uri(path).body(Body::empty()).unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "{path}");
+        let j = response_json(res).await;
+        assert_eq!(
+            j.get("read_block_number").and_then(|v| v.as_str()),
+            Some("100"),
+            "{path} read_block_number"
+        );
+        assert_eq!(
+            j.get("indexed_through_block").and_then(|v| v.as_str()),
+            Some("50"),
+            "{path} indexed_through_block"
+        );
+        let read_bn: u64 = j
+            .get("read_block_number")
+            .and_then(|v| v.as_str())
+            .unwrap()
+            .parse()
+            .unwrap();
+        let indexed_bn: u64 = j
+            .get("indexed_through_block")
+            .and_then(|v| v.as_str())
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert!(
+            indexed_bn <= read_bn,
+            "{path}: indexed_through_block must not exceed read_block_number"
+        );
+    }
 }
 
 /// Live `GET /v1/arena/podiums` from `idx_arena_podium_live` + WarBow scores ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)).
