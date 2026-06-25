@@ -37,7 +37,22 @@ Production Arena surfaces treat the indexer as the **only** source for recurring
 
 **Production:** `VITE_INDEXER_URL` is **required** for live Arena data. When unset, [`IndexerStatusBar`](../../frontend/src/components/IndexerStatusBar.tsx) shows a dev/degraded banner and display hooks return empty/stale placeholders — not hidden RPC backfill.
 
-**Indexer outage:** stale cached React Query data + status bar (`INDEXER · offline · retrying`); UI must **not** repopulate via browser RPC.
+**Indexer outage:** stale cached React Query data + status bar (`INDEXER · offline · retrying`); UI must **not** repopulate via browser RPC. Play **`/`** mounts the same [`IndexerStatusBar`](../../frontend/src/components/IndexerStatusBar.tsx) inline because [`RootLayout`](../../frontend/src/layout/RootLayout.tsx) hides the global footer on play routes ([#354](https://gitlab.com/PlasticDigits/yieldomega/-/issues/354)).
+
+<a id="play-route-indexer-offline-banner-gitlab-354"></a>
+
+## Play-route indexer offline banner (GitLab [#354](https://gitlab.com/PlasticDigits/yieldomega/-/issues/354))
+
+Parent gap analysis: [#342](https://gitlab.com/PlasticDigits/yieldomega/-/issues/342) P2 #14 · bundles [#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96).
+
+| Surface | Indexer status placement |
+|---------|--------------------------|
+| **`/`** play | [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) — `data-testid="arena-simple-indexer-status"` |
+| **`/arena/protocol`** AUDIT | [`AgentFooterCard`](../../frontend/src/components/AgentFooterCard.tsx) footer row |
+
+Shared hook: [`useIndexerConnectivity`](../../frontend/src/hooks/useIndexerConnectivity.ts) · backoff: [`indexerConnectivity.ts`](../../frontend/src/lib/indexerConnectivity.ts).
+
+Invariant: **`INV-FRONTEND-354-PLAY-INDEXER-STATUS`** · `ArenaSimplePage.test.tsx` · [manual QA §96](../testing/manual-qa-checklists.md#manual-qa-issue-96).
 
 Hooks: [`usePodiumReads`](../../frontend/src/pages/arena/usePodiumReads.ts), [`useArenaHeroTimer`](../../frontend/src/pages/arena/useArenaHeroTimer.ts), [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx), [`useArenaSaleSession`](../../frontend/src/pages/arena/useArenaSaleSession.ts) (Arena v2 uses [`coreReadRowsFromArenaTimers`](../../frontend/src/pages/arena/arenaV2SaleSessionBridge.ts)).
 

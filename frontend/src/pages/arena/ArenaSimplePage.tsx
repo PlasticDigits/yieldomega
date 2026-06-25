@@ -76,6 +76,7 @@ import {
   parseNonNegativeUnixSec,
   resolveIndexerViewerWarbowBattlePoints,
 } from "@/lib/arenaPageHelpers";
+import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { ArenaShell } from "@/components/glass";
 
 /** Indexer page size for Simple head poll (podium ages, SFX). */
@@ -1078,6 +1079,9 @@ export function ArenaSimplePage({
       className="page arena-simple-page arena-command-console glass-arena-console"
       data-testid="arena-command-console"
     >
+      <div className="arena-simple__indexer-status" data-testid="arena-simple-indexer-status">
+        <IndexerStatusBar />
+      </div>
       <div className="arena-command-console__grid">
         <div
           className="arena-command-console__primary-column"
