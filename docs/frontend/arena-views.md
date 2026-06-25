@@ -104,7 +104,7 @@ The live production components must stay mechanics-first, not reskins of retired
 
 - Podium cards on **`/arena/protocol`** (`ArenaSimplePodiumSection`) show all four independent podiums, each current epoch, and 1st/2nd/3rd prize rows in **DOUB** with USD equivalent (indexer **`prize_places_doub_wad`** at head block — preview only, not guaranteed payout ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302))). Play **`/`** uses **`ArenaTimerPodiumCarousel`** for timer-linked podium slides instead of the four-card grid.
 - Participant addresses use [`AddressInline`](../../frontend/src/components/AddressInline.tsx): blockie + last six hex digits by default; profile modal remains the primary in-app action.
-- `/arena/protocol` activity uses **`GET /v1/arena/activity`** for recent **buy / steal / guard / revenge** actions and explicit deltas (DOUB, BP, seconds, guard expiry). Older indexers fall back to `GET /v1/arena/buys`.
+- `/arena/protocol` activity uses **`GET /v1/arena/activity`** for recent **buy / steal / guard / revenge** actions plus **level_up / cred_claim / podium_epoch / epoch_started / feature_unlocked** transitions ([#345](https://gitlab.com/PlasticDigits/yieldomega/-/issues/345)) with explicit deltas (DOUB, BP, seconds, guard expiry, level/epoch metadata). Older indexers fall back to `GET /v1/arena/buys`.
 - [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) presents epoch CHARM/CRED yield state only; it is not a leaderboard.
 - [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) groups **Steal**, **Guard**, **Revenge**, and **Flag** as one PvP action cluster.
 
@@ -200,7 +200,7 @@ When a connected wallet crosses **Level 2+** on play **`/`**, [`ArenaSimplePage.
 - `GET /v1/arena/timers` — Last Buy deadline + four podium deadlines + epoch ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254))
 - `GET /v1/arena/podiums` — head `podium()` rows + indexed `epoch` per category; **`prize_places_doub_wad`** + **`active_pool_balance_doub_wad`** (schema ≥ 2.8.0, [#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302))
 - `GET /v1/arena/buys` — recent buys
-- `GET /v1/arena/activity` — recent buy / WarBow steal / guard / revenge actions for AUDIT activity ([#292](#arena-production-components-gitlab-292))
+- `GET /v1/arena/activity` — recent buy / WarBow steal / guard / revenge actions plus state transitions (level-up, CRED claim, podium roll, epoch start, feature unlock) for AUDIT activity ([#292](#arena-production-components-gitlab-292), [#345](https://gitlab.com/PlasticDigits/yieldomega/-/issues/345))
 - `GET /v1/arena/wallet/{address}/stats` — participant profile aggregates (XP, buy count, WarBow steals; [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255); schema **≥ 2.4.0**)
 - `GET /v1/arena/session-summary` — absent-session recap for play modal ([#338](https://gitlab.com/PlasticDigits/yieldomega/-/issues/338); schema **≥ 2.18.0**)
 - `GET /v1/arena/podium-pool-donations` — donate-pools AUDIT card ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))

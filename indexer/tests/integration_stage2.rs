@@ -622,6 +622,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     api_platform_usage_smoke(&pool).await;
     api_session_summary_smoke(&pool).await;
     api_buys_cursor_smoke(&pool).await;
+    api_activity_cursor_smoke(&pool).await;
     api_buy_via_kumbaya_pay_kind_smoke(&pool).await;
 
     persist_decoded_log_autocommit(&pool, &logs[1])
@@ -971,12 +972,63 @@ async fn api_arena_activity_smoke(pool: &sqlx::PgPool) {
         .iter()
         .filter_map(|row| row.get("kind").and_then(|v| v.as_str()))
         .collect();
-    for expected in ["buy", "steal", "guard", "revenge"] {
+    for expected in [
+        "buy",
+        "steal",
+        "guard",
+        "revenge",
+        "level_up",
+        "cred_claim",
+        "podium_epoch",
+        "epoch_started",
+        "feature_unlocked",
+    ] {
         assert!(
             kinds.contains(&expected),
             "missing {expected} in activity kinds: {kinds:?}"
         );
     }
+
+    let level_up = items
+        .iter()
+        .find(|row| row.get("kind").and_then(|v| v.as_str()) == Some("level_up"))
+        .expect("level_up row");
+    assert_eq!(level_up.get("bp_delta").and_then(|v| v.as_str()), Some("2"));
+
+    let cred_claim = items
+        .iter()
+        .find(|row| row.get("kind").and_then(|v| v.as_str()) == Some("cred_claim"))
+        .expect("cred_claim row");
+    assert_eq!(
+        cred_claim.get("amount_doub_wad").and_then(|v| v.as_str()),
+        Some("2")
+    );
+    assert_eq!(
+        cred_claim.get("seconds_delta").and_then(|v| v.as_str()),
+        Some("1")
+    );
+
+    let podium_epoch = items
+        .iter()
+        .find(|row| row.get("kind").and_then(|v| v.as_str()) == Some("podium_epoch"))
+        .expect("podium_epoch row");
+    assert_eq!(
+        podium_epoch.get("amount_doub_wad").and_then(|v| v.as_str()),
+        Some("2")
+    );
+    assert_eq!(
+        podium_epoch.get("target").and_then(|v| v.as_str()),
+        Some("1")
+    );
+
+    let feature_unlocked = items
+        .iter()
+        .find(|row| row.get("kind").and_then(|v| v.as_str()) == Some("feature_unlocked"))
+        .expect("feature_unlocked row");
+    assert_eq!(
+        feature_unlocked.get("bp_delta").and_then(|v| v.as_str()),
+        Some("1")
+    );
 
     let steal = items
         .iter()
@@ -1915,6 +1967,92 @@ async fn arena_session_summary_fixture_since_activity() {
         .await
         .unwrap();
     assert_eq!(empty.status(), StatusCode::BAD_REQUEST);
+}
+
+/// Cursor pagination on `GET /v1/arena/activity` across mixed event kinds ([#345](https://gitlab.com/PlasticDigits/yieldomega/-/issues/345)).
+async fn api_activity_cursor_smoke(pool: &sqlx::PgPool) {
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/activity?limit=3")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let cursor = j
+        .get("next_cursor")
+        .and_then(|v| v.as_str())
+        .expect("next_cursor");
+    assert!(!cursor.is_empty());
+
+    let page1_keys: Vec<String> = j["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| {
+            format!(
+                "{}:{}",
+                row["tx_hash"].as_str().unwrap(),
+                row["log_index"].as_i64().unwrap()
+            )
+        })
+        .collect();
+
+    let res2 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/activity?limit=3&cursor={cursor}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+    let j2 = response_json(res2).await;
+    let page2_keys: Vec<String> = j2["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| {
+            format!(
+                "{}:{}",
+                row["tx_hash"].as_str().unwrap(),
+                row["log_index"].as_i64().unwrap()
+            )
+        })
+        .collect();
+
+    for key in &page2_keys {
+        assert!(
+            !page1_keys.contains(key),
+            "cursor page duplicated row {key}"
+        );
+    }
+
+    let kinds_page1: Vec<_> = j["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|row| row.get("kind").and_then(|v| v.as_str()))
+        .collect();
+    assert!(
+        kinds_page1.len() >= 2,
+        "expected mixed kinds on first page: {kinds_page1:?}"
+    );
 }
 
 /// Cursor pagination on `GET /v1/arena/buys` ([#319](https://gitlab.com/PlasticDigits/yieldomega/-/issues/319)).
