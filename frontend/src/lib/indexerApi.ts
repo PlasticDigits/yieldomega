@@ -91,7 +91,16 @@ export type PaginatedItems<T> = {
 /** Buys list includes total row count for the indexer table (schema ≥ 1.6.0). */
 export type ArenaBuysPageLegacy = PaginatedItems<BuyItem> & { total?: number };
 
-export type ArenaActivityKind = "buy" | "steal" | "guard" | "revenge";
+export type ArenaActivityKind =
+  | "buy"
+  | "steal"
+  | "guard"
+  | "revenge"
+  | "level_up"
+  | "cred_claim"
+  | "podium_epoch"
+  | "epoch_started"
+  | "feature_unlocked";
 
 export type ArenaActivityItem = {
   kind: ArenaActivityKind;

@@ -658,6 +658,91 @@ const ACTIVITY_UNION_SQL: &str = r#"SELECT *
                       log_index,
                       EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
                FROM idx_arena_warbow_revenge
+               UNION ALL
+               SELECT 'level_up' AS kind,
+                      player AS actor,
+                      NULL::text AS target,
+                      NULL::text AS charm_wad,
+                      NULL::text AS amount_doub_wad,
+                      NULL::text AS seconds_delta,
+                      new_level::text AS bp_delta,
+                      NULL::text AS guard_until,
+                      NULL::boolean AS timer_hard_reset,
+                      NULL::boolean AS paid_with_cred,
+                      NULL::boolean AS limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+               FROM idx_arena_level_up
+               UNION ALL
+               SELECT 'cred_claim' AS kind,
+                      claimer AS actor,
+                      NULL::text AS target,
+                      NULL::text AS charm_wad,
+                      amount::text AS amount_doub_wad,
+                      epoch::text AS seconds_delta,
+                      NULL::text AS bp_delta,
+                      NULL::text AS guard_until,
+                      NULL::boolean AS timer_hard_reset,
+                      NULL::boolean AS paid_with_cred,
+                      NULL::boolean AS limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      NULL::text AS block_timestamp_sec
+               FROM idx_play_cred_claim
+               UNION ALL
+               SELECT 'podium_epoch' AS kind,
+                      first_place AS actor,
+                      epoch::text AS target,
+                      NULL::text AS charm_wad,
+                      pool_paid::text AS amount_doub_wad,
+                      category::text AS seconds_delta,
+                      NULL::text AS bp_delta,
+                      NULL::text AS guard_until,
+                      NULL::boolean AS timer_hard_reset,
+                      NULL::boolean AS paid_with_cred,
+                      NULL::boolean AS limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+               FROM idx_arena_podium_epoch
+               UNION ALL
+               SELECT 'epoch_started' AS kind,
+                      '0x0000000000000000000000000000000000000000' AS actor,
+                      NULL::text AS target,
+                      NULL::text AS charm_wad,
+                      NULL::text AS amount_doub_wad,
+                      deadline::text AS seconds_delta,
+                      epoch::text AS bp_delta,
+                      NULL::text AS guard_until,
+                      NULL::boolean AS timer_hard_reset,
+                      NULL::boolean AS paid_with_cred,
+                      NULL::boolean AS limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+               FROM idx_arena_last_buy_epoch_started
+               UNION ALL
+               SELECT 'feature_unlocked' AS kind,
+                      player AS actor,
+                      NULL::text AS target,
+                      NULL::text AS charm_wad,
+                      NULL::text AS amount_doub_wad,
+                      NULL::text AS seconds_delta,
+                      feature_level::text AS bp_delta,
+                      NULL::text AS guard_until,
+                      NULL::boolean AS timer_hard_reset,
+                      NULL::boolean AS paid_with_cred,
+                      NULL::boolean AS limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+               FROM idx_arena_feature_unlocked
            ) activity"#;
 
 async fn arena_activity(State(state): State<AppState>, Query(p): Query<ListPageParams>) -> Response {

@@ -82,7 +82,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Four-podium grid | **`ArenaSimplePodiumSection`** shows all four podiums with epoch + DOUB prizes + USD equivalent | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
 | Mechanics copy | Always-live when unpaused; flat DOUB CHARM buys; **100%** podium routing (**25%** per track · **70/20/10** epochs; [#300](../product/arena-v2.md#doub-prize-routing-per-buy--300)); 100% donate top-up; WarBow activity | [arena-v2.md](../product/arena-v2.md) |
 | Podiums | Four-card **`arena-simple-podiums`** grid; epoch + DOUB prizes + USD equivalent; blockie + last-six addresses | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
-| Activity feed | `GET /v1/arena/activity` buy / steal / guard / revenge with explicit deltas | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
+| Activity feed | `GET /v1/arena/activity` buy / steal / guard / revenge plus level-up, CRED claim, podium roll, epoch start, feature unlock ([#345](https://gitlab.com/PlasticDigits/yieldomega/-/issues/345)) | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
 | Donate pools | Required no-benefit disclosure; `topUpPodiumPools` write gated | [arena-views donate](../frontend/arena-views.md#protocol-donate-pools-gitlab-262) |
 | Addresses | Participant rows → wallet profile; contract/vault rows → explorer | [arena-views §294](../frontend/arena-views.md#shared-frontend-primitives-gitlab-294) |
 | Forbidden copy | No TimeCurve sale-end / redemption / legacy fee-sink framing | [manual QA §293](manual-qa-checklists.md#manual-qa-issue-293) |
