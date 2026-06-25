@@ -23,8 +23,11 @@ Ensure **user-facing token movement** in arena contracts does not proceed until 
 | ETH / USDm entry | `TimeArenaBuyRouter.buyViaKumbaya` → `buyFor` | Swap → DOUB → arena split | **`paused`** on arena |
 | WarBow DOUB spends | `warbowSteal`, `warbowRevenge`, `warbowActivateGuard`, `warbowStealLimitOverride` | DOUB from caller | **`paused`** |
 | WarBow flag claim | `claimWarBowFlag` | No DOUB spend | **`paused`** — `_requireLive()` ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320); supersedes [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264) doc exception) |
+| Podium epoch roll | `rollPodiumEpoch` | DOUB vault → winners | **`paused`** — `_requireLive()` ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)) |
+| CRED claim | `claimCred` | Mints Play CRED | **`paused`** — `_requireLive()` ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)) |
+| Podium pool top-up | `topUpPodiumPools` | DOUB → prize vaults | **`paused`** — `_requireLive()` ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)) |
 | Referral registration | `ReferralRegistry.registerCode` | CL8Y user → burn | Always live |
-| Podium roll / WarBow finalize | `rollPodiumEpoch`, `finalizeWarbowPodium` | DOUB vault → winners | Permissionless liveness |
+| WarBow finalize (retired) | `finalizeWarbowPodium` | n/a | Superseded — reverts ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)) |
 
 There is **no** separate latch for charm redemption, fee-router distribution, or post-sale CL8Y podium payout — those were retired v1 surfaces ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
 
@@ -37,8 +40,8 @@ Template for operators; exact multisig steps belong in [`deployment-checklist.md
 1. **Bytecode + registry** — Deployed addresses and ABI hashes match audited artifacts.
 2. **Indexer + frontend** — Registry keys wired; **`VITE_TIME_ARENA_ADDRESS`** and peers match onchain proxies.
 3. **`startArena()`** — Owner starts timers (or **`START_ARENA=1`** at deploy).
-4. **Go live** — **`paused == false`**; users can buy, spend DOUB on WarBow actions, and claim WarBow flags.
-5. **Emergency halt** — Owner **`setPaused(true)`**; frontend disables pay CTAs and WarBow write gates (**`INV-FRONTEND-264-ARENA-PAY-PAUSE`**).
+4. **Go live** — **`paused == false`**; users can buy, spend DOUB on WarBow actions, claim WarBow flags, roll podiums, claim CRED, and top up prize pools.
+5. **Emergency halt** — Owner **`setPaused(true)`**; frontend disables pay CTAs and WarBow write gates (**`INV-FRONTEND-264-ARENA-PAY-PAUSE`**). **`rollPodiumEpoch`**, **`claimCred`**, and **`topUpPodiumPools`** revert via **`_requireLive()`** ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)). Autoroll inside buys/WarBow is also blocked because **`_requireLiveAndAutoroll`** checks **`_requireLive()`** first — expired podiums do not settle while paused.
 
 ---
 

@@ -10,18 +10,16 @@ Authoritative onchain gate for user-facing arena value movement: **`TimeArena.pa
 |--------|-------------------|-----------------|----------------------|
 | **TimeArena** | `buy`, `buyWithCred`, WarBow DOUB spends (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`, `warbowStealLimitOverride`) | `setPaused(bool)` (`onlyOwner`) | `paused == false` after `startArena()` (DeployDev starts live; production may defer `startArena`) |
 | **TimeArena** | `claimWarBowFlag` | **`paused`** via `_requireLive()` ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)) | n/a |
+| **TimeArena** | `rollPodiumEpoch`, `claimCred`, `topUpPodiumPools` | **`paused`** via `_requireLive()` ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)) | n/a |
 | **TimeArenaBuyRouter** | `buyViaKumbaya` (ETH / USDm → DOUB → `buyFor`) | Inherits **`TimeArena.paused`** via `buyFor` | Router optional; not in `DeployProduction` ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)) |
-| **ReferralRegistry** | `registerCode` (CL8Y burn) | Always live when registry deployed | n/a |
-| **Podium settlement** | `rollPodiumEpoch`, `finalizeWarbowPodium` | Permissionless liveness; **no** owner enable gate | n/a |
-
-DOUB from each **`buy`** routes immediately to **`PodiumVaults`** (**100%** podium prize vaults; **0%** **`AdminSellVault`** on buys ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300))) — there is no separate “distribution enable” latch ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
+| **ReferralRegistry** | `registerCode` (CL8Y burn) | Always live when registry deployed | n/a | routes immediately to **`PodiumVaults`** (**100%** podium prize vaults; **0%** **`AdminSellVault`** on buys ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300))) — there is no separate “distribution enable” latch ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
 
 ## Suggested go-live order (example)
 
 1. Deploy with **`DeployProduction`** or **`DeployDev`**; confirm registry JSON and ABI hashes ([`export_abi_hashes.sh`](../../contracts/script/export_abi_hashes.sh)).
 2. Wire indexer + frontend from registry (`TimeArena`, `PodiumVaults`, `AdminSellVault`, `PlayCred`, `ReferralRegistry`, `Doubloon`).
 3. Owner calls **`startArena()`** when ready (or set **`START_ARENA=1`** in deploy env).
-4. **Emergency halt:** owner **`setPaused(true)`** — blocks DOUB buys, CRED buys, WarBow DOUB spends, and **`claimWarBowFlag`**; frontend gates pay CTAs and WarBow writes on **`paused`**.
+4. **Emergency halt:** owner **`setPaused(true)`** — blocks DOUB buys, CRED buys, WarBow DOUB spends, **`claimWarBowFlag`**, **`rollPodiumEpoch`**, **`claimCred`**, and **`topUpPodiumPools`**; frontend gates pay CTAs and WarBow writes on **`paused`** ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)).
 
 ## Upgrade notes (UUPS)
 

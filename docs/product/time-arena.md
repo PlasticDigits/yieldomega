@@ -121,7 +121,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 | Topic | Shipped onchain / UI | Approved / follow-up |
 |-------|---------------------|----------------------|
 | DOUB buy remainder wei | [`ArenaBuyRouting`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol): `amount % 4` → **Last Buy (cat 0)** ([#313](https://gitlab.com/PlasticDigits/yieldomega/-/issues/313)) | Resolved — shipped matches product target |
-| Pause scope | **`_requireLive()`** on buys, CRED buys, WarBow spends, **`claimWarBowFlag`** | All participant writes blocked when **`paused`** — [pause ops](../operations/pause-and-final-signoff.md) |
+| Pause scope | **`_requireLive()`** on buys, CRED buys, WarBow spends, **`claimWarBowFlag`**, **`rollPodiumEpoch`**, **`claimCred`**, **`topUpPodiumPools`** | All participant writes blocked when **`paused`** — [pause ops](../operations/pause-and-final-signoff.md) ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)) |
 | Play surface podiums | **`/`**: timer carousel + chips; four-card grid on **`/arena/protocol` only** | Do not reintroduce removed decision row or `ArenaSubnav` in docs ([#298](https://gitlab.com/PlasticDigits/yieldomega/-/issues/298)) |
 
 ---

@@ -2153,6 +2153,33 @@ contract TimeArenaTest is Test {
         arena.claimWarBowFlag();
     }
 
+    /// GitLab #349: permissionless roll cannot bypass ops pause.
+    function test_pause_blocks_rollPodiumEpoch() public {
+        _armPodiumTimer(1);
+        vm.warp(arena.podiumDeadline(1) + 1);
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.rollPodiumEpoch(1);
+    }
+
+    function test_pause_blocks_claimCred() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        _endLastBuyEpoch();
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.claimCred(0);
+    }
+
+    function test_pause_blocks_topUpPodiumPools() public {
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.topUpPodiumPools(1e18);
+    }
+
     // --- GitLab #316: WarBow revert matrix ---
 
     /// Prevents stealing outside the 2×–10× BP band (whale griefing low-BP wallets).

@@ -45,7 +45,7 @@ On **`rollPodiumEpoch(category)`** (permissionless after deadline):
 
 **WarBow (cat 3):** steps 1–5 apply on **`rollPodiumEpoch`** / autoroll — on-chain top-3 from live BP leaderboard pays **4∶2∶1**; emits **`WarbowPodiumFinalized`**. Owner **`finalizeWarbowPodium`** is **superseded** (reverts) ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)). Live BP resets via **`warbowBpGeneration`** on roll.
 
-**Always-live autoroll ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** When not **`paused`**, buys and WarBow actions call **`_autorollExpiredPodiums()`** before proceeding — any **armed** category with **`block.timestamp > podiumDeadline[cat]`** rolls in one tx (unarmed categories are skipped; [#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)).
+**Always-live autoroll ([#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)):** When not **`paused`**, buys and WarBow actions call **`_autorollExpiredPodiums()`** before proceeding — any **armed** category with **`block.timestamp > podiumDeadline[cat]`** rolls in one tx (unarmed categories are skipped; [#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)). While **`paused`**, **`rollPodiumEpoch`** reverts and autoroll does not run (buy/WarBow revert at **`_requireLive()`** first) ([#349](https://gitlab.com/PlasticDigits/yieldomega/-/issues/349)).
 
 ## DOUB prize routing (per buy) — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)
 
