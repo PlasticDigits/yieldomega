@@ -85,4 +85,17 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("pending_cred_accrual");
     expect(src).toContain("cred_balance_wad");
   });
+
+  it("play-route timers share chainNowSec skew (#343)", () => {
+    const chips = readArena("ArenaTimerChips.tsx");
+    const slideMeta = readArena("useTimerPodiumSlideMeta.ts");
+    const simple = readArena("ArenaSimplePage.tsx");
+    expect(chips).toContain("chainNowSec");
+    expect(chips).not.toContain("block_timestamp_sec");
+    expect(slideMeta).toContain("chainNowSec");
+    expect(slideMeta).not.toMatch(/Number\(timerData\.block_timestamp_sec\)/);
+    expect(simple).toContain("chainNowSec: session.chainNowSec");
+    expect(readArena("arenaTransitionState.ts")).toContain("derivePodiumTransitionState");
+    expect(readArena("useArenaHeroTimer.ts")).toContain("arenaChainNow");
+  });
 });

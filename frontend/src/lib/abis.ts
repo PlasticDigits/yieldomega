@@ -103,6 +103,7 @@ export const timeArenaWriteAbi = parseAbi([
   "function buyWithCred(uint256 charmWad)",
   "function topUpPodiumPools(uint256 amountDoubWad)",
   "function claimWarBowFlag()",
+  "function rollPodiumEpoch(uint8 category)",
   "function warbowSteal(address victim, bool payBypassBurn)",
   "function warbowRevenge(address stealer)",
   "function warbowActivateGuard()",

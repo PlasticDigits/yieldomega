@@ -3,11 +3,7 @@
 import { addresses } from "@/lib/addresses";
 import { type ArenaFeatureKey } from "@/lib/arenaProgression";
 import type { BuyItem } from "@/lib/indexerApi";
-import {
-  formatPodiumChipTimerDisplay,
-  isPodiumTimerArmed,
-  podiumCountdownSec,
-} from "@/pages/arena/arenaPodiumTimerDisplay";
+import { buildPodiumTransitionMeta } from "@/pages/arena/arenaTransitionState";
 import { ArenaPodiumTimerChip } from "@/pages/arena/ArenaPodiumTimerChip";
 import { PODIUM_CONTRACT_TO_UX_CATEGORY } from "@/pages/arena/arenaSimplePodiumRanking";
 import { useArenaTimersQuery } from "@/pages/arena/useArenaSaleState";
@@ -52,6 +48,8 @@ type Props = {
   recentBuys?: readonly BuyItem[] | null;
   activeDefendedStreak?: bigint;
   podiumNowUnixSec?: number;
+  /** Shared skew anchor from `useArenaHeroTimer` ([#343](https://gitlab.com/PlasticDigits/yieldomega/-/issues/343)). */
+  chainNowSec?: number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
   onOpenWalletProfile?: (address: string) => void;
 };
@@ -65,6 +63,7 @@ export function ArenaTimerChips({
   recentBuys = null,
   activeDefendedStreak,
   podiumNowUnixSec,
+  chainNowSec,
   onFeatureHelp,
   onOpenWalletProfile,
 }: Props) {
@@ -73,17 +72,19 @@ export function ArenaTimerChips({
   const { data: indexerData } = useArenaTimersQuery(arena ?? undefined);
 
   const data = indexerData ?? null;
-  const now = data ? Number(data.block_timestamp_sec) : Math.floor(Date.now() / 1000);
-  const deadlines = data?.podium_deadlines_sec ?? [];
-  const armedFlags = data?.podium_timer_armed;
 
   return PODIUM_CHIPS.map((chip) => {
     const idx = chip.contractIndex;
     const categoryIndex = chip.categoryIndex;
     const podiumRow = podiumRows[categoryIndex];
-    const armed = isPodiumTimerArmed(armedFlags, idx);
-    const dl = data && armed !== false ? Number(deadlines[idx] ?? 0) : undefined;
-    const rem = podiumCountdownSec(armed, dl, data ? now : undefined);
+    const transitionMeta = buildPodiumTransitionMeta({
+      contractIndex: idx,
+      timerData: data ?? undefined,
+      chainNowSec,
+      currentEpoch: podiumRow?.epoch,
+      heroDisplay: false,
+    });
+    const rem = transitionMeta.countdownSec;
 
     return (
       <ArenaPodiumTimerChip
@@ -104,7 +105,8 @@ export function ArenaTimerChips({
         onFeatureHelp={onFeatureHelp}
         onOpenWalletProfile={onOpenWalletProfile}
         countdownRemainingSec={rem}
-        countdownDisplay={formatPodiumChipTimerDisplay(armed, rem)}
+        countdownDisplay={transitionMeta.countdownDisplay}
+        transitionTestId={transitionMeta.transitionTestId}
         showFeatureHelp={chip.contractIndex !== 0}
         testId={"testId" in chip ? chip.testId : undefined}
         ariaLabel={"ariaLabel" in chip ? chip.ariaLabel : undefined}

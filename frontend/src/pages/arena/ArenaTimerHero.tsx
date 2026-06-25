@@ -5,6 +5,10 @@ import {
   formatLaunchCountdown,
   timerUrgencyClass,
 } from "@/pages/arena/formatTimer";
+import {
+  isTransitionBusyState,
+  type PodiumTransitionUxState,
+} from "@/pages/arena/arenaTransitionState";
 
 type Props = {
   /**
@@ -24,6 +28,10 @@ type Props = {
   countdownPlaceholder?: string;
   /** Inline copy shown directly under the countdown digits. */
   foot?: ReactNode;
+  /** Expired/settling/epoch UX ([#343](https://gitlab.com/PlasticDigits/yieldomega/-/issues/343)). */
+  transitionUxState?: PodiumTransitionUxState;
+  transitionTestId?: string;
+  transitionFoot?: ReactNode;
 };
 
 const SPARK_COUNT = 8;
@@ -59,9 +67,14 @@ export function ArenaTimerHero({
   countdownAriaLabel,
   countdownPlaceholder,
   foot,
+  transitionUxState,
+  transitionTestId,
+  transitionFoot,
 }: Props) {
   const urgency = timerUrgencyClass(secondsRemaining);
   const isCritical = urgency.includes("critical");
+  const transitionBusy =
+    transitionUxState !== undefined && isTransitionBusyState(transitionUxState);
   const split =
     secondsRemaining !== undefined ? formatLaunchCountdown(secondsRemaining) : null;
   const spokenRemaining =
@@ -79,10 +92,13 @@ export function ArenaTimerHero({
 
   return (
     <div
-      className={`timer-hero arena-simple__timer-hero ${urgency}`.trim()}
+      className={`timer-hero arena-simple__timer-hero ${urgency}${
+        transitionBusy ? " arena-simple__timer-hero--transition" : ""
+      }`.trim()}
       aria-label={countdownAriaLabel ?? defaultAria}
       aria-live="polite"
-      data-testid="arena-simple-timer-hero"
+      aria-busy={transitionBusy ? true : undefined}
+      data-testid={transitionTestId ?? "arena-simple-timer-hero"}
     >
       {/* Backplate scene: low-opacity command-console wash.
           Decorative only; alt text is empty + aria-hidden so screen readers
@@ -152,6 +168,14 @@ export function ArenaTimerHero({
         {foot && (
           <p className="arena-simple__timer-hero-foot muted">{foot}</p>
         )}
+        {transitionFoot ? (
+          <p
+            className="arena-simple__timer-hero-foot arena-simple__timer-hero-foot--transition muted"
+            data-testid="arena-timer-transition-foot"
+          >
+            {transitionFoot}
+          </p>
+        ) : null}
       </div>
     </div>
   );

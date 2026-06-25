@@ -25,8 +25,9 @@ describe("ArenaTimerChips", () => {
     const src = readFileSync(resolve(__dirname, "ArenaTimerChips.tsx"), "utf8");
     expect(src).not.toContain("useReadContracts");
     expect(src).toContain("useArenaTimersQuery");
-    expect(src).toContain("podium_timer_armed");
-    expect(src).toContain("formatPodiumChipTimerDisplay");
+    expect(src).toContain("buildPodiumTransitionMeta");
+    expect(src).toContain("chainNowSec");
+    expect(src).not.toContain("block_timestamp_sec");
   });
 });
 

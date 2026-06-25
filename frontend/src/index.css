@@ -8405,6 +8405,22 @@ a.podium-address-explorer:hover .address-inline__label {
   text-wrap: balance;
 }
 
+.arena-simple__timer-hero--transition .arena-simple__timer-digits {
+  opacity: 0.82;
+}
+
+.arena-simple__timer-hero-foot--transition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.arena-podium-roll-cta {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.75rem;
+}
+
 /* Urgency states — match the `.launch-countdown` glow palette so both
    timers shift colour together as the deadline approaches. The base
    `.timer-hero--critical .timer-hero__countdown` rule still fires for any
