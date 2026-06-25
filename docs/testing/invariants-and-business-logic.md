@@ -544,6 +544,7 @@ Verify: `cd contracts && forge test --match-contract "TimeArenaTest|NonStandardE
 | ID | Rule | Verify |
 |----|------|--------|
 | **`INV-TIME-ARENA-EPOCH-CHARM-ANCHOR`** | Hard-reset buy samples TWAP (or Anvil spot), sets **`epochCharmAnchorWad`**, emits **`LastBuyEpochCharmAnchored`** **before** DOUB pull | `TimeArenaEpochCharmPrice.t.sol::test_hard_reset_reanchors_and_prices_at_new_anchor` |
+| **`INV-TIME-ARENA-EPOCH-CHARM-TWAP-4326`** | On MegaETH **4326** (no `setCharmAnchorOracle`), Last Buy hard reset re-anchors from **`ArenaCharmPriceTwap`**; **`doubOwedForBuy`** and buy DOUB match TWAP-derived anchor | `TimeArenaTwapHardReset4326.t.sol::test_chain4326_last_buy_hard_reset_twap_reanchor` ([#352](https://gitlab.com/PlasticDigits/yieldomega/-/issues/352)) |
 | **`INV-TIME-ARENA-EPOCH-CHARM-GROWTH-MATH`** | **`effectiveCharmPriceWad()`** ≈ anchor × 1.1^(elapsed days); monotonic within epoch | `TimeArenaEpochCharmPrice.t.sol::test_effectiveCharmPriceWad_grows_10pct_per_day` |
 | **`INV-TIME-ARENA-INDEXER-EPOCH-PRICE`** | **`GET /v1/arena/timers`** exposes effective + anchor fields; **`GET /v1/arena/last-buy-epoch-pricing`** lists epoch anchors | `integration_stage2.rs`, `chain_timer.rs` |
 | **`INV-TIME-ARENA-FRONTEND-EFFECTIVE-PRICE`** | Buy sizing / Kumbaya quoter read **`effectiveCharmPriceWad`** (indexer-first via `charm_price_wad`) | `arenaV2SaleSessionBridge.test.ts`, `timeArenaBuySubmitSizing.test.ts` |
@@ -556,7 +557,7 @@ Onchain: [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) · router: [
 
 | ID | Rule | Verify |
 |----|------|--------|
-| **`INV-TIME-ARENA-DOUB-OWED-PREVIEW`** | **`doubOwedForBuy(charmWad)`** is **`view`** / **`eth_call`**-safe; equals immediate **`buy`** DOUB pull within epoch and at Last Buy hard-reset boundary (samples TWAP/spot anchor without state write) | `TimeArenaEpochCharmPrice.t.sol::test_doubOwedForBuy_matches_buy_within_epoch`, `test_doubOwedForBuy_matches_buy_at_hard_reset_boundary` |
+| **`INV-TIME-ARENA-DOUB-OWED-PREVIEW`** | **`doubOwedForBuy(charmWad)`** is **`view`** / **`eth_call`**-safe; equals immediate **`buy`** DOUB pull within epoch and at Last Buy hard-reset boundary (samples TWAP/spot anchor without state write) | `TimeArenaEpochCharmPrice.t.sol::test_doubOwedForBuy_matches_buy_within_epoch`, `test_doubOwedForBuy_matches_buy_at_hard_reset_boundary`, `TimeArenaTwapHardReset4326.t.sol::test_chain4326_last_buy_hard_reset_twap_reanchor` ([#352](https://gitlab.com/PlasticDigits/yieldomega/-/issues/352)) |
 | **`INV-TIME-ARENA-DOUB-OWED-ROUTER`** | **`TimeArenaBuyRouter.buyViaKumbaya`** sizes **`exactOutput`** from **`doubOwedForBuy`**, not **`effectiveCharmPriceWad`** alone | `TimeArenaBuyRouter.t.sol`, `VerifyTimeArenaBuyRouterAnvil.t.sol` |
 
 **TWAP manipulation:** hard-reset anchor uses **15-minute** V3 TWAP on production ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)); same-block spot sandwich cannot reduce DOUB owed below the sampled anchor for that transaction.
