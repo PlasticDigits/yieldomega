@@ -27,6 +27,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 - **`buyWithCred`**: burns CRED, accrues epoch CHARM weight, and adds **35 CRED** to the epoch pool ([#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311)).
 - **`claimCred(epoch)`** when `epoch < lastBuyEpoch`: mints pro-rata share + any `epochFixedCredBonus`; zeros epoch CHARM for that wallet.
 - **`/` UI ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)):** [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) — claim **`lastBuyEpoch - 1`** after hard reset · [arena-views §257](../../docs/frontend/arena-views.md#charm-cred-card-gitlab-257).
+- **Post-claim refresh ([#347](https://gitlab.com/PlasticDigits/yieldomega/-/issues/347)):** successful **`claimCred`** waits for receipt, then invalidates indexer wallet stats (no RPC balance mirrors) · **`INV-FRONTEND-347-CLAIM-CRED-LIFECYCLE`** · [arena-views §347](../../docs/frontend/arena-views.md#claim-cred-post-tx-lifecycle-gitlab-347).
 - Invariants: [`INV-TIME-ARENA-CRED-*`](../../docs/testing/invariants-and-business-logic.md#timearena-cred-buy-gitlab-268), [`PlayCred.t.sol`](../../contracts/test/PlayCred.t.sol).
 
 ## Donate to pools (optional sponsorship)
