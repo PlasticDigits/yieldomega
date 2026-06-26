@@ -29,6 +29,7 @@ description: Author local TypeScript or Python scripts against deployed TimeAren
 - **Reference:** [`bots/timearena/README.md`](../../bots/timearena/README.md) — AGPL; study patterns in your own project.
 - **Optional RPC fork smoke (contributors):** [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) + [`contract-fork-smoke.md`](../../docs/testing/contract-fork-smoke.md) ([#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)) — verify `bash scripts/verify-contract-fork-smoke.sh`; not required for local Anvil scripts.
 - **Dev-wallet seed (local Anvil only):** [`e2e-anvil.md` §281](../../docs/testing/e2e-anvil.md#anvil-dev-wallet-seed-gitlab-281) — seed minter follows **`PRIVATE_KEY`** (not **`KEY_EVM_1`**); verify `bash scripts/verify-evm-dev-wallet-seed-anvil.sh`.
+- **Indexer reorg drill (contributors):** [`REORG_STRATEGY.md`](../../indexer/REORG_STRATEGY.md) · `bash scripts/verify-indexer-reorg-anvil.sh` ([#351](https://gitlab.com/PlasticDigits/yieldomega/-/issues/351)) — live Anvil snapshot/revert + level-history parity; map **`INV-INDEXER-351-REORG-ANVIL`**.
 
 ## D. Timing-sensitive buys
 
