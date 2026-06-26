@@ -38,6 +38,8 @@ Forge dependencies are installed in CI per [contracts/README.md](../../contracts
 # Contracts (from repo root)
 bash scripts/check-megaevm-contract-sizes.sh
 cd contracts && FOUNDRY_PROFILE=ci forge test -vv
+# WarBow gas benchmarks (included in full suite; optional isolated run — #353):
+# cd contracts && forge test --match-contract TimeArenaWarbowBenchmark
 
 # Optional — live RPC fork smoke (set FORK_URL); see contract-fork-smoke.md
 # cd contracts && export FORK_URL='https://carrot.megaeth.com/rpc' && FOUNDRY_PROFILE=ci forge test -vv --match-contract TimeArenaForkTest

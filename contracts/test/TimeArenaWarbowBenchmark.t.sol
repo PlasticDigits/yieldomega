@@ -10,11 +10,12 @@ import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 
 /// @dev GitLab #312 — Anvil gas benchmark for incremental WarBow top-3 ranking at scale.
+/// Storage slots from `forge inspect TimeArena storage-layout` (refresh after append-only state changes; #353).
 contract TimeArenaWarbowBenchmarkTest is Test {
     uint256 internal constant PLAYER_COUNT = 10_000;
-    uint256 internal constant SLOT_BATTLE_POINTS = 61;
-    uint256 internal constant SLOT_BP_GENERATION = 63;
-    uint256 internal constant SLOT_CACHED_LEVEL = 107;
+    uint256 internal constant SLOT_BATTLE_POINTS = 60; // `_battlePoints`
+    uint256 internal constant SLOT_BP_GENERATION = 62; // `battlePointsGeneration`
+    uint256 internal constant SLOT_CACHED_LEVEL = 106; // `_cachedLevel`
     uint256 internal constant WAD = 1e18;
     uint256 internal constant CHARM_MIN = 99e16;
 
