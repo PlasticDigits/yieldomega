@@ -5,7 +5,7 @@ Anvil (`forge test`) on Cloud Agent VM, **2026-06-13**.
 ## Setup
 
 - **10,000** synthetic players with seeded `_battlePoints` (incremental top-3 maintained via `_updateTopThree`).
-- Three top-BP players register on the live WarBow podium via level-4 buys.
+- Three top-BP players register on the live WarBow podium via level-4 buys (`_cachedLevel` slot **106** via `vm.store`; refresh from `forge inspect TimeArena storage-layout` after append-only state changes — [#353](https://gitlab.com/PlasticDigits/yieldomega/-/issues/353)).
 - Measured with `vm.startSnapshotGas` in [`TimeArenaWarbowBenchmark.t.sol`](../../contracts/test/TimeArenaWarbowBenchmark.t.sol).
 
 ## Command
