@@ -78,9 +78,23 @@ vi.mock("./useArenaBuyEffectToasts", () => ({
   }),
 }));
 
+let mockIndexerBaseUrl: string | undefined;
+
+const mockIndexerConnectivity = vi.fn(() => ({
+  failureStreak: 0,
+  isOffline: false,
+  lastOkBanner: null,
+  reportAttempt: vi.fn(),
+  backoffPollMs: (fastIntervalMs: number) => fastIntervalMs,
+}));
+
+vi.mock("@/hooks/useIndexerConnectivity", () => ({
+  useIndexerConnectivity: () => mockIndexerConnectivity(),
+}));
+
 vi.mock("@/lib/addresses", () => ({
   addresses: { timeArena: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318" },
-  indexerBaseUrl: () => undefined,
+  indexerBaseUrl: () => mockIndexerBaseUrl,
 }));
 
 vi.mock("@/components/glass", () => ({
@@ -262,6 +276,32 @@ describe("ArenaSimplePage smoke regions (GitLab #321)", () => {
     expect(src).toContain("ArenaTimerPodiumCarousel");
     expect(src).toContain("ArenaTimerChips");
     expect(src).toContain("ArenaCharmCredCard");
+  });
+});
+
+describe("ArenaSimplePage indexer offline banner (GitLab #354)", () => {
+  const src = readFileSync(resolve(__dirname, "ArenaSimplePage.tsx"), "utf8");
+
+  it("mounts IndexerStatusBar on the play surface", () => {
+    expect(src).toContain("IndexerStatusBar");
+    expect(src).toContain('data-testid="arena-simple-indexer-status"');
+  });
+
+  it("shows offline retrying copy when connectivity hook reports offline", () => {
+    mockIndexerBaseUrl = "http://127.0.0.1:3100";
+    mockIndexerConnectivity.mockReturnValue({
+      failureStreak: 3,
+      isOffline: true,
+      lastOkBanner: null,
+      reportAttempt: vi.fn(),
+      backoffPollMs: (fastIntervalMs: number) => fastIntervalMs,
+    });
+    mockSession.mockReturnValue(baseSession());
+    const html = renderPage();
+    expect(html).toContain('data-testid="arena-simple-indexer-status"');
+    expect(html).toContain("INDEXER · offline · retrying");
+    expect(html).not.toContain("INDEXER · v");
+    expect(html).not.toContain("· live");
   });
 });
 
