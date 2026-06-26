@@ -247,6 +247,12 @@ export async function buyCharmViaCast(charmWad = MIN_CHARM_WAD): Promise<void> {
 /** Fast level grind for transition E2E — one max-CHARM buy reaches level 2 ([#350](https://gitlab.com/PlasticDigits/yieldomega/-/issues/350)). */
 export async function ensureArenaLevelTwoViaCast(): Promise<void> {
   const ta = requireAnvilEnv("VITE_TIME_ARENA_ADDRESS");
+  const levelBefore = BigInt(anvilCastCall(ta, "level(address)(uint256)", [ANVIL_MOCK_WALLET]));
+  if (levelBefore >= 2n) {
+    return;
+  }
+  // Prior anvil-arena-* specs may have bought recently on the shared mock wallet.
+  await warpAnvilPastBuyCooldown();
   await buyCharmViaCast(STARTER_CHARM_WAD);
   const level = BigInt(anvilCastCall(ta, "level(address)(uint256)", [ANVIL_MOCK_WALLET]));
   if (level < 2n) {
