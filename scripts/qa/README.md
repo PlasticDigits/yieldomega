@@ -70,6 +70,16 @@ bash scripts/start-local-anvil-stack.sh
 
 That script may pick a free indexer port if `QA_USE_FIXED_INDEXER_PORT` is not set.
 
+## Indexer Anvil verify scripts (gap [#342](https://gitlab.com/PlasticDigits/yieldomega/-/issues/342))
+
+Native Postgres on `:5433` (or `DATABASE_URL`); no Docker required ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)). Run from repo root with Foundry on `PATH`:
+
+| Script | Issue | Command |
+|--------|-------|---------|
+| `verify-indexer-reorg-anvil.sh` | [#351](https://gitlab.com/PlasticDigits/yieldomega/-/issues/351) | `bash scripts/verify-indexer-reorg-anvil.sh` |
+
+See also [`docs/testing/e2e-anvil.md` §324](../docs/testing/e2e-anvil.md#verify-anvil-script-helpers-gitlab-324) for shared `verify_indexer_stack.sh` helpers and the full verify-script set.
+
 ## See also
 
 - [QA onboarding issue body](../docs/qa/QA-onboarding-gitlab-issue-body.md) — full checklist ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274))

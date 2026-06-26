@@ -67,6 +67,9 @@ cd frontend && npx playwright install --with-deps && npm run build && npm run te
 # export PATH="$HOME/.foundry/bin:$PATH" && source /usr/local/cargo/env 2>/dev/null || true
 # bash scripts/verify-wallet-profile-anvil.sh
 
+# Optional — indexer live reorg rollback smoke (Anvil snapshot/revert + level history; #351)
+# bash scripts/verify-indexer-reorg-anvil.sh
+
 # Doc gates (same as scripts-smoke CI job; #274, #276, #284, #286)
 bash scripts/check-doc-anchors.sh
 bash scripts/check-doc-retired-terms.sh

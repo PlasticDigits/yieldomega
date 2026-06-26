@@ -273,7 +273,11 @@ The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../
 
 ### Indexer-backed verify script helpers ([GitLab #324](https://gitlab.com/PlasticDigits/yieldomega/-/issues/324))
 
-Indexer smoke scripts (`verify-podium-live-anvil.sh`, `verify-wallet-profile-anvil.sh`, …) share bootstrap via:
+Indexer smoke scripts (`verify-podium-live-anvil.sh`, `verify-wallet-profile-anvil.sh`, `verify-indexer-reorg-anvil.sh`, …) share bootstrap via:
+
+| Script | Issue | Focus |
+|--------|-------|--------|
+| `verify-indexer-reorg-anvil.sh` | [#351](https://gitlab.com/PlasticDigits/yieldomega/-/issues/351) | Live reorg: `find_common_ancestor` + rollback + re-ingest; level history vs on-chain level |
 
 | Module | Role |
 |--------|------|
