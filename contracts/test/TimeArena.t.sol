@@ -12,6 +12,7 @@ import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
+import {ArenaPodiumSettlement} from "../src/arena/libraries/ArenaPodiumSettlement.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {MockCL8Y} from "../src/tokens/MockCL8Y.sol";
@@ -961,6 +962,17 @@ contract TimeArenaTest is Test {
         _warpPastBuyCooldown();
     }
 
+    /// GitLab #355: level via `buyWithCred` — arms timers without DOUB prize routing.
+    function _ensureLevelCred(address user, uint256 target) internal {
+        require(target >= 1 && target <= ArenaXp.MAX_PLAYER_LEVEL, "bad level");
+        while (arena.level(user) < target) {
+            _warpPastBuyCooldown();
+            vm.prank(user);
+            arena.buyWithCred(CHARM_MAX);
+        }
+        _warpPastBuyCooldown();
+    }
+
     /// Level to 4 with exactly one WarBow BP grant (the level-up buy).
     function _reachLevel4OneWarbowBuy(address user) internal {
         while (arena.level(user) < 3) {
@@ -1142,6 +1154,84 @@ contract TimeArenaTest is Test {
         assertEq(cleared[1], address(0));
         assertEq(cleared[2], address(0));
         assertEq(arena.podiumEpoch(cat), 1);
+    }
+
+    /// GitLab #355: zero active ledger at roll skips payout; seed/future still promote per [time-arena.md](../docs/product/time-arena.md) epoch tranches.
+    /// Issue note: timer stays disarmed after roll until the next qualifying buy (no restart while pool empty).
+    function test_roll_empty_pool_tranche_promotion() public {
+        uint8 cat = arena.CAT_TIME_BOOSTER();
+        _ensureLevelCred(alice, 2);
+        assertTrue(arena.podiumTimerArmed(cat));
+        assertEq(vaults.activePoolBalance(cat), 0, "CRED buy arms timer without DOUB active tranche");
+
+        uint256 seedAmt = 50e18;
+        uint256 futureAmt = 25e18;
+        vm.startPrank(address(arena));
+        vaults.creditTranche(cat, 1, seedAmt);
+        vaults.creditTranche(cat, 2, futureAmt);
+        vm.stopPrank();
+        assertEq(vaults.seedPoolBalance(cat), seedAmt);
+        assertEq(vaults.futurePoolBalance(cat), futureAmt);
+
+        uint256 aliceBefore = doub.balanceOf(alice);
+        uint256 vaultTokenBefore = doub.balanceOf(address(vaults));
+        uint256 epochBefore = arena.podiumEpoch(cat);
+
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
+
+        assertEq(arena.podiumEpoch(cat), epochBefore + 1);
+        assertFalse(arena.podiumTimerArmed(cat));
+        assertEq(arena.podiumDeadline(cat), 0);
+        assertEq(vaults.activePoolBalance(cat), seedAmt + futureAmt, "future to seed to active promotion");
+        assertEq(vaults.seedPoolBalance(cat), 0);
+        assertEq(vaults.futurePoolBalance(cat), 0);
+        assertEq(doub.balanceOf(alice), aliceBefore, "empty active pool cannot extract DOUB");
+        assertEq(doub.balanceOf(address(vaults)), vaultTokenBefore, "no winner transfer on empty active");
+    }
+
+    /// GitLab #355: sparse podium (single entrant) — zero-address 2nd/3rd slots get no transfer; 4:2:1 math from [time-arena.md](../docs/product/time-arena.md).
+    function test_roll_partial_winners() public {
+        address solo = makeAddr("solo");
+        doub.mint(solo, 1_000_000e18);
+        cred.mint(solo, 10_000e18);
+        vm.prank(solo);
+        doub.approve(address(arena), type(uint256).max);
+        vm.prank(solo);
+        arena.buyWithCred(1e18);
+        address[] memory wallets = new address[](1);
+        wallets[0] = solo;
+        arena.grandfatherProgression(wallets);
+        _warpPastBuyCooldown();
+        vm.prank(solo);
+        arena.buy(1e18);
+
+        uint8 cat = arena.CAT_TIME_BOOSTER();
+        (address[3] memory winners,) = arena.podium(cat);
+        assertEq(winners[0], solo);
+        assertEq(winners[1], address(0));
+        assertEq(winners[2], address(0));
+
+        uint256 poolBal = vaults.activePoolBalance(cat);
+        assertGt(poolBal, 0);
+        uint256 promotedAfter = vaults.seedPoolBalance(cat) + vaults.futurePoolBalance(cat);
+        (uint256 shareFirst, uint256 shareSecond, uint256 shareThird) = ArenaPodiumSettlement.payoutShares(poolBal);
+
+        uint256 soloBefore = doub.balanceOf(solo);
+        uint256 bobBefore = doub.balanceOf(bob);
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        vm.expectEmit(true, true, false, true);
+        emit TimeArena.PodiumEpochRolled(cat, arena.podiumEpoch(cat) + 1, solo, address(0), address(0), poolBal);
+        arena.rollPodiumEpoch(cat);
+
+        assertEq(doub.balanceOf(solo), soloBefore + shareFirst, "4/7 to sole winner");
+        assertEq(doub.balanceOf(bob), bobBefore, "zero-address slot pays no outsider");
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore - shareFirst, "2nd+3rd shares stay on vault");
+        assertEq(vaults.activePoolBalance(cat), promotedAfter, "seed+future tranches promoted after payout");
+        assertGt(shareSecond + shareThird, 0, "unclaimed shares exist when ranks empty");
+        assertEq(shareFirst + shareSecond + shareThird, poolBal);
     }
 
     /// GitLab #247: other podium rolls do not bump global `lastBuyEpoch`.
