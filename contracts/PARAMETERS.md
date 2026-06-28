@@ -24,6 +24,19 @@ Replaces legacy **FeeRouter** five-sink CL8Y table ([#244](https://gitlab.com/Pl
 
 Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol). Forge: `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_buy_routes_doub_split`, `test_buy_routes_epoch_tranches_worked_example` ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). Manual top-up (`topUpPodiumPools`): legacy 10:7.5 active:seed per category, **0%** admin — [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261).
 
+### PodiumVaults pool wiring ([#348](https://gitlab.com/PlasticDigits/yieldomega/-/issues/348))
+
+| Mode | `activePools` / `seedPools` / `futurePools` | DOUB custody | Roll / payout |
+|------|---------------------------------------------|--------------|---------------|
+| **Commingled (default)** | `address(PodiumVaults)` for all slots | Single ERC-20 balance on `PodiumVaults`; per-category tranche ledgers | Ledger debit + `safeTransfer` from vault |
+| **Non-commingled (optional)** | Per-slot [`PodiumTranchePool`](src/arena/PodiumTranchePool.sol) contracts | DOUB held on each pool contract; `PodiumVaults` is sole `operator` | `PodiumTranchePool.pushTo` on roll / 4∶2∶1 payout |
+
+**DeployDev / Anvil default:** commingled only — no deploy-script change. Optional per-category wiring via owner `setActivePool` / `setSeedPool` / `setFuturePool` after deploy.
+
+**Misconfiguration guardrails:** EOAs or non-contract addresses revert **`PodiumVaults: external pool not contract`** on roll/payout. Unauthorised disburse attempts revert **`PodiumTranchePool: not operator`**.
+
+Forge: `PodiumVaultsNonCommingled.t.sol` · invariant **`INV-PODIUM-VAULTS-348-NON-COMMINGLED`** · [invariants §348](../docs/testing/invariants-and-business-logic.md#podium-vaults-non-commingled-gitlab-348).
+
 | Parameter | Default | Notes |
 |-----------|---------|-------|
 | `charmPriceWad` / `effectiveCharmPriceWad()` | **Epoch 0:** Kumbaya TWAP init ~**$1/CHARM** ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)); grows **+10%/day** until Last Buy hard reset re-anchors ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)); **DeployDev:** `1000e18` anchor | DOUB per 1e18 CHARM for `buy` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |

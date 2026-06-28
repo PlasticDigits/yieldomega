@@ -2,11 +2,15 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ArenaBuyRouting} from "./libraries/ArenaBuyRouting.sol";
+import {PodiumTranchePool} from "./PodiumTranchePool.sol";
 
 /// @notice Registry + balance holder for four active + four seed + four future DOUB podium pools.
 contract PodiumVaults is Ownable {
+    using SafeERC20 for IERC20;
+
     IERC20 public immutable doub;
     address public arena;
     address[4] public activePools;
@@ -78,14 +82,15 @@ contract PodiumVaults is Ownable {
         require(podiumId < ArenaBuyRouting.NUM_PODIUMS, "PodiumVaults: bad id");
         require(tranche <= 2, "PodiumVaults: bad tranche");
         if (amount == 0) return;
+        address pool = tranche == 0
+            ? activePools[podiumId]
+            : (tranche == 1 ? seedPools[podiumId] : futurePools[podiumId]);
+        if (pool != address(this)) return;
         if (tranche == 0) {
-            require(activePools[podiumId] == address(this), "PodiumVaults: not commingled");
             _activeLedger[podiumId] += amount;
         } else if (tranche == 1) {
-            require(seedPools[podiumId] == address(this), "PodiumVaults: not commingled");
             _seedLedger[podiumId] += amount;
         } else {
-            require(futurePools[podiumId] == address(this), "PodiumVaults: not commingled");
             _futureLedger[podiumId] += amount;
         }
     }
@@ -106,9 +111,10 @@ contract PodiumVaults is Ownable {
             require(_activeLedger[podiumId] >= total, "PodiumVaults: ledger underflow");
             _activeLedger[podiumId] -= total;
         }
-        if (amtFirst > 0 && first != address(0)) doub.transfer(first, amtFirst);
-        if (amtSecond > 0 && second != address(0)) doub.transfer(second, amtSecond);
-        if (amtThird > 0 && third != address(0)) doub.transfer(third, amtThird);
+        address active = activePools[podiumId];
+        if (amtFirst > 0 && first != address(0)) _moveFromPool(active, first, amtFirst);
+        if (amtSecond > 0 && second != address(0)) _moveFromPool(active, second, amtSecond);
+        if (amtThird > 0 && third != address(0)) _moveFromPool(active, third, amtThird);
     }
 
     /// @dev Manual top-up path: promote seed → active only (GitLab #261).
@@ -126,7 +132,7 @@ contract PodiumVaults is Ownable {
         }
         moved = doub.balanceOf(seed);
         if (moved > 0) {
-            doub.transfer(active, moved);
+            _moveFromPool(seed, active, moved);
         }
     }
 
@@ -151,11 +157,22 @@ contract PodiumVaults is Ownable {
         }
         movedToSeed = doub.balanceOf(future);
         if (movedToSeed > 0) {
-            doub.transfer(seed, movedToSeed);
+            _moveFromPool(future, seed, movedToSeed);
         }
         movedToActive = doub.balanceOf(seed);
         if (movedToActive > 0) {
-            doub.transfer(active, movedToActive);
+            _moveFromPool(seed, active, movedToActive);
+        }
+    }
+
+    /// @dev Commingled pools debit `address(this)`; external pools use `PodiumTranchePool.pushTo`.
+    function _moveFromPool(address from, address to, uint256 amount) private {
+        if (amount == 0) return;
+        if (from == address(this)) {
+            doub.safeTransfer(to, amount);
+        } else {
+            require(from.code.length > 0, "PodiumVaults: external pool not contract");
+            PodiumTranchePool(from).pushTo(to, amount);
         }
     }
 
