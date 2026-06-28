@@ -16,7 +16,7 @@
     "PodiumVaults": "0x7abb3c243a938d1b809b07b8b3f1d60044b46698",
     "ReferralRegistry": "0xc729ee049b18669e3c4ebfebcac676da7992a246",
     "TimeArena": "0xba39cea0e5ef6808d8cb926c722877480049e0ee",
-    "TimeArenaBuyRouter": "",
+    "TimeArenaBuyRouter": "0x3151c335224f5bbfde174b15dba9523a0694d582",
     "LaunchedToken": "0xc3654b4f879937b767afbb64b7c230ff436d2342"
   },
   "deployer": "0xd5f3eff25caa075f1f33dbf9ca6883c741d408a2",
