@@ -133,6 +133,8 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-PODIUM-TIMER-ARM`** | Per-category arm on first qualifying buy; `rollPodiumEpoch` / autoroll skip unarmed epochs; emits **`PodiumTimerArmed`** | `test_per_category_arm_on_first_qualifying_buy`, `test_no_autoroll_before_timer_armed`, `test_roll_podium_reverts_when_unarmed` ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)) |
 | **`INV-TIME-ARENA-SCORING-LAST-BUY-TIMER`** | Time Booster / Defended Streak / WarBow BP scoring uses **Last Buy (cat 0)** timer only, not other podium bands | `test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer`, `test_defended_streak_uses_last_buy_timer_not_other_podium` ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) · [detail §271](#timearena-podium-timers-gitlab-271) |
 | **`INV-TIME-ARENA-PODIUM-ROLL`** | `rollPodiumEpoch(cat)` after expiry; epoch bump; pays winners; clears scores | `test_roll_podium_after_expiry`, `test_roll_podium_settlement_pays_and_clears_scores` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
+| **`INV-TIME-ARENA-PODIUM-ROLL-EMPTY`** | Roll with `activePoolBalance == 0` skips payout; `rollEpochTranches` still promotes seed/future; no DOUB extraction | `test_roll_empty_pool_tranche_promotion` ([#355](https://gitlab.com/PlasticDigits/yieldomega/-/issues/355)) |
+| **`INV-TIME-ARENA-PODIUM-ROLL-SPARSE`** | Zero-address winner slots receive no transfer; sole winner gets 4/7 of active pool; 2nd+3rd shares remain on vault | `test_roll_partial_winners` ([#355](https://gitlab.com/PlasticDigits/yieldomega/-/issues/355)) |
 | **`INV-TIME-ARENA-PODIUM-DIVERGE`** | Per-category rolls reset one `podiumDeadline[cat]`; timers diverge across Streak / Booster / WarBow / Last Buy | `test_podium_timers_diverge_after_single_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
 | **`INV-TIME-ARENA-PODIUM-EPOCH-INDEP`** | `podiumEpoch[cat]` counters advance independently | `test_podium_epochs_independent_after_skewed_rolls` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
 | **`INV-TIME-ARENA-LAST-BUY-EPOCH`** | `lastBuyEpoch` bumps on Last Buy **hard reset** only (CHARM/CRED), not on other podium rolls | `test_timer_hard_reset_increments_epoch`, `test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
@@ -469,8 +471,23 @@ Parent: [#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247) (indepe
 | **`INV-TIME-ARENA-PODIUM-TIMER-TABLE`** | `podiumTimerExtensionSec`, `podiumInitialTimerSec`, `podiumTimerCapSec`, reset bands match product table (+120/+60/+90/+300; 24h/12h/18h/48h initial; caps = 4× initial) | `ArenaPodiumTimerConfig.sol`, `test_start_arena_initial_deadlines_differ_by_category`, `verify-podium-timers-anvil.sh` |
 | **`INV-TIME-ARENA-PODIUM-BUY-EXTEND`** | At **level 5**, one buy extends all four deadlines by category rules; lower levels extend subset ([#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)) | `test_multi_podium_deadline_extend`, `test_level_*_gates_timers`, `test_time_booster_hard_reset_band_240_to_300` |
 | **`INV-TIME-ARENA-PODIUM-ROLL-INIT`** | `rollPodiumEpoch(cat)` disarms timer (`podiumDeadline[cat]=0`) until next qualifying buy arms with `podiumInitialTimerSec[cat]` | `test_roll_podium_after_expiry`, `test_podium_timers_diverge_after_single_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247), [#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)) |
+| **`INV-TIME-ARENA-PODIUM-ROLL-EMPTY-DETAIL`** | Empty active ledger at roll: no `payPodiumWinners` transfer; tranche promotion unchanged; timer disarmed until next buy ([#355](https://gitlab.com/PlasticDigits/yieldomega/-/issues/355)) | `test_roll_empty_pool_tranche_promotion` |
+| **`INV-TIME-ARENA-PODIUM-ROLL-SPARSE-DETAIL`** | Partial winner set: `PodiumEpochRolled` emits zero-address slots; `payPodiumWinners` skips `address(0)`; ledger debits full 4:2:1 ([#355](https://gitlab.com/PlasticDigits/yieldomega/-/issues/355)) | `test_roll_partial_winners` |
 | **`INV-TIME-ARENA-SCORING-LAST-BUY-TIMER-DETAIL`** | WarBow BP reset bonus requires Last Buy hard reset, not WarBow timer band alone; defended streak uses Last Buy remaining | `test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer`, `test_defended_streak_uses_last_buy_timer_not_other_podium` |
 | **`INV-TIME-ARENA-LAST-BUY-EPOCH-UNCHANGED`** | `lastBuyEpoch` still increments only on Last Buy (cat 0) hard reset | `test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll`, `test_timer_hard_reset_increments_epoch` |
+
+<a id="timearena-podium-roll-sparse-gitlab-355"></a>
+
+### TimeArena sparse / empty podium roll (GitLab [#355](https://gitlab.com/PlasticDigits/yieldomega/-/issues/355))
+
+Parent gap analysis: [#342](https://gitlab.com/PlasticDigits/yieldomega/-/issues/342) P2 #15 · bundles **M-C2**. Onchain: [`TimeArena._rollPodiumEpoch`](../../contracts/src/arena/TimeArena.sol), [`PodiumVaults.payPodiumWinners`](../../contracts/src/arena/PodiumVaults.sol), [`ArenaPodiumSettlement`](../../contracts/src/arena/libraries/ArenaPodiumSettlement.sol). Product payout rules: [time-arena § timers / roll](../product/time-arena.md#timers--four-independent-podiums). Forge: `TimeArena.t.sol::test_roll_empty_pool_tranche_promotion`, `test_roll_partial_winners`.
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-TIME-ARENA-PODIUM-ROLL-EMPTY`** | `poolBal == 0` at roll skips `payPodiumWinners`; `rollEpochTranches` still runs; no DOUB extracted from empty active | `test_roll_empty_pool_tranche_promotion` |
+| **`INV-TIME-ARENA-PODIUM-ROLL-SPARSE`** | Zero-address winner slots receive no `doub.transfer`; sole 1st place gets 4/7; unclaimed 2nd+3rd shares remain on vault token balance | `test_roll_partial_winners` |
+
+**Operator note (#355 comment):** after roll the per-category timer stays **disarmed** (`podiumDeadline[cat]=0`) until the next qualifying buy — no automatic restart on an empty pool. Indexer/frontend empty-settlement UX: [`ArenaSections.tsx`](../../frontend/src/pages/arena/ArenaSections.tsx) `settled_empty_podium_pool` activity kind.
 
 Derived UI: [`ArenaTimerChips.tsx`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) reads four `podiumDeadline` values; buy checkout preview (`timeArenaBuyPreview.ts`) models **Last Buy** timer for scoring pills — all four settlement deadlines still extend onchain per buy.
 
