@@ -28,6 +28,12 @@ Offchain read model: MegaETH RPC → decoded logs → Postgres → HTTP API. Aut
 
 **`INV-INDEXER-307-MULTICALL-BATCH`:** [`chain_timer.rs`](src/chain_timer.rs) **`poll_once`** batches head **`eth_call`s** via Multicall3 **`aggregate3`** ([`multicall.rs`](src/multicall.rs)) at a single **`read_block_number`**; one aggregate = one logical **`eth_call`** in **`rpc_metrics`**. Sequential fallback when Multicall3 bytecode is absent. Fresh Anvil: `scripts/lib/anvil_multicall3.sh` (wired into verify/benchmark scripts). Map: [rpc-load-benchmark.md §307](../docs/indexer/rpc-load-benchmark.md) · [invariants §307](../docs/testing/invariants-and-business-logic.md#indexer-chain-timer-multicall-gitlab-307).
 
+### Ingest-side Multicall3 batching (GitLab [#356](https://gitlab.com/PlasticDigits/yieldomega/-/issues/356))
+
+<a id="ingest-multicall-batching-gitlab-356"></a>
+
+**`INV-INDEXER-356-INGEST-MULTICALL`:** [`arena_ingest_rpc.rs`](src/arena_ingest_rpc.rs) plans warbow + live-podium reads for all arena logs in a block, executes **one** Multicall3 **`aggregate3`** at the log block tag (deduped sub-calls; **`allowFailure: false`**), then applies DB writes in decode order inside the per-block transaction ([#140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140)). One successful batch = one logical **`eth_call`** under **`rpc_metrics`** caller **`ingestion`**. Sequential fallback preserves DB parity. Map: [design §317](../docs/indexer/design.md#ingest-side-effects-gitlab-317) · [invariants §356](../docs/testing/invariants-and-business-logic.md#indexer-ingest-multicall-gitlab-356) · `bash scripts/verify-podium-live-anvil.sh` · `bash scripts/benchmark-indexer-rpc-anvil.sh`.
+
 ### Ingestion supervision + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))
 
 <a id="ingestion-supervision--rpc-timeouts-gitlab-168"></a>

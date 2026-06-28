@@ -1010,6 +1010,22 @@ Parent: [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306). Head p
 
 Cross-links: [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) · [#306 invariants](#indexer-json-rpc-load-benchmark-gitlab-306).
 
+<a id="indexer-ingest-multicall-gitlab-356"></a>
+
+### Indexer ingest-side Multicall3 batching (GitLab [#356](https://gitlab.com/PlasticDigits/yieldomega/-/issues/356))
+
+Parent: [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306) · [#307](https://gitlab.com/PlasticDigits/yieldomega/-/issues/307). Ingest orchestration: [`arena_ingest_rpc.rs`](../../indexer/src/arena_ingest_rpc.rs) · writers: [`warbow_score.rs`](../../indexer/src/warbow_score.rs) · [`arena_podium_live.rs`](../../indexer/src/arena_podium_live.rs) · transport: [`multicall.rs`](../../indexer/src/multicall.rs).
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-356-INGEST-MULTICALL`** | Per block with arena ingest side-effects, **one** Multicall3 **`aggregate3`** `eth_call` at `BlockId::Number(block)` (deduped warbow + podium reads); **`rpc_metrics`** caller **`ingestion`** | [`arena_ingest_rpc.rs`](../../indexer/src/arena_ingest_rpc.rs) · [`ingestion.rs`](../../indexer/src/ingestion.rs) · `cargo test arena_ingest_rpc` |
+| **`INV-INDEXER-356-PARITY`** | `idx_warbow_epoch_score` + `idx_arena_podium_live` byte-identical to sequential ingest; `GET /v1/arena/podiums` + wallet stats unchanged | `integration_stage2.rs` · `bash scripts/verify-podium-live-anvil.sh` · `bash scripts/verify-wallet-profile-anvil.sh` |
+| **`INV-INDEXER-356-FAIL-CLOSED`** | Sub-call failure (`allowFailure: false`) aborts block tx — same as **`INV-INDEXER-317-INGEST-SIDE-EFFECTS`** | [`multicall.rs`](../../indexer/src/multicall.rs) `decode_aggregate3_results` |
+| **`INV-INDEXER-356-FALLBACK`** | Multicall3 unavailable → sequential per-sub-call path; same DB state | [`arena_ingest_rpc.rs`](../../indexer/src/arena_ingest_rpc.rs) `execute_sequential_batch` |
+| **`INV-INDEXER-356-RPC-REDUCTION`** | Active-arena benchmark: `eth_call:warbow_score` + `eth_call:podium_live` per-minute counts drop **≥80%** vs pre-change baseline | `BENCHMARK_SCENARIO_SEC=120 bash scripts/benchmark-indexer-rpc-anvil.sh` · [`rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) |
+
+Cross-links: [`docs/indexer/design.md` §317](../indexer/design.md#ingest-side-effects-gitlab-317) · play skill [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md).
+
 <a id="indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168"></a>
 
 ### Indexer ingestion liveness + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))

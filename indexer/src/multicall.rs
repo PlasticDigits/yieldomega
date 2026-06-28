@@ -40,7 +40,7 @@ pub struct MulticallSubcall {
 }
 
 /// Builder that coalesces duplicate `(target, callData)` pairs at the same block tag.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MulticallBatch {
     calls: Vec<MulticallSubcall>,
     dedupe: HashMap<(Address, Vec<u8>), usize>,
@@ -82,6 +82,20 @@ impl MulticallBatch {
         word[31] = arg;
         buf.extend_from_slice(&word);
         self.push(target, Bytes::from(buf))
+    }
+
+    /// ABI-encode `selector(address)` for getters like `battlePoints(address)`.
+    pub fn push_address_arg(&mut self, target: Address, selector: [u8; 4], addr: Address) -> usize {
+        let mut buf = Vec::with_capacity(36);
+        buf.extend_from_slice(&selector);
+        let mut word = [0u8; 32];
+        word[12..].copy_from_slice(addr.as_slice());
+        buf.extend_from_slice(&word);
+        self.push(target, Bytes::from(buf))
+    }
+
+    pub fn subcalls(&self) -> &[MulticallSubcall] {
+        &self.calls
     }
 }
 
