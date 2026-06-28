@@ -24,6 +24,16 @@ Authoritative game rules and balances remain onchain. The indexer and frontend o
 
 **`TimeArenaBuyRouter`** (ETH/USDM entry) is **not** in `DeployProduction`; deploy separately with Kumbaya fixtures on Anvil ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)) or wire post-mainnet.
 
+**MegaETH mainnet buy router** — interactive wrapper (hidden keys, typed confirmation). Uses **`forge script`** with **`--code-size-limit 524288`** (MegaEVM); do **not** pass `--code-size-limit` to **`forge create`** (unsupported).
+
+```bash
+scripts/deploy-megaeth-buy-router.sh \
+  --registry .deploy/yieldomega-megaeth_mainnet-<RUN_ID>.json \
+  --update-registry
+```
+
+Deploys [`DeployProductionBuyRouter.s.sol`](../../contracts/script/DeployProductionBuyRouter.s.sol), then **`TimeArena.setTimeArenaBuyRouter`** with the admin key. Set **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** only after the registry includes the new router address.
+
 ### DeployDev (Anvil)
 
 [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) wires all core contracts, calls **`startArena()`**, seeds **DOUB / mock CL8Y / CRED** for the Playwright mock wallet, and logs proxy addresses. Buy router: set **`YIELDOMEGA_DEPLOY_KUMBAYA=1`** in [`scripts/lib/anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh).
