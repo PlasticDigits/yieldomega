@@ -100,9 +100,9 @@ scripts/deploy-megaeth-contracts.sh
 ```
 
 It uses [`script/DeployProduction.s.sol`](./script/DeployProduction.s.sol) (Arena v2 — [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)), prompts for the
-private key and Etherscan API key, defaults to MegaETH mainnet RPC / chain ID, assigns
+private key and Etherscan API key, defaults to MegaETH mainnet RPC / chain ID, reuses canonical mainnet **DOUB** (`0xc3654b4f879937b767afbb64b7c230ff436d2342`), assigns
 owner/admin roles to the CL8Y manager (`0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`),
-and writes an address registry under `.deploy/`.
+and writes an address registry under `.deploy/`. Registry field **`CL8Y_reserve`** records the Kumbaya TWAP bridge token (metadata only).
 
 ## Deploy (dev)
 

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
@@ -17,6 +18,8 @@ import {ArenaCharmPriceTwap} from "../src/oracle/ArenaCharmPriceTwap.sol";
 ///      Initial `charmPriceWad` on chain 4326: Kumbaya TWAP (~$1/CHARM) unless `ARENA_CHARM_PRICE_WAD` set (#303).
 contract DeployProduction is Script {
     uint256 internal constant CHAIN_MEGAETH_MAINNET = 4326;
+    /// @dev Canonical MegaETH mainnet DOUB — existing token with Kumbaya liquidity (not redeployed).
+    address internal constant MEGAETH_DOUB = 0xc3654B4f879937B767aFBB64B7C230FF436d2342;
     uint256 internal constant DEFAULT_BUY_CHARGE_INTERVAL_SEC = 300;
     uint8 internal constant DEFAULT_MAX_BUY_CHARGES = 5;
     uint256 internal constant DEFAULT_BURST_BUY_COOLDOWN_SEC = 15;
@@ -25,6 +28,9 @@ contract DeployProduction is Script {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
         address admin = vm.envOr("DEPLOY_ADMIN_ADDRESS", deployer);
+        /// @dev Owner for deploy + wiring txs (`setArena`, `grantRole`, …). When `admin != deployer`,
+        ///      hand off to `admin` after wiring (ReferralRegistry / TimeArena use Ownable2Step — admin must `acceptOwnership`).
+        address setupOwner = deployer;
 
         uint256 charmPriceWad = _resolveCharmPriceWad();
         uint256 buyChargeIntervalSec =
@@ -55,14 +61,22 @@ contract DeployProduction is Script {
         cap[2] = vm.envOr("ARENA_PODIUM_2_TIMER_CAP_SEC", cap[2]);
         cap[3] = vm.envOr("ARENA_PODIUM_3_TIMER_CAP_SEC", cap[3]);
 
+        (address doubAddr, bool deployFreshDoub) = _resolveDoubAddress();
+
         vm.startBroadcast(deployerKey);
 
-        Doubloon doub = new Doubloon(admin);
-        PodiumVaults podiumVaults = new PodiumVaults(doub, admin);
+        IERC20 doub;
+        if (deployFreshDoub) {
+            doub = IERC20(address(new Doubloon(admin)));
+        } else {
+            doub = IERC20(doubAddr);
+        }
 
-        ReferralRegistry referralRegistry = UUPSDeployLib.deployReferralRegistry(admin);
+        PodiumVaults podiumVaults = new PodiumVaults(doub, setupOwner);
 
-        PlayCred playCred = UUPSDeployLib.deployPlayCred(admin);
+        ReferralRegistry referralRegistry = UUPSDeployLib.deployReferralRegistry(setupOwner);
+
+        PlayCred playCred = UUPSDeployLib.deployPlayCred(setupOwner);
 
         TimeArena arena = UUPSDeployLib.deployTimeArena(
             doub,
@@ -78,7 +92,7 @@ contract DeployProduction is Script {
             buyChargeIntervalSec,
             maxBuyCharges,
             burstBuyCooldownSec,
-            admin
+            setupOwner
         );
         podiumVaults.setArena(address(arena));
         referralRegistry.setTimeArena(address(arena));
@@ -88,18 +102,40 @@ contract DeployProduction is Script {
             arena.startArena();
         }
 
+        if (admin != setupOwner) {
+            _handoffAdminTo(setupOwner, admin, podiumVaults, referralRegistry, playCred, arena);
+        }
+
         console.log("Doubloon:", address(doub));
+        console.log("Doubloon source:", deployFreshDoub ? "deployed" : "existing");
         console.log("PlayCred:", address(playCred));
         console.log("PodiumVaults:", address(podiumVaults));
         console.log("ReferralRegistry:", address(referralRegistry));
         console.log("TimeArena:", address(arena));
         console.log("Deploy admin:", admin);
+        if (admin != setupOwner) {
+            console.log("Ownership handoff: ReferralRegistry + TimeArena pending acceptOwnership by admin");
+        }
         console.log("Arena started:", startArenaNow);
         console.log("buyChargeIntervalSec:", buyChargeIntervalSec);
         console.log("maxBuyCharges:", maxBuyCharges);
         console.log("burstBuyCooldownSec:", burstBuyCooldownSec);
 
         vm.stopBroadcast();
+    }
+
+    /// @dev MegaETH mainnet reuses canonical DOUB (`MEGAETH_DOUB`). Other chains may deploy fresh DOUB for rehearsal.
+    function _resolveDoubAddress() internal view returns (address doubAddr, bool deployFresh) {
+        string memory configured = vm.envOr("DOUB_ADDRESS", string(""));
+        if (bytes(configured).length > 0) {
+            doubAddr = vm.parseAddress(configured);
+            require(doubAddr.code.length > 0, "DeployProduction: no code at DOUB_ADDRESS");
+            return (doubAddr, false);
+        }
+        if (block.chainid == CHAIN_MEGAETH_MAINNET) {
+            return (MEGAETH_DOUB, false);
+        }
+        return (address(0), true);
     }
 
     function _resolveCharmPriceWad() internal returns (uint256 charmPriceWad) {
@@ -124,5 +160,22 @@ contract DeployProduction is Script {
         console.log("minDoubSpendWad", twap.minDoubSpendWad);
         console.log("maxDoubSpendWad", twap.maxDoubSpendWad);
         console.log("twapBlockNumber", twap.blockNumber);
+    }
+
+    /// @dev Transfer Ownable / AccessControl admin from deployer to final `DEPLOY_ADMIN_ADDRESS`.
+    function _handoffAdminTo(
+        address setupOwner,
+        address admin,
+        PodiumVaults podiumVaults,
+        ReferralRegistry referralRegistry,
+        PlayCred playCred,
+        TimeArena arena
+    ) internal {
+        podiumVaults.transferOwnership(admin);
+        referralRegistry.transferOwnership(admin);
+        arena.transferOwnership(admin);
+        bytes32 adminRole = playCred.DEFAULT_ADMIN_ROLE();
+        playCred.grantRole(adminRole, admin);
+        playCred.renounceRole(adminRole, setupOwner);
     }
 }

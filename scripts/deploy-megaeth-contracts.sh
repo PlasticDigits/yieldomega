@@ -14,7 +14,9 @@ DEFAULT_RPC_URL="https://mainnet.megaeth.com/rpc"
 DEFAULT_CHAIN_ID="4326"
 DEFAULT_NETWORK_NAME="megaeth_mainnet"
 DEFAULT_DEPLOY_ADMIN_ADDRESS="0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c"
-# Canonical CL8Y (referral registration burn asset) on MegaETH mainnet.
+# Canonical MegaETH mainnet DOUB (existing token — reused by DeployProduction, not redeployed).
+DEFAULT_MEGAETH_MAINNET_DOUB="0xc3654b4f879937b767afbb64b7c230ff436d2342"
+# Kumbaya TWAP bridge token — registry metadata only (not wired into DeployProduction).
 DEFAULT_MEGAETH_MAINNET_CL8Y="0xfBAa45A537cF07dC768c469FfaC4e88208B0098D"
 # Arena v2 defaults — match DeployProduction.s.sol / DeployDev.s.sol.
 # Leave unset on mainnet to use Kumbaya TWAP in DeployProduction (#303). Dev rehearsal may set explicitly.
@@ -32,6 +34,7 @@ VERIFY=true
 ASSUME_YES=false
 FORGE_RESUME=false
 RESERVE_ASSET_ADDRESS="${RESERVE_ASSET_ADDRESS:-}"
+DOUB_ADDRESS="${DOUB_ADDRESS:-}"
 DEPLOY_ADMIN_ADDRESS="${DEPLOY_ADMIN_ADDRESS:-$DEFAULT_DEPLOY_ADMIN_ADDRESS}"
 ETHERSCAN_API_KEY="${ETHERSCAN_API_KEY:-}"
 START_ARENA="${START_ARENA:-0}"
@@ -50,7 +53,8 @@ Defaults:
   CHAIN_ID=4326
   NETWORK_NAME=megaeth_mainnet
   DEPLOY_ADMIN_ADDRESS=0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c
-  RESERVE_ASSET_ADDRESS=0xfBAa45A537cF07dC768c469FfaC4e88208B0098D when CHAIN_ID=4326 and unset
+  DOUB_ADDRESS=0xc3654b4f879937b767afbb64b7c230ff436d2342 when CHAIN_ID=4326 and unset
+  CL8Y_reserve (registry)=0xfBAa45A537cF07dC768c469FfaC4e88208B0098D when CHAIN_ID=4326 and unset
   ARENA_* timer/charm/cooldown params — see DeployProduction.s.sol
   START_ARENA=0 (owner must call TimeArena.startArena(); set 1 to start in-script)
 
@@ -58,7 +62,8 @@ Options:
   --rpc-url URL              Override target RPC_URL.
   --chain-id ID              Override target CHAIN_ID.
   --network NAME             Registry network label.
-  --reserve-asset ADDRESS    CL8Y/reserve ERC-20 address.
+  --reserve-asset ADDRESS    CL8Y Kumbaya TWAP bridge (registry `CL8Y_reserve` metadata only).
+  --doub ADDRESS             Existing Doubloon (DOUB) token. Defaults to canonical mainnet DOUB on 4326.
   --admin ADDRESS            Final admin / owner address. Defaults to CL8Y manager.
   --start-arena              Call TimeArena.startArena() during deploy (START_ARENA=1).
   --skip-verify              Broadcast without explorer verification.
@@ -70,7 +75,7 @@ Security:
   The deployer private key is always requested as a hidden terminal prompt (like a password).
 
 Optional environment:
-  RESERVE_ASSET_ADDRESS, DEPLOY_ADMIN_ADDRESS, START_ARENA,
+  DOUB_ADDRESS, RESERVE_ASSET_ADDRESS, DEPLOY_ADMIN_ADDRESS, START_ARENA,
   ARENA_CHARM_PRICE_WAD, ARENA_TIMER_EXTENSION_SEC, ARENA_INITIAL_TIMER_SEC,
   ARENA_TIMER_CAP_SEC, ARENA_BUY_COOLDOWN_SEC, REFERRAL_REGISTRATION_BURN_WAD.
 
@@ -93,6 +98,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --network)
       NETWORK_NAME="${2:?missing value for --network}"
+      shift 2
+      ;;
+    --doub)
+      DOUB_ADDRESS="${2:?missing value for --doub}"
       shift 2
       ;;
     --reserve-asset)
@@ -136,6 +145,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$DOUB_ADDRESS" && "$CHAIN_ID" == "4326" ]]; then
+  DOUB_ADDRESS="$DEFAULT_MEGAETH_MAINNET_DOUB"
+fi
 if [[ -z "$RESERVE_ASSET_ADDRESS" && "$CHAIN_ID" == "4326" ]]; then
   RESERVE_ASSET_ADDRESS="$DEFAULT_MEGAETH_MAINNET_CL8Y"
 fi
@@ -195,7 +207,8 @@ read_deployer_private_key() {
 
 read_deployer_private_key
 prompt_secret ETHERSCAN_API_KEY "Etherscan API key (hidden; press Enter only if using --skip-verify): "
-prompt_value RESERVE_ASSET_ADDRESS "CL8Y / reserve ERC-20 address: "
+prompt_value DOUB_ADDRESS "Existing Doubloon (DOUB) address: "
+prompt_value RESERVE_ASSET_ADDRESS "CL8Y (Kumbaya TWAP bridge; registry metadata only): "
 
 wipe_deployer_key() {
   DEPLOYER_PRIVATE_KEY=""
@@ -205,6 +218,10 @@ trap wipe_deployer_key EXIT
 
 if [[ ! "$DEPLOYER_PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
   echo "Deployer private key must be a 0x-prefixed 32-byte hex key." >&2
+  exit 1
+fi
+if ! is_address "$DOUB_ADDRESS"; then
+  echo "DOUB_ADDRESS must be a 0x + 40 hex address." >&2
   exit 1
 fi
 if ! is_address "$RESERVE_ASSET_ADDRESS"; then
@@ -223,6 +240,11 @@ fi
 if ! is_address "$DEPLOY_ADMIN_ADDRESS"; then
   echo "DEPLOY_ADMIN_ADDRESS must be a 0x + 40 hex address." >&2
   exit 1
+fi
+if [[ "${DEPLOYER_ADDRESS,,}" != "${DEPLOY_ADMIN_ADDRESS,,}" ]]; then
+  echo "Note: deployer (${DEPLOYER_ADDRESS}) != final admin (${DEPLOY_ADMIN_ADDRESS})."
+  echo "      DeployProduction wires as deployer, then transfers ownership to admin."
+  echo "      Admin must call acceptOwnership() on ReferralRegistry and TimeArena after deploy."
 fi
 if [[ ! "$CHAIN_ID" =~ ^[0-9]+$ ]] || [[ "$CHAIN_ID" == "0" ]]; then
   echo "CHAIN_ID must be a non-zero base-10 integer." >&2
@@ -256,7 +278,8 @@ YieldOmega Arena v2 contracts deployment
   CHAIN_ID:      ${CHAIN_ID}
   Deployer:      ${DEPLOYER_ADDRESS}
   Final admin:   ${DEPLOY_ADMIN_ADDRESS}
-  Reserve asset: ${RESERVE_ASSET_ADDRESS}
+  DOUB (reuse):  ${DOUB_ADDRESS}
+  CL8Y (registry metadata): ${RESERVE_ASSET_ADDRESS}
   Charm price:   ${ARENA_CHARM_PRICE_WAD:-Kumbaya TWAP (Sir 15m, #303)}
   Buy cooldown:  ${ARENA_BUY_COOLDOWN_SEC} s
   Start arena:   ${START_ARENA}
@@ -298,8 +321,8 @@ fi
 (
   export PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY"
   export ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY"
-  export RESERVE_ASSET_ADDRESS="$RESERVE_ASSET_ADDRESS"
   export DEPLOY_ADMIN_ADDRESS="$DEPLOY_ADMIN_ADDRESS"
+  export DOUB_ADDRESS="$DOUB_ADDRESS"
   export START_ARENA="$START_ARENA"
   if [[ -n "${ARENA_CHARM_PRICE_WAD:-}" ]]; then
     export ARENA_CHARM_PRICE_WAD="$ARENA_CHARM_PRICE_WAD"
@@ -359,6 +382,7 @@ ARENA_REGISTRY_LIB="${ROOT}/scripts/lib/arena_v2_registry_from_broadcast.sh"
 source "$BROADCAST_ADDR_LIB"
 # shellcheck source=lib/arena_v2_registry_from_broadcast.sh
 source "$ARENA_REGISTRY_LIB"
+export DOUB_ADDRESS="${DOUB_ADDRESS:-}"
 yieldomega_arena_v2_extract_registry_addresses "$RUN_JSON"
 
 ABI_HASH_TMP="$(mktemp)"

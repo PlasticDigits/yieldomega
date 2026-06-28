@@ -6,6 +6,9 @@
 #   DOUB, CRED, PV (PodiumVaults), RR, TA (TimeArena),
 #   BUY_ROUTER (optional TimeArenaBuyRouter — empty when not deployed).
 #
+# When DeployProduction reuses existing DOUB (no Doubloon create in broadcast), set
+# DOUB_ADDRESS in the environment before calling this function.
+#
 # GitLab #259 · AdminSellVault removed #314.
 
 yieldomega_zero_to_empty() {
@@ -24,6 +27,9 @@ yieldomega_arena_v2_extract_registry_addresses() {
   fi
 
   DOUB="$(broadcast_direct_create_address "${RUN}" Doubloon)"
+  if [[ -z "${DOUB:-}" && -n "${DOUB_ADDRESS:-}" ]]; then
+    DOUB="$DOUB_ADDRESS"
+  fi
   CRED="$(broadcast_direct_create_address "${RUN}" PlayCred)"
   PV="$(broadcast_direct_create_address "${RUN}" PodiumVaults)"
   RR="$(broadcast_erc1967_proxy_address "${RUN}" ReferralRegistry)"

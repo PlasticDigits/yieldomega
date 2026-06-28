@@ -8,7 +8,6 @@ import {DeployProduction} from "../script/DeployProduction.s.sol";
 contract DeployProductionCharmPriceTest is Test {
     function test_run_reverts_without_override_off_megaeth() public {
         vm.setEnv("PRIVATE_KEY", "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-        vm.setEnv("RESERVE_ASSET_ADDRESS", "0xfBAa45A537cF07dC768c469FfaC4e88208B0098D");
         vm.setEnv("ARENA_CHARM_PRICE_WAD", "0");
 
         DeployProduction deploy = new DeployProduction();

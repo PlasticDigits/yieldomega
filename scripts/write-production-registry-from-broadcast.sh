@@ -11,6 +11,7 @@ DEPLOY_DIR="${ROOT}/.deploy"
 DEFAULT_CHAIN_ID="4326"
 DEFAULT_NETWORK_NAME="megaeth_mainnet"
 DEFAULT_MEGAETH_MAINNET_CL8Y="0xfBAa45A537cF07dC768c469FfaC4e88208B0098D"
+DEFAULT_MEGAETH_MAINNET_DOUB="0xc3654b4f879937b767afbb64b7c230ff436d2342"
 DEFAULT_RPC_URL="https://mainnet.megaeth.com/rpc"
 
 RUN_JSON=""
@@ -18,6 +19,7 @@ OUT_FILE=""
 CHAIN_ID=""
 NETWORK_NAME=""
 RESERVE_ASSET_ADDRESS=""
+DOUB_ADDRESS=""
 DEPLOYER_ADDRESS=""
 RPC_URL=""
 WITH_FORGE_BUILD=false
@@ -34,7 +36,8 @@ Defaults:
   run-latest.json → contracts/broadcast/DeployProduction.s.sol/<chain>/run-latest.json
   chain id        → value of `chain` in the broadcast JSON (else 4326)
   network         → megaeth_mainnet
-  reserve asset   → canonical MegaETH CL8Y when chain is 4326 (else required via --reserve)
+  reserve asset   → canonical MegaETH CL8Y when chain is 4326 (registry metadata only)
+  DOUB            → canonical MegaETH DOUB when chain is 4326 (when not in broadcast)
   deployer        → `transactions[0].transaction.from` from the broadcast
   output path     → .deploy/yieldomega-<network>-registry-<UTC>.json
 
@@ -43,7 +46,8 @@ Options:
   --out PATH            Registry JSON output path.
   --chain-id ID         Override chain id embedded in the registry.
   --network NAME        Registry `network` label.
-  --reserve ADDRESS     CL8Y / reserve ERC-20 (required when chain is not 4326).
+  --reserve ADDRESS     CL8Y Kumbaya TWAP bridge (`CL8Y_reserve` registry field).
+  --doub ADDRESS        Existing Doubloon when broadcast has no Doubloon create (default on 4326).
   --deployer ADDRESS    Override first-tx deployer (defaults to broadcast `from`).
   --rpc-url URL         Shown in printed Frontend/Indexer hints (default: MegaETH mainnet RPC).
   --with-forge-build    Run `forge build` before ABI hash export (default: skip build).
@@ -70,6 +74,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --network)
       NETWORK_NAME="${2:?missing value for --network}"
+      shift 2
+      ;;
+    --doub)
+      DOUB_ADDRESS="${2:?missing value for --doub}"
       shift 2
       ;;
     --reserve)
@@ -152,6 +160,9 @@ fi
 
 NETWORK_NAME="${NETWORK_NAME:-$DEFAULT_NETWORK_NAME}"
 
+if [[ -z "$DOUB_ADDRESS" && "$CHAIN_ID" == "4326" ]]; then
+  DOUB_ADDRESS="$DEFAULT_MEGAETH_MAINNET_DOUB"
+fi
 if [[ -z "$RESERVE_ASSET_ADDRESS" && "$CHAIN_ID" == "4326" ]]; then
   RESERVE_ASSET_ADDRESS="$DEFAULT_MEGAETH_MAINNET_CL8Y"
 fi
@@ -161,6 +172,10 @@ if [[ -z "$RESERVE_ASSET_ADDRESS" ]]; then
 fi
 if ! is_address "$RESERVE_ASSET_ADDRESS"; then
   echo "RESERVE_ASSET_ADDRESS must be a 0x + 40 hex address." >&2
+  exit 1
+fi
+if [[ -n "$DOUB_ADDRESS" ]] && ! is_address "$DOUB_ADDRESS"; then
+  echo "DOUB_ADDRESS must be a 0x + 40 hex address." >&2
   exit 1
 fi
 
@@ -217,6 +232,7 @@ ARENA_REGISTRY_LIB="${ROOT}/scripts/lib/arena_v2_registry_from_broadcast.sh"
 source "$BROADCAST_ADDR_LIB"
 # shellcheck source=lib/arena_v2_registry_from_broadcast.sh
 source "$ARENA_REGISTRY_LIB"
+export DOUB_ADDRESS="${DOUB_ADDRESS:-}"
 yieldomega_arena_v2_extract_registry_addresses "$RUN_JSON"
 
 export_abi_env=()

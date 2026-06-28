@@ -40,13 +40,17 @@ bash scripts/e2e-anvil.sh
 scripts/deploy-megaeth-contracts.sh
 ```
 
-**Charm price (GitLab [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)):** On MegaETH **4326**, [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) computes **`charmPriceWad`** from **Kumbaya V3 TWAP** (Sir **15-minute** window) on **DOUB/CL8Y (fee 100)** → **CL8Y/WETH (fee 100)** → **WETH/USDm (fee 3000)** — reserve-asset bridge, **not** direct DOUB/WETH — unless **`ARENA_CHARM_PRICE_WAD`** is set. Dry-run: `bash scripts/compute-arena-charm-price-twap.sh`. **DeployDev / Anvil** keep **`1000e18`**.
+**DOUB:** Arena v2 reuses the **existing** MegaETH mainnet `Doubloon` at `0xc3654B4f879937B767aFBB64B7C230FF436d2342` (Kumbaya liquidity, presale/airdrop supply). `DeployProduction` does **not** deploy a new DOUB on chain **4326** unless you override `DOUB_ADDRESS`. Non-mainnet rehearsal without `DOUB_ADDRESS` still mints a fresh `Doubloon` for local testing.
+
+**Charm price (GitLab [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)):** On MegaETH **4326**, [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) computes **`charmPriceWad`** from **Kumbaya V3 TWAP** (Sir **15-minute** window) on **DOUB/CL8Y (fee 100)** → **CL8Y/WETH (fee 100)** → **WETH/USDm (fee 3000)** — CL8Y is the **TWAP bridge leg**, not the arena settlement token — unless **`ARENA_CHARM_PRICE_WAD`** is set. Dry-run: `bash scripts/compute-arena-charm-price-twap.sh`. **DeployDev / Anvil** keep **`1000e18`**.
 
 **Env (optional — timer/cooldown defaults match [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol)):**
 
 ```bash
-export RESERVE_ASSET_ADDRESS='0xfBAa45A537cF07dC768c469FfaC4e88208B0098D'  # CL8Y on 4326
+export DOUB_ADDRESS='0xc3654B4f879937B767aFBB64B7C230FF436d2342'  # default on 4326
 export DEPLOY_ADMIN_ADDRESS='0xCd4Eb82CFC16d5785b4f7E3bFC255E735e79F39c'
+# CL8Y_reserve in registry JSON only (Kumbaya TWAP / buy-router context — not wired in DeployProduction):
+export RESERVE_ASSET_ADDRESS='0xfBAa45A537cF07dC768c469FfaC4e88208B0098D'
 # Omit ARENA_CHARM_PRICE_WAD on mainnet to use Kumbaya TWAP (Sir 15m, #303). Rehearsal override:
 # export ARENA_CHARM_PRICE_WAD='1000000000000000000000'
 export ARENA_TIMER_EXTENSION_SEC='120'
@@ -135,11 +139,17 @@ Copy the registry to the indexer host or publish it at a path available to the p
 
 **Complete production-style exports** (adjust hostnames / passwords; `DATABASE_URL` must **not** contain the placeholder substrings rejected when `INDEXER_PRODUCTION=1` — see [`indexer/src/config.rs`](../../indexer/src/config.rs) / [`indexer/README.md`](../../indexer/README.md)):
 
+MegaETH mainnet RPC (comma-separated, tried in order; no spaces around commas). Smoke-checked: chain id **4326**, `eth_blockNumber` OK on all three (2026-06-28).
+
+```bash
+export MEGAETH_MAINNET_RPC='https://rpc-megaeth-mainnet.globalstake.io,https://megaeth.drpc.org,https://mainnet.megaeth.com/rpc'
+```
+
 ```bash
 export REGISTRY_PATH='/srv/yieldomega/yieldomega-megaeth_mainnet.json'
 
 export DATABASE_URL='postgres://yieldomega:REPLACE_WITH_STRONG_PASSWORD@indexer-postgres.internal:5432/yieldomega_indexer'
-export RPC_URL='https://mainnet.megaeth.com/rpc'
+export RPC_URL="$MEGAETH_MAINNET_RPC"
 export CHAIN_ID='4326'
 export START_BLOCK="$(jq -r '.deployBlock' "$REGISTRY_PATH")"
 export ADDRESS_REGISTRY_PATH="$REGISTRY_PATH"
@@ -175,9 +185,10 @@ export VITE_SITE_URL='https://yieldomega.example'
 export VITE_INDEXER_URL='https://indexer.yieldomega.example'
 export VITE_GOVERNANCE_URL=''
 
-# Chain + RPC + explorer (MegaETH mainnet defaults)
+# Chain + RPC + explorer (MegaETH mainnet defaults; comma-separated fallbacks, no spaces)
+export MEGAETH_MAINNET_RPC='https://rpc-megaeth-mainnet.globalstake.io,https://megaeth.drpc.org,https://mainnet.megaeth.com/rpc'
 export VITE_CHAIN_ID='4326'
-export VITE_RPC_URL='https://mainnet.megaeth.com/rpc'
+export VITE_RPC_URL="$MEGAETH_MAINNET_RPC"
 export VITE_EXPLORER_BASE_URL='https://mega.etherscan.io'
 export VITE_CHAIN_NAME=''
 

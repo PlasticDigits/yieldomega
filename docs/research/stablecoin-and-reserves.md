@@ -1,6 +1,6 @@
 # Research notes: USDm, CL8Y, and reserve assets
 
-**Canonical launch default (this repo):** **CL8Y** is used for **`ReferralRegistry`** registration burns and optional **TimeArenaBuyRouter** swap paths. **Arena v2** primary buy asset is **DOUB** ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). Retired v1 launchpad CL8Y sale semantics — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243). **USDm** remains relevant as MegaETH ecosystem context — see below.
+**Canonical launch default (this repo):** Arena v2 runs on **DOUB** ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). **CL8Y** (`0xfBAa45A537cF07dC768c469FfaC4e88208B0098D` on MegaETH mainnet) appears in the **Kumbaya TWAP** path for initial `charmPriceWad` (**DOUB/CL8Y → CL8Y/WETH → WETH/USDm**) and optional **`TimeArenaBuyRouter`** swap legs — it is **not** the arena buy or referral-registration token. Registry JSON field **`CL8Y_reserve`** records that bridge address for operators; **`ReferralRegistry.registerCode`** burns **DOUB** (see [referrals.md](../product/referrals.md)). **USDm** remains relevant as MegaETH ecosystem context — see below.
 
 ## USDm (MegaUSD)
 
