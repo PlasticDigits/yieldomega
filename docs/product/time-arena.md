@@ -55,6 +55,12 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 **0%** admin take on buys. Library: [`ArenaBuyRouting`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol). Events: **`PodiumEpochFunded`**. Indexer: **`GET /v1/arena/vault-funding/*`** ([#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267)).
 
+<a id="podiumvaults-pool-custody-gitlab-348"></a>
+
+### PodiumVaults pool custody ([#348](https://gitlab.com/PlasticDigits/yieldomega/-/issues/348))
+
+Default wiring maps every tranche slot to **`address(PodiumVaults)`** (commingled ledgers + batched ERC-20 transfer on buys — [#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)). Optional **non-commingled** wiring assigns per-category **`PodiumTranchePool`** contracts via owner `setActivePool` / `setSeedPool` / `setFuturePool`; **`TimeArena`** still routes buy DOUB directly to the configured pool address, and **`PodiumVaults`** disburses on roll via **`pushTo`**. Production deploy scripts keep commingled defaults; see [`PARAMETERS.md`](../../contracts/PARAMETERS.md#podiumvaults-pool-wiring-gitlab-348). Forge: `PodiumVaultsNonCommingled.t.sol`.
+
 <a id="manual-podium-pool-top-up-gitlab-261"></a>
 
 ### Manual podium pool top-up ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))

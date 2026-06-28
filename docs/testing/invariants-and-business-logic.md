@@ -160,6 +160,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-WARBOW-REVERT-MATRIX`** | WarBow ingress reverts: steal band, daily cap (`steal limit`), revenge window, flag holder/silence, double finalize, bad victim/epoch | `test_warbow_*_reverts_*`, `test_finalize_warbow_podium_reverts_*` ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
 | **`INV-TIME-ARENA-CHARM-BOUNDS-DRY`** | Single `ArenaCharmBounds` library supplies min/max WAD + `validate` for `TimeArena`, `ArenaXp`, `ArenaCharmPriceTwap` | `ArenaCharmBounds.sol`, `TimeArena.t.sol::test_buy_reverts_charm_*` ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
 | **`INV-TIME-ARENA-BUY-ROUTING-GAS`** | Default `PodiumVaults` (all pool slots → `address(vaults)`) batches buy/top-up DOUB into **one** `safeTransfer` per routing call; per-tranche `PodiumEpochFunded` / `PodiumFunded` events unchanged; economics unchanged ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) | `TimeArena.sol::_routeDoubPrizeSplit`, `test_buy_routes_doub_split` ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
+| **`INV-PODIUM-VAULTS-348-NON-COMMINGLED`** | Optional per-category **`PodiumTranchePool`** wiring: buy routes DOUB to external pool contracts; roll pays 4∶2∶1 and promotes future→seed→active with **no stranded DOUB** on seed/future pools; EOA pool addresses revert **`PodiumVaults: external pool not contract`** ([#348](https://gitlab.com/PlasticDigits/yieldomega/-/issues/348)) | `PodiumVaultsNonCommingled.t.sol`, [`PARAMETERS.md`](../../contracts/PARAMETERS.md#podiumvaults-pool-wiring-gitlab-348) · [§348](#podium-vaults-non-commingled-gitlab-348) |
 | **`INV-ERC20-123-NONSTANDARD`** | Fee-on-transfer DOUB reverts on buy, WarBow DOUB pulls, and `topUpPodiumPools` (`TimeArena: ERC20 parity`) | `NonStandardERC20.t.sol`, `TimeArena.t.sol::test_feeOnTransfer_buy_reverts_erc20Parity` ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123), [#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
 | **`INV-TIME-ARENA-ALWAYS-LIVE`** | No sale-end or charm-redemption gates; only `paused` | `TimeArena.sol` + negative grep in arena contracts |
 | **`INV-CONTRACTS-329-OWNABLE2STEP`** | **`TimeArena`** + **`ReferralRegistry`** UUPS proxies use **`Ownable2StepUpgradeable`**; ownership transfer requires **`acceptOwnership`**; UUPS **`upgradeTo`** remains **`onlyOwner`** (multisig/timelock out of scope) | `TimeArena.t.sol::test_ownable2step_*`, `ReferralRegistry.t.sol::test_ownable2step_*`, `DevStackIntegration.t.sol` ([#329](https://gitlab.com/PlasticDigits/yieldomega/-/issues/329)) · [security §329](../onchain/security-and-threat-model.md#uups-ownership-upgrades-gitlab-329) |
@@ -679,6 +680,18 @@ Onchain notifications: **`PodiumEpochFunded`** on each DOUB **`buy`** ([#300](ht
 | **`INV-ARENA-PRIZE-ROUTING-300-UI`** | Fee / AUDIT surfaces show **100% podium** routing (no 30% admin on buys) | `FeeTransparency.test.tsx`, `ArenaProtocolPage` copy |
 
 Product: [arena-v2.md § DOUB prize routing](../product/arena-v2.md) · onchain: [fee-routing](../onchain/fee-routing-and-governance.md) · play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
+
+<a id="podium-vaults-non-commingled-gitlab-348"></a>
+
+### PodiumVaults non-commingled pools (GitLab [#348](https://gitlab.com/PlasticDigits/yieldomega/-/issues/348))
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-PODIUM-VAULTS-348-NON-COMMINGLED`** | One category wired to three **`PodiumTranchePool`** contracts completes buy → roll → 4∶2∶1 payout → tranche promotion; seed/future pools empty after roll | `PodiumVaultsNonCommingled.t.sol::test_nonCommingled_lastBuy_buy_roll_payout_promotion` |
+| **`INV-PODIUM-VAULTS-348-BUY-ROUTE`** | Non-commingled category receives DOUB on external pool contracts (not commingled vault ledger) | `test_nonCommingled_buy_routes_to_external_pools_not_vault_ledger` |
+| **`INV-PODIUM-VAULTS-348-MISCONFIG`** | EOA active pool reverts on roll: **`PodiumVaults: external pool not contract`**; unauthorised **`pushTo`**: **`PodiumTranchePool: not operator`** | `test_nonCommingled_misconfigured_eoa_pool_reverts_on_roll`, `test_nonCommingled_pushTo_reverts_not_operator` |
+
+Onchain: [`PodiumVaults.sol`](../../contracts/src/arena/PodiumVaults.sol), [`PodiumTranchePool.sol`](../../contracts/src/arena/PodiumTranchePool.sol). Params: [`PARAMETERS.md`](../../contracts/PARAMETERS.md#podiumvaults-pool-wiring-gitlab-348). Product: [time-arena.md § pool custody](../product/time-arena.md#podiumvaults-pool-custody-gitlab-348). **DeployDev default remains commingled.**
 
 <a id="timearena-warbow-bp-routing-gitlab-310"></a>
 
