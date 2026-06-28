@@ -46,7 +46,7 @@ pub fn empty_live_row() -> LivePodiumRow {
     }
 }
 
-fn row_from_rpc(p: &PodiumRpcRow) -> LivePodiumRow {
+pub(crate) fn row_from_rpc(p: &PodiumRpcRow) -> LivePodiumRow {
     LivePodiumRow {
         winners: p.winners.clone(),
         values: p.values.clone(),

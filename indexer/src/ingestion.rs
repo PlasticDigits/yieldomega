@@ -13,11 +13,10 @@ use eyre::{Result, WrapErr};
 use sqlx::PgPool;
 
 use crate::config::Config;
-use crate::decoder::{decode_rpc_log, DecodedEvent};
+use crate::decoder::decode_rpc_log;
 use crate::last_buy_epoch_head::LastBuyEpochHead;
 use crate::persist::persist_decoded_log_conn;
-use crate::arena_podium_live;
-use crate::warbow_score;
+use crate::arena_ingest_rpc;
 use crate::reorg::{
     find_common_ancestor, load_chain_pointer, rollback_after, save_chain_pointer_conn,
     upsert_indexed_block_conn, ChainPointer,
@@ -397,6 +396,7 @@ pub async fn run(
             let mut tx = pool.begin().await?;
             let ingest_block = async {
                 let mut last_buy_epoch_head = LastBuyEpochHead::load(&mut tx).await?;
+                let mut arena_side_effect_logs: Vec<crate::decoder::DecodedLog> = Vec::new();
                 for lg in &logs {
                     if lg.removed {
                         continue;
@@ -404,48 +404,35 @@ pub async fn run(
                     if let Some(decoded) = decode_rpc_log(lg) {
                         persist_decoded_log_conn(&mut tx, &mut last_buy_epoch_head, &decoded).await?;
                         if let Some(arena) = time_arena {
-                            if decoded.contract == arena {
-                                let provider =
-                                    &providers[rpc_sticky_idx % providers.len()];
-                                let players = warbow_score::warbow_score_players(&decoded.event);
-                                let skip_rpc = matches!(
-                                    &decoded.event,
-                                    DecodedEvent::ArenaWarbowEpochScore { .. }
-                                );
-                                if !players.is_empty() && !skip_rpc {
-                                    warbow_score::snapshot_warbow_players_after_log(
-                                        provider,
-                                        arena,
-                                        &decoded,
-                                        &mut tx,
-                                        &players,
-                                        rpc_metrics,
-                                    )
-                                    .await
-                                    .wrap_err_with(|| {
-                                        format!(
-                                            "ingestion: warbow BP snapshot failed block={} tx={:#x}",
-                                            decoded.block_number, decoded.tx_hash
-                                        )
-                                    })?;
-                                }
-                                if arena_podium_live::should_snapshot_live_podium(&decoded.event) {
-                                    arena_podium_live::snapshot_live_podium_after_log(
-                                        provider,
-                                        arena,
-                                        &decoded,
-                                        &mut tx,
-                                        rpc_metrics,
-                                    )
-                                    .await
-                                    .wrap_err_with(|| {
-                                        format!(
-                                            "ingestion: live podium snapshot failed block={} tx={:#x}",
-                                            decoded.block_number, decoded.tx_hash
-                                        )
-                                    })?;
-                                }
+                            if decoded.contract == arena
+                                && arena_ingest_rpc::needs_ingest_rpc(&decoded.event)
+                            {
+                                arena_side_effect_logs.push(decoded);
                             }
+                        }
+                    }
+                }
+                if let Some(arena) = time_arena {
+                    if !arena_side_effect_logs.is_empty() {
+                        let plan =
+                            arena_ingest_rpc::plan_block_rpc_batch(arena, &arena_side_effect_logs);
+                        let results = arena_ingest_rpc::execute_block_rpc_batch(
+                            &providers,
+                            next,
+                            &plan,
+                            rpc_metrics,
+                        )
+                        .await
+                        .wrap_err_with(|| format!("ingestion: block RPC batch failed block={next}"))?;
+                        for (d, effect) in arena_side_effect_logs.iter().zip(plan.effects.iter()) {
+                            arena_ingest_rpc::apply_log_side_effects(&mut tx, d, effect, &results)
+                                .await
+                                .wrap_err_with(|| {
+                                    format!(
+                                        "ingestion: apply side-effects block={} tx={:#x}",
+                                        d.block_number, d.tx_hash
+                                    )
+                                })?;
                         }
                     }
                 }

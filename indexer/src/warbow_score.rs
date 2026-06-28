@@ -13,7 +13,7 @@ use crate::decoder::{DecodedEvent, DecodedLog};
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 
 /// `battlePoints(address)`
-const SEL_BATTLE_POINTS: [u8; 4] = [0xb2, 0x10, 0xd9, 0xf2];
+pub const SEL_BATTLE_POINTS: [u8; 4] = [0xb2, 0x10, 0xd9, 0xf2];
 const CAT_WARBOW: u8 = 3;
 
 fn u256_dec(n: U256) -> String {
