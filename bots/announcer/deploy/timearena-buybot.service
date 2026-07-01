@@ -1,0 +1,21 @@
+[Unit]
+Description=TimeArena Telegram buy-announcement bot (yieldomega)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=REPLACE_WITH_JETSON_USER
+WorkingDirectory=/home/REPLACE_WITH_JETSON_USER/timearena-buybot
+EnvironmentFile=/home/REPLACE_WITH_JETSON_USER/timearena-buybot/announce.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/REPLACE_WITH_JETSON_USER/timearena-buybot/announce.py
+Restart=always
+RestartSec=5
+# read-only bot — light hardening
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
