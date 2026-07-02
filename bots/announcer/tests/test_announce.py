@@ -79,6 +79,25 @@ def test_sum_active_prize_pools():
     assert announce._sum_active_prize_pools(podiums) == 300
 
 
+def test_fetch_market_snapshot_parses_spot_price(monkeypatch):
+    calls = []
+
+    def fake_get(path):
+        calls.append(path)
+        if path == "/v1/arena/doub-spot-price":
+            return {"doub_usd_wad": str(10**18), "usdm_per_doub_wad": "1000000"}
+        if path == "/v1/arena/podiums":
+            return {"rows": [{"active_pool_balance_doub_wad": "300"}]}
+        raise AssertionError(path)
+
+    monkeypatch.setattr(announce, "_indexer_get", fake_get)
+    announce._market_cache["at"] = 0.0
+    snap = announce.fetch_market_snapshot()
+    assert snap["doub_usd_wad"] == 10**18
+    assert snap["total_prize_pool_doub_wad"] == 300
+    assert calls == ["/v1/arena/doub-spot-price", "/v1/arena/podiums"]
+
+
 def test_build_buy_message_skips_worth_for_zero_doub():
     log = _synth_buy_log()
     b = announce.decode_buy(log)

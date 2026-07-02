@@ -975,7 +975,7 @@ export async function fetchArenaTimers() {
 }
 
 export type ArenaDoubSpotPriceResponse = {
-  /** USDM smallest units (6 decimals) to buy 1 DOUB on Kumbaya. */
+  /** USDM wei (18 decimals on MegaETH) to buy 1 DOUB on Kumbaya. */
   usdm_per_doub_wad: string;
   /** 18-decimal USD-notional wad per 1 DOUB for prize USD display. */
   doub_usd_wad: string;

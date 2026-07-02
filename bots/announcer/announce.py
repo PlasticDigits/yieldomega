@@ -205,7 +205,7 @@ def _parse_wad(raw):
 
 
 def doub_wei_to_usd(doub_wei, doub_usd_wad=None):
-    """USD-notional for a DOUB wei amount — indexer TWAP anchor or static fallback."""
+    """USD-notional for a DOUB wei amount — Kumbaya spot from doub-spot-price or static fallback."""
     if doub_wei <= 0:
         return Decimal(0)
     base = Decimal(doub_wei) / (Decimal(10) ** DOUB_DECIMALS)
@@ -227,15 +227,15 @@ def _sum_active_prize_pools(podiums):
 
 
 def fetch_market_snapshot():
-    """Cached doub_usd_wad + total active prize pool across all four podiums."""
+    """Cached doub_usd_wad (GET /v1/arena/doub-spot-price) + total active prize pool (podiums)."""
     now = time.monotonic()
     if now - _market_cache["at"] < INDEXER_CACHE_SEC:
         return _market_cache
     doub_usd_wad = None
     total_prize_pool_doub_wad = 0
     try:
-        timers = _indexer_get("/v1/arena/timers")
-        doub_usd_wad = _parse_wad(timers.get("doub_usd_wad"))
+        spot = _indexer_get("/v1/arena/doub-spot-price")
+        doub_usd_wad = _parse_wad(spot.get("doub_usd_wad"))
         podiums = _indexer_get("/v1/arena/podiums")
         total_prize_pool_doub_wad = _sum_active_prize_pools(podiums)
     except Exception as e:  # noqa: BLE001

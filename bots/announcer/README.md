@@ -35,7 +35,7 @@ Copy `.env.example` to `.env` (gitignored) and set at least:
 | `TIME_ARENA_ADDRESS` | TimeArena proxy (defaults to the mainnet registry address) |
 | `ANNOUNCE_START_BLOCK` | Optional: first-run start block; otherwise starts at current head |
 | `MIN_DOUB` | Optional: skip buys under this DOUB amount |
-| `INDEXER_URL` | Yieldomega indexer base URL for DOUB→USD TWAP and live prize pools (default `https://indexer.yieldomega.com`) |
+| `INDEXER_URL` | Yieldomega indexer base URL — `GET /v1/arena/doub-spot-price` for DOUB→USD and `GET /v1/arena/podiums` for live prize pools (default `https://indexer.yieldomega.com`) |
 | `INDEXER_CACHE_SEC` | Cache indexer market snapshot TTL in seconds (default `30`) |
 
 ## Run

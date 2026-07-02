@@ -16,8 +16,11 @@ use crate::chain_timer::TimecurveHeadSnapshot;
 use crate::rpc_http::rpc_first_ok_instrumented;
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 
-/// USDM has 6 decimals; DOUB/USD display wad uses 18 — `doub_usd_wad = usdm_in * 10^12`.
-const USDM_FROM_DOUB_DECIMAL_SCALE: u128 = 10u128.pow(12);
+/// MegaETH USDM uses 18 decimals — same wad shape as DOUB/USD display (`doub_usd_wad = usdm_in`).
+pub fn usdm_in_to_doub_usd_wad(usdm_in: U256) -> U256 {
+    usdm_in
+}
+
 fn wad() -> U256 {
     U256::from(10u128.pow(18))
 }
@@ -41,7 +44,7 @@ sol! {
 /// Cached QuoterV2 snapshot served on `GET /v1/arena/doub-spot-price`.
 #[derive(Debug, Clone)]
 pub struct DoubSpotPriceSnapshot {
-    /// USDM smallest units (6 decimals) to buy exactly 1 DOUB (`1e18` wei).
+    /// USDM wei (18 decimals on MegaETH) to buy exactly 1 DOUB (`1e18` wei).
     pub usdm_per_doub_wad: String,
     /// 18-decimal USD-notional wad per 1 DOUB for frontend `usdWad = doubWei * doub_usd_wad / WAD`.
     pub doub_usd_wad: String,
@@ -150,10 +153,6 @@ pub fn kumbaya_spot_config_from_env(
         cl8y_weth_fee: env_fee("INDEXER_KUMBAYA_FEE_CL8Y_WETH", defaults.cl8y_weth_fee),
         usdm_weth_fee: env_fee("INDEXER_KUMBAYA_FEE_USDM_WETH", defaults.usdm_weth_fee),
     })
-}
-
-pub fn usdm_in_to_doub_usd_wad(usdm_in: U256) -> U256 {
-    U256::from(USDM_FROM_DOUB_DECIMAL_SCALE) * usdm_in
 }
 
 fn poll_interval_ms() -> u64 {
@@ -343,11 +342,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn usdm_in_to_doub_usd_wad_scales_six_to_eighteen_decimals() {
-        let usdm = U256::from(980_000u64);
-        assert_eq!(
-            usdm_in_to_doub_usd_wad(usdm),
-            U256::from(980_000u64) * U256::from(USDM_FROM_DOUB_DECIMAL_SCALE)
-        );
+    fn usdm_in_to_doub_usd_wad_is_identity_for_eighteen_decimal_usdm() {
+        let usdm = U256::from(980_000_000_000_000_000u128);
+        assert_eq!(usdm_in_to_doub_usd_wad(usdm), usdm);
     }
 }
