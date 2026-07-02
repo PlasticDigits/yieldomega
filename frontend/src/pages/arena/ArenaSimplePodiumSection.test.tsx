@@ -19,10 +19,13 @@ const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 const noopFeatureHelp = () => {};
 
+const WAD = 10n ** 18n;
+
 function renderSimplePodiums(overrides: Partial<ArenaSimplePodiumSectionProps> = {}): string {
   return renderToStaticMarkup(
     createElement(MemoryRouter, { initialEntries: ["/"] }, createElement(ArenaSimplePodiumSection, {
       onFeatureHelp: noopFeatureHelp,
+      doubUsdWad: WAD,
       podiumRows: [
         { winners: [ALICE, BOB, CAROL], values: ["9", "8", "7"], epoch: "12" },
         { winners: [BOB, ALICE, CAROL], values: ["1200", "900", "400"], epoch: "3" },
@@ -104,7 +107,7 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("/art/icons/arena-podium-rank-third.png");
     expect(html).toContain("1st prize");
     expect(html).toContain("DOUB");
-    expect(html).toContain("≈ $1.57 USD");
+    expect(html).toContain("≈ $1.6 USD");
     expect(html).toContain("1.6");
     expect(html).not.toContain("predicted leader");
     expect(html).not.toContain("Indexer-backed snapshot");

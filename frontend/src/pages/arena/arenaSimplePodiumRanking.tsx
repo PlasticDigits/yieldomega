@@ -7,7 +7,7 @@ import { PlayerIdentity } from "@/components/arena";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
+import { podiumPrizeUsdWeiForDisplay } from "@/lib/doubSpotUsdPrice";
 import type { BuyItem } from "@/lib/indexerApi";
 import { formatSimplePodiumScoreLine } from "./arenaSimplePodiumScore";
 import type { RankingRow } from "./arenaUi";
@@ -55,9 +55,10 @@ export function rankingRowsForPodium(
   podiumNowUnixSec: number,
   recentBuys: readonly BuyItem[] | null | undefined,
   onOpenWalletProfile: ((address: string) => void) | undefined,
-  opts?: { includeUsdPrize?: boolean },
+  opts?: { includeUsdPrize?: boolean; doubUsdWad?: bigint },
 ): RankingRow[] {
   const includeUsdPrize = opts?.includeUsdPrize !== false;
+  const doubUsdWad = opts?.doubUsdWad;
   const winners = row?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
   const values = row?.values ?? ["0", "0", "0"];
 
@@ -75,16 +76,13 @@ export function rankingRowsForPodium(
       );
     const prizeWei =
       prizeRaw !== undefined ? rawToBigIntForFormat(prizeRaw) : null;
+    const usdWei =
+      includeUsdPrize && winnerReady && prizeWei !== null
+        ? podiumPrizeUsdWeiForDisplay(prizeWei, doubUsdWad)
+        : undefined;
     const usdLabel =
-      includeUsdPrize &&
-      winnerReady &&
-      prizeWei !== null &&
-      prizeWei > 0n
-        ? formatCompactFromRaw(
-            fallbackPayTokenWeiForCl8y(prizeWei, "usdm"),
-            18,
-            { sigfigs: 3 },
-          )
+      usdWei !== undefined && usdWei > 0n
+        ? formatCompactFromRaw(usdWei, 18, { sigfigs: 3 })
         : undefined;
 
     return {

@@ -36,6 +36,7 @@ import { ProtocolInlineRefreshButton } from "@/pages/arena/ProtocolInlineRefresh
 import { useArenaProtocolData } from "@/pages/arena/ArenaProtocolDataContext";
 import { ArenaSimplePodiumSection } from "@/pages/arena/ArenaSimplePodiumSection";
 import { usePodiumReads } from "@/pages/arena/usePodiumReads";
+import { useDoubUsdWad } from "@/pages/arena/useArenaSaleState";
 import { ARENA_V2_ADVANCED_CORE_ROW_INDICES as CORE } from "@/pages/arena/arenaV2AdvancedSessionBridge";
 
 const ARENA_VAULT_LABELS = [
@@ -59,6 +60,7 @@ export function ArenaProtocolPage() {
   const { protocolReading: reading, latchedAcceptedAssetAddr, heroChainNowSec, podiumTimerAuditReads } =
     useArenaProtocolData();
   const podiumReads = usePodiumReads(tc ?? undefined);
+  const doubUsdWad = useDoubUsdWad(tc ?? undefined);
   const { levelBigint: playerLevelRaw } = useArenaPlayerLevel(connectedAddress);
 
   const cl8yUsd = useProtocolCl8yUsdSpotPrice(latchedAcceptedAssetAddr);
@@ -240,6 +242,7 @@ export function ArenaProtocolPage() {
         podiumNowUnixSec={heroChainNowSec}
         onOpenWalletProfile={onOpenWalletProfile}
         onFeatureHelp={openFeatureHelp}
+        doubUsdWad={doubUsdWad}
       />
 
       <PageSection

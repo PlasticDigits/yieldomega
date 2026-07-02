@@ -48,10 +48,12 @@ Handy first-run env toggles: `DRY_RUN=1` (log instead of send), `STARTUP_PING=1`
 
 ## Deploy (Docker / Coolify)
 
-Read-only stdlib bot — no `pip`, no private key. Build context is the **repository root**.
+Read-only stdlib bot — no `pip`, no private key. **Build context:** `bots/announcer`
+(Coolify default when the Dockerfile lives in that directory).
 
 ```bash
-docker build -f bots/announcer/Dockerfile -t yieldomega-announcer .
+cd bots/announcer
+docker build -t yieldomega-announcer .
 docker run --rm \
   -v announcer-data:/data \
   -e TELEGRAM_BOT_TOKEN=… \
@@ -64,10 +66,10 @@ so restarts do not re-announce old buys). Set other vars from [`.env.example`](.
 `-e` as needed (`MEGAETH_RPC_URL`, `ANNOUNCE_START_BLOCK`, `STARTUP_PING`, etc.).
 
 **Coolify:** create a **Dockerfile** application — Dockerfile path
-[`bots/announcer/Dockerfile`](Dockerfile), build context = repository root. Add a **persistent
-storage** mount at `/data`. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in the UI (mark the
-token as a secret). No public domain or exposed port (background worker only). Disable HTTP health
-checks.
+[`bots/announcer/Dockerfile`](Dockerfile), **base directory / build context** =
+`bots/announcer`. Add a **persistent storage** mount at `/data`. Set `TELEGRAM_BOT_TOKEN` and
+`TELEGRAM_CHAT_ID` in the UI (mark the token as a secret). No public domain or exposed port
+(background worker only). Disable HTTP health checks.
 
 ## Deploy (systemd, 24/7)
 

@@ -4,7 +4,7 @@ import { zeroAddress } from "viem";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
+import { podiumPrizeUsdWeiForDisplay } from "@/lib/doubSpotUsdPrice";
 import type { BuyItem } from "@/lib/indexerApi";
 import { PODIUM_RANK_TROPHY_SRC } from "@/pages/arena/arenaUi";
 import { formatSimplePodiumScoreLine } from "@/pages/arena/arenaSimplePodiumScore";
@@ -31,6 +31,8 @@ export type ArenaLastBuyPodiumLeaderboardProps = {
   recentBuys?: readonly BuyItem[] | null;
   podiumNowUnixSec?: number;
   onOpenWalletProfile?: (address: string) => void;
+  /** Indexed TWAP USD-notional per 1 DOUB for podium “≈ $… USD” hints ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
+  doubUsdWad?: bigint;
 };
 
 export function ArenaLastBuyPodiumLeaderboard({
@@ -42,6 +44,7 @@ export function ArenaLastBuyPodiumLeaderboard({
   recentBuys = null,
   podiumNowUnixSec,
   onOpenWalletProfile,
+  doubUsdWad,
 }: ArenaLastBuyPodiumLeaderboardProps) {
   const firstPlaceShakeNonce = useLastBuyHeadShakeNonce(
     categoryIndex === 0 ? recentBuys : null,
@@ -56,6 +59,7 @@ export function ArenaLastBuyPodiumLeaderboard({
     scoreNowUnixSec,
     recentBuys,
     onOpenWalletProfile,
+    { doubUsdWad },
   );
   const winners = podiumRow?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
   const values = podiumRow?.values ?? ["0", "0", "0"];
@@ -83,13 +87,13 @@ export function ArenaLastBuyPodiumLeaderboard({
           ) : (
             <EmptyDataPlaceholder>…</EmptyDataPlaceholder>
           );
-        const usdLabel =
+        const usdWei =
           prizeRaw !== undefined
-            ? formatCompactFromRaw(
-                fallbackPayTokenWeiForCl8y(rawToBigIntForFormat(prizeRaw), "usdm"),
-                18,
-                { sigfigs: 3 },
-              )
+            ? podiumPrizeUsdWeiForDisplay(rawToBigIntForFormat(prizeRaw), doubUsdWad)
+            : undefined;
+        const usdLabel =
+          usdWei !== undefined && usdWei > 0n
+            ? formatCompactFromRaw(usdWei, 18, { sigfigs: 3 })
             : undefined;
         const scoreLine = formatSimplePodiumScoreLine(categoryIndex, placeIndex, {
           winner,

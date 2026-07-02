@@ -859,6 +859,8 @@ export type ArenaTimersResponse = {
   charm_price_wad?: string;
   epoch_charm_anchor_wad?: string;
   epoch_anchor_timestamp_sec?: string;
+  /** TWAP USD-notional per 1 DOUB from `LastBuyEpochCharmAnchored` (schema ≥ 2.21.0 · [#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
+  doub_usd_wad?: string | null;
   doub?: string;
   referral_registry?: string;
   buy_charge_interval_sec?: string;

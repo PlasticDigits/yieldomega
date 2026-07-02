@@ -54,6 +54,8 @@ export type ArenaTimerPodiumCarouselProps = {
   requiredLevel: number;
   categoryIndex: number;
   onOpenWalletProfile?: (address: string) => void;
+  /** Indexed TWAP USD-notional per 1 DOUB for podium “≈ $… USD” hints ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
+  doubUsdWad?: bigint;
   /**
    * `blur` / `chrome` split the carousel for panel-level locks: blurred body vs
    * interactive carets/dots stacked in the same grid cell.
@@ -76,6 +78,7 @@ export function ArenaTimerPodiumCarousel({
   requiredLevel,
   categoryIndex,
   onOpenWalletProfile,
+  doubUsdWad,
   surface = "full",
 }: ArenaTimerPodiumCarouselProps) {
   const normalizedIndex = normalizeTimerPodiumSlideIndex(activeIndex);
@@ -99,6 +102,7 @@ export function ArenaTimerPodiumCarousel({
       recentBuys={recentBuys}
       podiumNowUnixSec={podiumNowUnixSec}
       onOpenWalletProfile={onOpenWalletProfile}
+      doubUsdWad={doubUsdWad}
     />
   );
 

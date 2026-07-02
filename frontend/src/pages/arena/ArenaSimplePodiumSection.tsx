@@ -58,6 +58,8 @@ export type ArenaSimplePodiumSectionProps = {
   onOpenWalletProfile?: (address: string) => void;
   /** Opens podium mechanic tutorial modal for the matching feature. */
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
+  /** Indexed TWAP USD-notional per 1 DOUB for podium “≈ $… USD” hints ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
+  doubUsdWad?: bigint;
 };
 
 function useChangedRankBurst(winnersSig: string): { rank: number; nonce: number } | undefined {
@@ -100,6 +102,7 @@ function SimplePodiumCard({
   walletStatsPending,
   onOpenWalletProfile,
   onFeatureHelp,
+  doubUsdWad,
 }: {
   label: string;
   categoryIndex: number;
@@ -118,6 +121,7 @@ function SimplePodiumCard({
   walletStatsPending: boolean;
   onOpenWalletProfile: ArenaSimplePodiumSectionProps["onOpenWalletProfile"];
   onFeatureHelp: ArenaSimplePodiumSectionProps["onFeatureHelp"];
+  doubUsdWad?: bigint;
 }) {
   const winners = row?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
   const winnersSig = winners.join(":");
@@ -131,6 +135,7 @@ function SimplePodiumCard({
     podiumNowUnixSec,
     recentBuys,
     onOpenWalletProfile,
+    { doubUsdWad },
   );
   const lockState = shouldShowPodiumFeatureLock({
     categoryIndex,
@@ -225,6 +230,7 @@ export function ArenaSimplePodiumSection({
   recentBuys = null,
   onOpenWalletProfile,
   onFeatureHelp,
+  doubUsdWad,
 }: ArenaSimplePodiumSectionProps) {
   const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
   const walletConnected = Boolean(address);
@@ -269,6 +275,7 @@ export function ArenaSimplePodiumSection({
             walletStatsPending={walletStatsPending}
             onOpenWalletProfile={onOpenWalletProfile}
             onFeatureHelp={onFeatureHelp}
+            doubUsdWad={doubUsdWad}
           />
         ))}
       </div>

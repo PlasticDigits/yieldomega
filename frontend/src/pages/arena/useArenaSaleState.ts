@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { indexerBaseUrl } from "@/lib/addresses";
+import { parseDoubUsdWad } from "@/lib/doubSpotUsdPrice";
 import {
   fetchLegacyArenaSaleState,
   fetchArenaTimers,
@@ -180,4 +182,10 @@ export function useArenaTimersQuery(tc: `0x${string}` | undefined) {
     refetchInterval: () => getIndexerBackoffPollMs(2000),
     placeholderData: (previous) => previous,
   });
+}
+
+/** Indexed TWAP USD-notional per 1 DOUB from `GET /v1/arena/timers` ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
+export function useDoubUsdWad(tc: `0x${string}` | undefined): bigint | undefined {
+  const { data } = useArenaTimersQuery(tc);
+  return useMemo(() => parseDoubUsdWad(data?.doub_usd_wad), [data?.doub_usd_wad]);
 }

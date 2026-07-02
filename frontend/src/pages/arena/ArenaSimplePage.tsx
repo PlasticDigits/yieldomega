@@ -77,6 +77,7 @@ import {
   usePodiumReads,
   useWarbowPodiumLiveInvalidation,
 } from "@/pages/arena/usePodiumReads";
+import { useDoubUsdWad } from "@/pages/arena/useArenaSaleState";
 import {
   isArenaLastBuyWalletSurfaceUnlocked,
   mergeBuysNewestFirst,
@@ -388,6 +389,7 @@ export function ArenaSimplePage({
   }, []);
 
   const podiumReads = usePodiumReads(tc);
+  const doubUsdWad = useDoubUsdWad(tc ?? undefined);
 
   const [podiumCarouselIndex, setPodiumCarouselIndex] = useState(0);
   const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
@@ -1028,6 +1030,7 @@ export function ArenaSimplePage({
         requiredLevel={podiumSlideMeta.slot.requiredLevel}
         categoryIndex={podiumSlideMeta.slot.categoryIndex}
         onOpenWalletProfile={onOpenWalletProfile}
+        doubUsdWad={doubUsdWad}
         surface={timerPanelLocked ? "blur" : "full"}
       />
     ) : null;

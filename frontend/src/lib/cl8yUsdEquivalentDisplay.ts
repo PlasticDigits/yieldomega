@@ -13,9 +13,9 @@ export const ARENA_TOTAL_USD_EQUIV_TITLE =
 export const PROTOCOL_CL8Y_USD_SPOT_TITLE =
   "USD figures on the protocol AUDIT page multiply CL8Y amounts by a Kumbaya quoter read (USDM required to buy 1 CL8Y on the CL8Y←WETH←USDM path). USDM is treated as ~$1. Refresh manually — not polled continuously.";
 
-/** Simple podium “≈ $… USD” uses {@link fallbackPayTokenWeiForCl8y} `usdm` shape (0.98×). */
+/** Simple podium “≈ $… USD” uses indexed `doub_usd_wad` from `GET /v1/arena/timers` when available ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)); otherwise static 0.98× fallback. */
 export const SIMPLE_PODIUM_USD_EQUIV_TITLE =
-  "≈ USD uses the app’s static display-only CL8Y→USDM shape (0.98× per product default), not a live stablecoin price. CL8Y prize amounts follow onchain/indexer reads.";
+  "≈ USD multiplies DOUB prize amounts by the indexer’s Last Buy epoch TWAP anchor (Kumbaya DOUB→USDM path, USDM ~$1). When that anchor is unavailable, a static 0.98× display fallback is used.";
 
 /** Simple “worth at launch” stake row parenthetical — same static shape as podium; CL8Y anchor is onchain. */
 export const SIMPLE_STAKE_LAUNCH_USD_EQUIV_TITLE =

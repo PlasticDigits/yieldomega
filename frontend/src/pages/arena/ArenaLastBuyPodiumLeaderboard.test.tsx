@@ -13,6 +13,8 @@ const ALICE = "0x1111111111111111111111111111111111111111" as const;
 const BOB = "0x2222222222222222222222222222222222222222" as const;
 const CAROL = "0x3333333333333333333333333333333333333333" as const;
 
+const WAD = 10n ** 18n;
+
 function renderLeaderboard(overrides: Partial<ArenaLastBuyPodiumLeaderboardProps> = {}): string {
   return renderToStaticMarkup(
     createElement(
@@ -20,6 +22,7 @@ function renderLeaderboard(overrides: Partial<ArenaLastBuyPodiumLeaderboardProps
       { initialEntries: ["/"] },
       createElement(ArenaLastBuyPodiumLeaderboard, {
         decimals: 18,
+        doubUsdWad: WAD,
         podiumRow: {
           winners: [ALICE, BOB, CAROL],
           values: ["3", "2", "1"],
@@ -48,7 +51,7 @@ describe("ArenaLastBuyPodiumLeaderboard", () => {
     expect(html).toContain("/art/icons/arena-podium-rank-second.png");
     expect(html).toContain("/art/icons/arena-podium-rank-third.png");
     expect(html).toContain("DOUB");
-    expect(html).toContain("≈$1.57 USD");
+    expect(html).toContain("≈$1.6 USD");
 
     const secondPos = html.indexOf('data-testid="arena-last-buy-podium-2"');
     const firstPos = html.indexOf('data-testid="arena-last-buy-podium-1"');
