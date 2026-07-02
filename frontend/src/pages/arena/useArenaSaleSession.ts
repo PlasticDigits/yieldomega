@@ -62,7 +62,7 @@ import {
 import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeArenaBuyAmount";
 import { isArenaBuySpendDefaultMin } from "@/lib/timeArenaBuySpendDefault";
 import {
-  ARENA_PAY_SPEND_INPUT_SLIDER_FRACTION_DIGITS,
+  arenaPaySpendInputCompactFractionDigits,
   formatArenaPaySpendInputDisplay,
 } from "@/lib/timeArenaPaySpendInputFormat";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeArenaBuyReceipt";
@@ -325,7 +325,7 @@ export function useArenaSaleSession(
   const [spendWei, setSpendWei] = useState(0n);
   const [spendInputStr, setSpendInputStr] = useState("");
   const payInputFocusedRef = useRef(false);
-  /** When true, YOU PAY shows two decimals for slider/default (ETH always full precision). */
+  /** When true, YOU PAY uses compact decimals for slider/default (2 for stable tokens, 10 for ETH). */
   const paySpendInputCompactRef = useRef(true);
   const [useReferral, setUseReferral] = useState(true);
   const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
@@ -1229,7 +1229,7 @@ export function useArenaSaleSession(
         tokenDecimals,
         payWith,
         paySpendInputCompactRef.current
-          ? { compactFractionDigits: ARENA_PAY_SPEND_INPUT_SLIDER_FRACTION_DIGITS }
+          ? { compactFractionDigits: arenaPaySpendInputCompactFractionDigits(payWith) }
           : undefined,
       ),
     [payWith],

@@ -69,7 +69,7 @@ Icons are **PNG raster** drafts—trace to SVG per export spec where required.
 
 - **Open Graph wide image** — [`social/og-wide.jpg`](../social/og-wide.jpg)
 - **Twitter / square 1:1 share variant** — [`social/og-square.jpg`](../social/og-square.jpg)
-- **Favicon / maskable PWA source** — [`social/favicon-source.png`](../social/favicon-source.png)
+- **Favicon / app brand mark** — [`icons/header-home.svg`](../icons/header-home.svg) (supersedes the historic [`social/favicon-source.png`](../social/favicon-source.png) raster source)
 - **Wallet modal surrounding chrome** — [`social/wallet-modal-chrome.jpg`](../social/wallet-modal-chrome.jpg)
 
 ## 6) Motion & VFX → `motion/`

@@ -3,8 +3,11 @@
 import { formatUnits } from "viem";
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 
-/** Slider + default buy amount display for DOUB / USDM / CL8Y / CRED (not ETH). */
+/** Slider + default buy amount display for DOUB / USDM / CL8Y / CRED. */
 export const ARENA_PAY_SPEND_INPUT_SLIDER_FRACTION_DIGITS = 2;
+
+/** Slider + default buy amount display for ETH (manual input keeps full precision). */
+export const ARENA_PAY_SPEND_INPUT_ETH_SLIDER_FRACTION_DIGITS = 10;
 
 /**
  * Truncate a plain decimal string toward zero at `fractionDigits` after the dot.
@@ -37,16 +40,20 @@ export function truncateDecimalStringToFractionPlaces(
 export function formatArenaPaySpendInputDisplay(
   wei: bigint,
   tokenDecimals: number,
-  payWith: PayWithAsset,
+  _payWith: PayWithAsset,
   options?: { compactFractionDigits?: number },
 ): string {
   const full = formatUnits(wei, tokenDecimals);
-  if (payWith === "eth") {
-    return full;
-  }
   const compact = options?.compactFractionDigits;
   if (compact === undefined) {
     return full;
   }
   return truncateDecimalStringToFractionPlaces(full, compact);
+}
+
+/** Compact fraction digits for slider/default YOU PAY display. */
+export function arenaPaySpendInputCompactFractionDigits(payWith: PayWithAsset): number {
+  return payWith === "eth"
+    ? ARENA_PAY_SPEND_INPUT_ETH_SLIDER_FRACTION_DIGITS
+    : ARENA_PAY_SPEND_INPUT_SLIDER_FRACTION_DIGITS;
 }

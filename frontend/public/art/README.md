@@ -111,6 +111,7 @@ stem.
 
 | Slug                              | Used by                                                                    | Notes                                                                |
 |-----------------------------------|----------------------------------------------------------------------------|----------------------------------------------------------------------|
+| `header-home.svg`                 | [`RootLayout`](../../src/layout/RootLayout.tsx), [`index.html`](../../index.html) | Simplified YO brand mark and favicon. |
 | `token-cl8y.png` / `token-doub.png` / `token-charm.png` / `token-usdm.png` | [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) resampling | **Legacy / pipeline rasters.** Product UI uses inline CHARM/CRED glyphs plus **`/tokens/`** art for other tickers through [`tokenMedia.ts`](../../src/lib/tokenMedia.ts) (see **Canonical token marks** above). Do not add new `/art/icons/token-*.png` consumers for those glyphs. |
 | `status-live.png`                 | [`PageBadge`](../../src/components/ui/PageBadge.tsx) tone `live`           | Phase badge (Sale live).                                            |
 | `status-ended.png`                | [`PageBadge`](../../src/components/ui/PageBadge.tsx) tone `info` (ended)   | Phase badge (Sale ended).                                          |
@@ -125,9 +126,9 @@ stem.
 | `warbow-steal.png`                | _staged_                                                                 | Steal action pictogram.                                                     |
 | `warbow-revenge.png`              | _staged_                                                                 | Revenge action pictogram.                                                   |
 | `warbow-flag.png`                 | [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx) | Silence flag in live-buy legend.                                             |
-| `nav-simple.png`                  | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (BUY); regenerate via [`glass_arena_nav_icons.py`](../../../scripts/replicate-art/glass_arena_nav_icons.py). |
+| `nav-simple.png`                  | _legacy_ (#320: primary play route no longer uses Arena sub-nav) | Retired BUY sub-nav pictogram; regenerate via [`glass_arena_nav_icons.py`](../../../scripts/replicate-art/glass_arena_nav_icons.py) only if that surface returns. |
 | `nav-arena.png`                   | _staged_ (#266: unified `/arena` — sub-nav is BUY + AUDIT only) | Legacy Arena tab pictogram.                                       |
-| `nav-protocol.png`                | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (AUDIT); regenerate via [`glass_arena_nav_icons.py`](../../../scripts/replicate-art/glass_arena_nav_icons.py). |
+| `nav-protocol.png`                | _legacy_ (#320: primary play route no longer uses Arena sub-nav) | Retired AUDIT sub-nav pictogram; regenerate via [`glass_arena_nav_icons.py`](../../../scripts/replicate-art/glass_arena_nav_icons.py) only if that surface returns. |
 | `chart-accessibility.png`         | _staged_ for charts in retired v1 player reserve                                    | Color-blind safe pair swatch reference.                          |
 | `loading-mascot-ring.png`         | [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx), [`ArenaBranchPage.tsx`](../../src/pages/ArenaBranchPage.tsx), [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) | Square loading glyph ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `token-cl8y-24.png` / `token-doub-24.png` / `token-charm-24.png` / `token-usdm-24.png` | _staged_ (dense rows, charts), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) | 24×24 crops of the 256² token icons ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). Time Arena **CL8Y** micro-glyphs now use **`/tokens/cl8y.svg`** at 24×24 instead of `token-cl8y-24.png`. Canonical Glass Arena CHARM/CRED marks live in [`public/tokens`](../tokens/README.md) and regenerate via [`glass_arena_token_icons.py`](../../../scripts/replicate-art/glass_arena_token_icons.py). |
@@ -174,7 +175,7 @@ Social and meta-image variants. Wired through `frontend/index.html` (favicon, Op
 |-------------------------------|-------------------------------------------------------|
 | `og-wide.jpg`                 | Canonical wide OG master; copied to top-level `opengraph.jpg` for stable `vite.config.ts` `imagePath` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `og-square.jpg`               | Canonical square master; copied to top-level `opengraph-square.jpg` for the Twitter/X `summary` card in `vite.config.ts` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
-| `favicon-source.png`          | Source raster for `index.html` `<link rel="icon">`. The HTML still serves [`/art/app-icon.png`](./app-icon.png); regenerating the favicon is tracked in [`docs/frontend/missing-art-assets.md`](../../../docs/frontend/missing-art-assets.md). |
+| `icons/header-home.svg`       | Shared YO brand mark for `RootLayout` and `index.html` `<link rel="icon">`. |
 | `wallet-modal-chrome.jpg`     | RainbowKit modal page background (long-tail, kept in `social/`). |
 
 ### `motion/`
@@ -209,7 +210,7 @@ Some assets are still at the top level either because they are **shared by many 
 
 | File                                  | Used by                                                                              |
 |---------------------------------------|--------------------------------------------------------------------------------------|
-| `app-icon.png`                        | `index.html` `<link rel="icon">`.                                                    |
+| `app-icon.png`                        | _legacy favicon raster_ (superseded by `icons/header-home.svg`).                     |
 | `token-logo.png`                      | `RootLayout`, `PageHero` (default coin), `LaunchCountdownPage`.                      |
 | `loading-mascot.png`                  | _legacy_ (superseded by `icons/loading-mascot-ring.png`) | [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx) and [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) use the ring variant. |
 | `hat-coin-front.png` / `-rain.png` / `-stack.png` | `HomePage`, `LaunchCountdownPage`, placeholders.                                      |

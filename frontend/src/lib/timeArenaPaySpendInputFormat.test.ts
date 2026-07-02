@@ -3,7 +3,9 @@
 import { parseUnits } from "viem";
 import { describe, expect, it } from "vitest";
 import {
+  ARENA_PAY_SPEND_INPUT_ETH_SLIDER_FRACTION_DIGITS,
   ARENA_PAY_SPEND_INPUT_SLIDER_FRACTION_DIGITS,
+  arenaPaySpendInputCompactFractionDigits,
   formatArenaPaySpendInputDisplay,
   truncateDecimalStringToFractionPlaces,
 } from "@/lib/timeArenaPaySpendInputFormat";
@@ -42,11 +44,20 @@ describe("formatArenaPaySpendInputDisplay", () => {
     ).toBe("100");
   });
 
-  it("preserves full precision for ETH even when compact is requested", () => {
-    const wei = 123456789012345678n;
+  it("truncates ETH to ten decimals for slider/default display", () => {
+    const wei = 594302566429745n;
     expect(
-      formatArenaPaySpendInputDisplay(wei, 18, "eth", { compactFractionDigits: 2 }),
-    ).toBe("0.123456789012345678");
+      formatArenaPaySpendInputDisplay(wei, 18, "eth", {
+        compactFractionDigits: ARENA_PAY_SPEND_INPUT_ETH_SLIDER_FRACTION_DIGITS,
+      }),
+    ).toBe("0.0005943025");
+    expect(arenaPaySpendInputCompactFractionDigits("eth")).toBe(10);
+    expect(arenaPaySpendInputCompactFractionDigits("usdm")).toBe(2);
+  });
+
+  it("preserves full precision for ETH when compact is omitted", () => {
+    const wei = 123456789012345678n;
+    expect(formatArenaPaySpendInputDisplay(wei, 18, "eth")).toBe("0.123456789012345678");
   });
 
   it("returns full formatUnits output when compact is omitted", () => {

@@ -437,6 +437,8 @@ label:has(input[type="radio"]:disabled) {
   flex: 0 0 auto;
   flex-wrap: nowrap;
   gap: 0.12rem;
+  position: relative;
+  z-index: 2;
 }
 
 .app-header--dense .app-nav--dense .nav-link--dense {
