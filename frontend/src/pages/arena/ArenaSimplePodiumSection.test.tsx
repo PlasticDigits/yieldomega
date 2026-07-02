@@ -134,7 +134,7 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("Connect wallet to buy CHARM.");
   });
 
-  it("locks only the immediate next unlock tier for connected wallets (#334)", () => {
+  it("locks every tier above viewer level for connected wallets after buy (#334)", () => {
     mockWalletStats.mockReturnValue({
       data: { buy_count: 1, first_buy_at: "1700000000" },
       isLoading: false,
@@ -143,12 +143,12 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     const html = renderSimplePodiums({ address: ALICE, playerLevel: 1 });
     expect(html).not.toContain('data-testid="arena-podium-lock-0"');
     expect(html).toContain('data-testid="arena-podium-lock-3"');
-    expect(html).not.toContain('data-testid="arena-podium-lock-2"');
-    expect(html).not.toContain('data-testid="arena-podium-lock-1"');
+    expect(html).toContain('data-testid="arena-podium-lock-2"');
+    expect(html).toContain('data-testid="arena-podium-lock-1"');
     expect(html).toContain("LEVEL 2");
+    expect(html).toContain("LEVEL 3");
+    expect(html).toContain("LEVEL 4");
     expect(html).toContain("Time Booster");
-    expect(html).not.toContain("LEVEL 3");
-    expect(html).not.toContain("LEVEL 4");
     expect(html).not.toContain("Connect wallet to buy CHARM.");
   });
 

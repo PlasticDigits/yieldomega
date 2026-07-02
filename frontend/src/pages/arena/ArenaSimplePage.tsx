@@ -41,7 +41,7 @@ import {
   type ArenaFeatureKey,
   FEATURE_UNLOCK_LEVEL,
   isFeatureUnlocked,
-  shouldShowLevelLock,
+  shouldShowWarbowHubLevelLock,
 } from "@/lib/arenaProgression";
 import { useArenaLevelUpCelebration } from "@/hooks/useArenaLevelUpCelebration";
 import { useArenaPlayerLevel } from "@/hooks/useArenaPlayerLevel";
@@ -368,8 +368,7 @@ export function ArenaSimplePage({
   const warbowUnlocked =
     playerLevelRaw !== undefined && isFeatureUnlocked(playerLevelRaw as bigint, "warbow");
   const showWarbowLevelLock =
-    playerLevelRaw !== undefined &&
-    shouldShowLevelLock(Number(playerLevelRaw), FEATURE_UNLOCK_LEVEL.warbow);
+    playerLevelRaw !== undefined && shouldShowWarbowHubLevelLock(Number(playerLevelRaw));
   const warbowFlagUnlocked =
     playerLevelRaw !== undefined && isFeatureUnlocked(playerLevelRaw as bigint, "warbow_flag");
   const warbowFlagDisabled =

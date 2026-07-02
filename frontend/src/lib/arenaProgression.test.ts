@@ -12,6 +12,7 @@ import {
   shouldShowLevelLock,
   shouldShowPodiumFeatureLock,
   shouldShowPodiumLevelLock,
+  shouldShowWarbowHubLevelLock,
 } from "./arenaProgression";
 
 describe("arenaProgression", () => {
@@ -52,19 +53,34 @@ describe("arenaProgression", () => {
     expect(nextUnlockLevel(99)).toBeNull();
   });
 
-  it("shouldShowLevelLock gates only the immediate next tier (#334)", () => {
+  it("shouldShowLevelLock gates every tier above the player level (#334)", () => {
     expect(shouldShowLevelLock(1, 2)).toBe(true);
-    expect(shouldShowLevelLock(1, 3)).toBe(false);
-    expect(shouldShowLevelLock(1, 4)).toBe(false);
+    expect(shouldShowLevelLock(1, 3)).toBe(true);
+    expect(shouldShowLevelLock(1, 4)).toBe(true);
+    expect(shouldShowLevelLock(1, 5)).toBe(true);
+    expect(shouldShowLevelLock(2, 3)).toBe(true);
+    expect(shouldShowLevelLock(2, 4)).toBe(true);
+    expect(shouldShowLevelLock(2, 5)).toBe(true);
+    expect(shouldShowLevelLock(2, 2)).toBe(false);
     expect(shouldShowLevelLock(4, 5)).toBe(true);
     expect(shouldShowLevelLock(4, 4)).toBe(false);
     expect(shouldShowLevelLock(5, 5)).toBe(false);
+    expect(shouldShowLevelLock(5, 6)).toBe(false);
     expect(shouldShowLevelLock(undefined, 2)).toBe(false);
+  });
+
+  it("shouldShowWarbowHubLevelLock shows hub preview only when WarBow is next (#331)", () => {
+    expect(shouldShowWarbowHubLevelLock(1)).toBe(false);
+    expect(shouldShowWarbowHubLevelLock(2)).toBe(false);
+    expect(shouldShowWarbowHubLevelLock(3)).toBe(true);
+    expect(shouldShowWarbowHubLevelLock(4)).toBe(false);
+    expect(shouldShowWarbowHubLevelLock(5)).toBe(false);
+    expect(shouldShowWarbowHubLevelLock(undefined)).toBe(false);
   });
 
   it("shouldShowPodiumLevelLock skips Last Buy and disconnected secondary tiers (#334)", () => {
     expect(shouldShowPodiumLevelLock(true, 1, 2, 1)).toBe(true);
-    expect(shouldShowPodiumLevelLock(true, 1, 3, 2)).toBe(false);
+    expect(shouldShowPodiumLevelLock(true, 1, 3, 2)).toBe(true);
     expect(shouldShowPodiumLevelLock(false, undefined, 2, 1)).toBe(false);
     expect(shouldShowPodiumLevelLock(true, 1, 1, 0)).toBe(false);
   });
@@ -135,7 +151,7 @@ describe("arenaProgression", () => {
     ).toEqual({ locked: true, lockedForConnection: true });
   });
 
-  it("shouldShowPodiumFeatureLock shows only next tier after wallet buy (#334)", () => {
+  it("shouldShowPodiumFeatureLock locks every tier above viewer level after wallet buy (#334)", () => {
     const postBuy = {
       walletConnected: true,
       viewerLevel: 1,
@@ -147,6 +163,9 @@ describe("arenaProgression", () => {
     ).toEqual({ locked: true, lockedForConnection: false });
     expect(
       shouldShowPodiumFeatureLock({ ...postBuy, categoryIndex: 2, requiredLevel: 3 }),
-    ).toEqual({ locked: false, lockedForConnection: false });
+    ).toEqual({ locked: true, lockedForConnection: false });
+    expect(
+      shouldShowPodiumFeatureLock({ ...postBuy, categoryIndex: 3, requiredLevel: 4 }),
+    ).toEqual({ locked: true, lockedForConnection: false });
   });
 });

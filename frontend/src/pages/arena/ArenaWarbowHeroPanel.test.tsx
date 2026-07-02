@@ -106,6 +106,20 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
     expect(html).toContain("Time Arena is paused onchain");
   });
 
+  it("shows LEVEL 5 lock on WarBow flag at level 4 (#334)", () => {
+    mockWarbowHero.mockReturnValue(baseHook);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 4,
+        warbowTargets,
+        indexerViewerBattlePoints: 100n,
+      }),
+    );
+    expect(html).toContain('data-testid="arena-simple-warbow-flag-lock"');
+    expect(html).toContain("LEVEL 5");
+  });
+
   it("surfaces WarBow PvP errors with dismiss control", () => {
     mockWarbowHero.mockReturnValue({
       ...baseHook,

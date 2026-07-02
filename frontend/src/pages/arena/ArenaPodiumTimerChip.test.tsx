@@ -178,7 +178,7 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
     }
   });
 
-  it("shows only the next progression lock after wallet buy unlocks side rail", () => {
+  it("keeps progression locks on every tier above viewer level after wallet buy", () => {
     mockWalletStats.mockReturnValue({
       data: { buy_count: 1, first_buy_at: "1700000000" },
       isLoading: false,
@@ -190,7 +190,7 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
         address: "0xdddddddddddddddddddddddddddddddddddddddd" as const,
       }),
     );
-    expect(html).not.toContain('data-testid="arena-timer-chip-lock-2"');
-    expect(html).toContain("EPOCH 0");
+    expect(html).toContain('data-testid="arena-timer-chip-lock-2"');
+    expect(html).toContain("LEVEL 3");
   });
 });

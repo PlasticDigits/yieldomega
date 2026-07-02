@@ -36,14 +36,28 @@ export function nextUnlockLevel(playerLevel: bigint | number): number | null {
   return level + 1;
 }
 
-/** Show level-lock chrome only on the immediate next unlock tier (#334). */
+/** Show level-lock chrome for any tier above the player's current level (#334). */
 export function shouldShowLevelLock(
   playerLevel: bigint | number | undefined,
   requiredLevel: number,
 ): boolean {
   if (playerLevel === undefined) return false;
-  const next = nextUnlockLevel(playerLevel);
-  return next !== null && requiredLevel === next;
+  const level = clampPlayerLevel(playerLevel);
+  if (level >= MAX_PLAYER_LEVEL || requiredLevel > MAX_PLAYER_LEVEL) return false;
+  return level < requiredLevel;
+}
+
+/**
+ * WarBow hub preview: show the locked lane only when WarBow is the immediate next
+ * unlock (#331). Podium / side-rail locks use {@link shouldShowLevelLock} for every
+ * tier above the viewer.
+ */
+export function shouldShowWarbowHubLevelLock(
+  playerLevel: bigint | number | undefined,
+): boolean {
+  if (playerLevel === undefined) return false;
+  if (isFeatureUnlocked(playerLevel, "warbow")) return false;
+  return nextUnlockLevel(playerLevel) === FEATURE_UNLOCK_LEVEL.warbow;
 }
 
 export type PodiumFeatureLockState = {
@@ -53,8 +67,8 @@ export type PodiumFeatureLockState = {
 
 /**
  * Podium / carousel lock overlay (#334): Last Buy never locked; disconnected or
- * pre-buy wallets lock every secondary tier; connected buyers only lock the next
- * unlock tier. While wallet stats are loading, secondary tiers stay locked
+ * pre-buy wallets lock every secondary tier; connected buyers lock every tier
+ * above their current level. While wallet stats are loading, secondary tiers stay locked
  * (pessimistic gating — no unlock flash on initial paint).
  */
 export function shouldShowPodiumFeatureLock(opts: {

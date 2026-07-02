@@ -66,26 +66,39 @@ test.describe("Anvil Arena #331 play-feel visual UX", () => {
     await expect(page.getByTestId("arena-timer-podium-carousel")).toBeVisible();
   });
 
-  test("L1 wallet shows only the next-tier lock overlay on play (#334)", async ({ page }) => {
+  test("L1 wallet shows lock overlays for every tier above viewer level after buy (#334)", async ({
+    page,
+  }) => {
     await gotoArena(page);
     await connectArenaWallet(page);
     await waitArenaSaleLive(page);
+
+    await warpAnvilPastBuyCooldown();
+    await setCharmSliderMin(page);
+    const buyCharm = arenaBuyCharmButton(page);
+    await expect(buyCharm).toBeEnabled({ timeout: ARENA_E2E_TIMEOUT_MS });
+    await buyCharm.click();
+    await expect(page.getByTestId("arena-buy-effect-toast").first()).toBeVisible({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
 
     await gotoCarouselDot(page, 1);
     await expect(page.getByTestId("arena-timer-podium-lock-3")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
-    await expect(page.getByTestId("arena-timer-chip-gate-1")).toBeVisible();
-    await expect(page.locator('[data-locked-level="3"]')).toHaveCount(0);
-    await expect(page.locator('[data-locked-level="4"]')).toHaveCount(0);
-    await expect(page.locator('[data-locked-level="5"]')).toHaveCount(0);
+    await expect(page.locator('[data-locked-level="2"]')).toBeVisible();
+    await expect(page.getByTestId("arena-timer-chip-lock-1")).toBeVisible();
 
     await gotoCarouselDot(page, 2);
-    await expect(page.getByTestId("arena-timer-podium-lock-2")).toHaveCount(0);
-    await expect(page.locator('[data-locked-level="3"]')).toHaveCount(0);
+    await expect(page.getByTestId("arena-timer-podium-lock-2")).toBeVisible();
+    await expect(page.locator('[data-locked-level="3"]')).toBeVisible();
+    await expect(page.getByTestId("arena-timer-chip-lock-2")).toBeVisible();
 
     await gotoCarouselDot(page, 3);
-    await expect(page.locator('[data-locked-level="4"]')).toHaveCount(0);
+    await expect(page.getByTestId("arena-timer-podium-lock-1")).toBeVisible();
+    await expect(page.locator('[data-locked-level="4"]')).toBeVisible();
+    await expect(page.getByTestId("arena-timer-chip-lock-3")).toBeVisible();
+    await expect(page.locator('[data-locked-level="5"]')).toHaveCount(0);
   });
 
   test("L1 wallet omits WarBow lane until WarBow is the next unlock (#331 / #334 sad)", async ({
