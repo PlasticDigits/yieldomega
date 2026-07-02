@@ -2,7 +2,7 @@
 
 import { configuredChain } from "@/lib/chain";
 import { useSwitchChain, useConfig } from "wagmi";
-import { getWalletClient } from "@wagmi/core";
+import { getWalletClient } from "wagmi/actions";
 import { useState } from "react";
 
 type Props = {
