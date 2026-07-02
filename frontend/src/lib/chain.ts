@@ -101,13 +101,19 @@ export function configuredChain() {
   const envRpcUrls = parseCommaSeparatedRpcUrls(import.meta.env.VITE_RPC_URL);
   const envBase = envRpcUrls.length > 0 ? envRpcUrls : [defaultRpcHttp];
   const nameOverride = import.meta.env.VITE_CHAIN_NAME?.trim();
+  const defaultChainName =
+    id === MEGAETH_MAINNET_CHAIN_ID
+      ? "MegaETH"
+      : id === 6343
+        ? "MegaETH Testnet"
+        : `Chain ${id}`;
   const rpcHttpList =
     id === MEGAETH_MAINNET_CHAIN_ID
       ? megaethMainnetOrderedRpcUrls(envBase)
       : envBase;
   return defineChain({
     id,
-    name: nameOverride && nameOverride.length > 0 ? nameOverride : `Chain ${id}`,
+    name: nameOverride && nameOverride.length > 0 ? nameOverride : defaultChainName,
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: {
       default: { http: rpcHttpList },

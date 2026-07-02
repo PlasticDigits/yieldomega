@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { CL8Y_TOKEN_LOGO } from "@/lib/tokenMedia";
+
 /** Public GitHub mirror of the monorepo (`main` branch). */
 export const GH_MAIN_BLOB = "https://github.com/PlasticDigits/yieldomega/blob/main";
 
@@ -9,7 +11,7 @@ export function ghMainBlob(path: string): string {
 
 export type FooterSiteLinkIcon =
   | { kind: "asset"; src: string; alt?: string }
-  | { kind: "brand"; brand: "x" | "telegram" | "gitlab" | "github" | "mail" };
+  | { kind: "brand"; brand: "x" | "telegram" | "gitlab" | "github" | "mail" | "bridge" | "robot" };
 
 export type FooterSiteLink = {
   label: string;
@@ -54,18 +56,18 @@ export const FOOTER_SITE_LINKS: readonly FooterSiteLink[] = [
     label: "Buy CL8Y (Kumbaya)",
     href: "https://www.kumbaya.xyz/#/swap?outputCurrency=0xfBAa45A537cF07dC768c469FfaC4e88208B0098D&confirmed=1",
     testId: "footer-site-link-kumbaya-cl8y",
-    icon: { kind: "asset", src: "/art/icons/token-cl8y-24.png", alt: "" },
+    icon: { kind: "asset", src: CL8Y_TOKEN_LOGO, alt: "" },
   },
   {
     label: "CL8Y Bridge",
     href: "https://bridge.cl8y.com",
     testId: "footer-site-link-cl8y-bridge",
-    icon: { kind: "asset", src: "/art/icons/ui-conversion-arrow.png", alt: "" },
+    icon: { kind: "brand", brand: "bridge" },
   },
   {
     label: "Agent SKILL.md",
     href: ghMainBlob("skills/play-active-time-arena/SKILL.md"),
     testId: "footer-site-link-agent-skill",
-    icon: { kind: "asset", src: "/art/icons/header-arena.png", alt: "" },
+    icon: { kind: "brand", brand: "robot" },
   },
 ];

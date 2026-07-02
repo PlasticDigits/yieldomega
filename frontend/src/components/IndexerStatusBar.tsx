@@ -24,22 +24,9 @@ export function IndexerStatusBar() {
     line = "INDEXER · connecting…";
   }
 
-  const iconSrc =
-    tone === "success"
-      ? "/art/icons/status-indexer-ok.png"
-      : "/art/icons/status-indexer-bad.png";
   return (
     <p className={`indexer-status indexer-status--${tone}`}>
-      <img
-        className="indexer-status__icon"
-        src={iconSrc}
-        alt=""
-        width={20}
-        height={20}
-        aria-hidden="true"
-        loading="lazy"
-        decoding="async"
-      />
+      <span className="indexer-status__bead" aria-hidden="true" />
       <span>{line}</span>
     </p>
   );

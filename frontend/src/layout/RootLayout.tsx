@@ -6,6 +6,7 @@ import { ReferralPathSync } from "@/components/ReferralPathSync";
 import { ReferralSelfReferralPurge } from "@/components/ReferralSelfReferralPurge";
 import { AgentFooterCard } from "@/components/AgentFooterCard";
 import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
+import { SwitchToTargetChainButton } from "@/components/SwitchToTargetChainButton";
 import { useIsViewportAtMost } from "@/hooks/useIsViewportAtMost";
 import { configuredTargetChainId } from "@/lib/chain";
 import { addressTailHex } from "@/lib/addressFormat";
@@ -25,7 +26,6 @@ const HEADER_ICONS = {
   networkLocal: "/art/icons/header-network-local.png",
   networkChain: "/art/icons/header-network-chain.png",
   walletConnect: "/art/icons/header-wallet-connect.png",
-  walletAccount: "/art/icons/header-wallet-account.png",
   walletLoading: "/art/icons/header-wallet-loading.png",
   music: "/art/icons/header-music.png",
   wrongNetwork: "/art/icons/header-wrong-network.png",
@@ -192,7 +192,7 @@ export function RootLayout() {
                     aria-label={`Open wallet menu for ${account.address ?? ""}`}
                     title={account.address ?? account.displayName}
                   >
-                    <HeaderIcon src={HEADER_ICONS.walletAccount} />
+                    <HeaderIcon src={HEADER_ICONS.walletConnect} />
                     {account.address ? (
                       <span className="wallet-action__addr-tail">
                         {denseHeaderWalletAddrTail(account.address, denseHeaderAddrTailDigits)}
@@ -247,8 +247,11 @@ export function RootLayout() {
                 </div>
                 {wrongNetwork ? (
                   <div className="app-header__network-alert" role="status">
-                    <HeaderIcon src={HEADER_ICONS.wrongNetwork} /> WRONG NETWORK: USE CHAIN ID{" "}
-                    {TARGET_CHAIN_ID}
+                    <span className="app-header__network-alert-copy">
+                      <HeaderIcon src={HEADER_ICONS.wrongNetwork} /> WRONG NETWORK: USE CHAIN ID{" "}
+                      {TARGET_CHAIN_ID}
+                    </span>
+                    <SwitchToTargetChainButton className="btn-secondary app-header__network-alert-switch" />
                   </div>
                 ) : null}
               </>

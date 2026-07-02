@@ -17,11 +17,11 @@ describe("reconcileSpendWeiToCl8yBounds", () => {
     expect(out).toBe(45n * WAD);
   });
 
-  it("initial zero spend stays midpoint", () => {
+  it("initial zero spend snaps to minimum buy", () => {
     const next = { minS: 0n, maxS: 100n };
     expect(
       reconcileSpendWeiToCl8yBounds({ prevSpendWei: 0n, nextBounds: next, prevBounds: null }),
-    ).toBe(50n);
+    ).toBe(0n);
   });
 });
 

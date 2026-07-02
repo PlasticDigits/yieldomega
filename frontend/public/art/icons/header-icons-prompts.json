@@ -50,12 +50,6 @@
       "subject": "A clear connect wallet icon: small glossy wallet with a clasp and one visible golden hat-coin peeking out, compact rounded silhouette, thick outline, no letters, no words."
     },
     {
-      "slug": "header-wallet-account",
-      "title": "Wallet account",
-      "output": "header-wallet-account.png",
-      "subject": "A clear wallet account icon: rounded wallet badge paired with a tiny pixel-blockie avatar tile, green-gold trim, friendly arcade style, no readable address, no letters, no words."
-    },
-    {
       "slug": "header-wallet-loading",
       "title": "Wallet loading",
       "output": "header-wallet-loading.png",

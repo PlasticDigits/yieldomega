@@ -51,6 +51,8 @@ describe("ArenaPodiumTimerChip", () => {
     expect(identityIdx).toBeGreaterThan(scoreIdx);
     expect(src).toContain("arena-timer-chips__aside");
     expect(src).toContain("chipVisuallyUnlocked ? helpButton : null");
+    expect(src).toContain("sideRailLocked");
+    expect(src).not.toContain("ARENA_LAST_BUY_WALLET_LOCK_LEVEL");
     expect(src).not.toMatch(/LockedUntilLevel[\s\S]*?action=\{helpButton\}/);
   });
 });

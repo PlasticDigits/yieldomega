@@ -7,6 +7,7 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { AmountTripleStack } from "@/components/AmountTripleStack";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { ArenaBuySpendRangeInput } from "@/components/ArenaBuySpendRangeInput";
+import { ArenaBuyPreviewBlocked } from "@/pages/arena/ArenaBuyPreviewBlocked";
 import { Cl8yAcquireExternalLinks } from "@/components/Cl8yAcquireExternalLinks";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
@@ -610,7 +611,12 @@ export function ArenaSimplePage({
           : "USDM";
 
   const spendControlsDisabled =
-    session.phase !== "saleActive" || !session.walletConnected;
+    session.phase !== "saleActive" ||
+    !session.walletConnected ||
+    session.cl8ySpendBounds === null;
+
+  /** Spend-asset picker stays interactive while writes are gated (connect / wrong network / buy blockers). */
+  const payTokenSelectDisabled = session.phase !== "saleActive";
 
   const payBalance = (
     <p className="muted arena-simple__pay-balance">
@@ -648,10 +654,12 @@ export function ArenaSimplePage({
     </p>
   );
 
-  const slider = session.cl8ySpendBounds ? (
+  const payField =
+    session.phase === "saleActive" ? (
     <div className="arena-simple__swap-pay">
       <div
         className={`arena-simple__swap-field arena-simple__swap-field--pay arena-simple__swap-field--pay-${session.payWith}`}
+        data-testid="arena-simple-buy-pay"
       >
         <div className="arena-simple__swap-field-head">
           <span>You pay</span>
@@ -680,7 +688,7 @@ export function ArenaSimplePage({
               <ArenaSimpleAmountPayTokenSelect
                 payWith={session.payWith}
                 setPayWith={session.setPayWith}
-                disabled={spendControlsDisabled}
+                disabled={payTokenSelectDisabled}
                 options={payTokenOptions}
               />
               {payBalance}
@@ -742,49 +750,43 @@ export function ArenaSimplePage({
     session.payWith === "cred" && insufficientCredGate !== null;
 
   const buyPreview = insufficientCl8yForBuy ? (
-    <div
-      className="arena-simple__buy-preview arena-simple__buy-preview--blocked"
-      data-testid="arena-simple-buy-preview-insufficient-cl8y"
-    >
-      <p className="arena-simple__buy-preview-blocked-lede">
-        Not enough {primarySpendAssetLabel} in your wallet to buy. The live minimum is{" "}
-        <strong>
-          {formatBuyHubDerivedCompact(
-            insufficientCl8yGate.minSpendWei,
-            session.decimals,
-          )}{" "}
-          {primarySpendAssetLabel}
-        </strong>
-        ; you have{" "}
-        <strong>
-          {formatBuyHubDerivedCompact(
-            insufficientCl8yGate.walletBalanceWei,
-            session.decimals,
-          )}{" "}
-          {primarySpendAssetLabel}
-        </strong>
-        .
-      </p>
-      <Cl8yAcquireExternalLinks
-        cl8yToken={session.acceptedAsset}
-        buyTestId="arena-simple-buy-cl8y-kumbaya-link"
-        bridgeTestId="arena-simple-bridge-cl8y-link"
-      />
-    </div>
+    <ArenaBuyPreviewBlocked
+      testId="arena-simple-buy-preview-insufficient-cl8y"
+      headline={`Insufficient ${primarySpendAssetLabel}`}
+      needLabel={`${formatBuyHubDerivedCompact(
+        insufficientCl8yGate.minSpendWei,
+        session.decimals,
+      )} ${primarySpendAssetLabel}`}
+      haveLabel={`${formatBuyHubDerivedCompact(
+        insufficientCl8yGate.walletBalanceWei,
+        session.decimals,
+      )} ${primarySpendAssetLabel}`}
+      detail={`Not enough ${primarySpendAssetLabel} to buy. Live minimum ${formatBuyHubDerivedCompact(
+        insufficientCl8yGate.minSpendWei,
+        session.decimals,
+      )} ${primarySpendAssetLabel}; wallet balance ${formatBuyHubDerivedCompact(
+        insufficientCl8yGate.walletBalanceWei,
+        session.decimals,
+      )} ${primarySpendAssetLabel}.`}
+      actions={
+        <Cl8yAcquireExternalLinks
+          cl8yToken={session.acceptedAsset}
+          buyTestId="arena-simple-buy-cl8y-kumbaya-link"
+          bridgeTestId="arena-simple-bridge-cl8y-link"
+        />
+      }
+    />
   ) : insufficientCredForBuy ? (
-    <div
-      className="arena-simple__buy-preview arena-simple__buy-preview--blocked"
-      data-testid="arena-simple-buy-preview-insufficient-cred"
-    >
-      <p className="arena-simple__buy-preview-blocked-lede">
-        Not enough Play CRED to burn for this CHARM. This buy needs{" "}
-        <strong>
-          {formatUnits(insufficientCredGate.requiredCredWei, 18)} CRED
-        </strong>
-        ; you have{" "}
-        <strong>{formatUnits(insufficientCredGate.walletBalanceWei, 18)} CRED</strong>.
-      </p>
-    </div>
+    <ArenaBuyPreviewBlocked
+      testId="arena-simple-buy-preview-insufficient-cred"
+      headline="Insufficient CRED"
+      needLabel={`${formatUnits(insufficientCredGate.requiredCredWei, 18)} CRED`}
+      haveLabel={`${formatUnits(insufficientCredGate.walletBalanceWei, 18)} CRED`}
+      detail={`Not enough Play CRED to burn for this CHARM. Need ${formatUnits(
+        insufficientCredGate.requiredCredWei,
+        18,
+      )} CRED; have ${formatUnits(insufficientCredGate.walletBalanceWei, 18)} CRED.`}
+    />
   ) : session.charmWadSelected === undefined ? (
       <div className="arena-simple__buy-preview arena-simple__buy-preview--loading">
         Loading CHARM preview…
@@ -915,7 +917,7 @@ export function ArenaSimplePage({
   );
 
   const receiveField =
-    session.phase === "saleActive" && session.walletConnected ? (
+    session.phase === "saleActive" ? (
       <div className="arena-simple__swap-field arena-simple__swap-field--receive" data-testid="arena-simple-buy-receive">
         <div className="arena-simple__swap-field-head">
           <span>You receive</span>
@@ -1079,9 +1081,6 @@ export function ArenaSimplePage({
       className="page arena-simple-page arena-command-console glass-arena-console"
       data-testid="arena-command-console"
     >
-      <div className="arena-simple__indexer-status" data-testid="arena-simple-indexer-status">
-        <IndexerStatusBar />
-      </div>
       <div className="arena-command-console__grid">
         <div
           className="arena-command-console__primary-column"
@@ -1107,32 +1106,17 @@ export function ArenaSimplePage({
             testId="arena-simple-chain-write-gate"
             className="arena-simple__buy-panel"
           >
-          {!session.walletConnected && session.phase !== "loading" && (
+          {!session.walletConnected && session.phase === "saleActive" && (
             <div className="arena-simple__connect">
               <WalletConnectButton />
             </div>
           )}
 
-          {session.phase === "saleActive" && session.walletConnected && (
+          {session.phase === "saleActive" && (
             <>
-              {session.payWith !== "cl8y" && session.kumbayaRoutingBlocker && (
-                <StatusMessage variant="error">{session.kumbayaRoutingBlocker}</StatusMessage>
-              )}
-              {session.payWith !== "cl8y" &&
-                !session.kumbayaRoutingBlocker &&
-                session.swapQuoteFailed && (
-                  <StatusMessage variant="error">
-                    Could not quote this route (no liquidity or misconfigured pools for this chain).
-                  </StatusMessage>
-                )}
-              {session.payWith !== "cl8y" && !session.kumbayaRoutingBlocker && !session.swapQuoteFailed && (
-                <p className="muted">
-                  Routed buys use a fixed <strong>3%</strong> max slippage cap.
-                </p>
-              )}
               <div className="arena-simple__swap-stack">
-                {slider}
-                {slider && receiveField ? (
+                {payField}
+                {payField && receiveField ? (
                   <div className="arena-simple__swap-direction" aria-hidden="true">
                     <span className="arena-simple__swap-direction-badge">
                       <svg
@@ -1171,12 +1155,20 @@ export function ArenaSimplePage({
                   </div>
                 ) : null}
               </div>
-              {session.arenaPaused === true && (
+              {session.walletConnected && session.payWith !== "cl8y" && !session.kumbayaRoutingBlocker ? (
+                <p className="muted arena-simple__routed-buy-footnote">
+                  Routed buys use a fixed <strong>3%</strong> max slippage cap.
+                </p>
+              ) : null}
+              {session.walletConnected && session.payWith !== "cl8y" && session.kumbayaRoutingBlocker ? (
+                <StatusMessage variant="error">{session.kumbayaRoutingBlocker}</StatusMessage>
+              ) : null}
+              {session.walletConnected && session.arenaPaused === true && (
                 <StatusMessage variant="muted">
                   Time Arena is paused onchain — buys and WarBow DOUB spend are disabled until operators unpause.
                 </StatusMessage>
               )}
-              {session.buyError && (
+              {session.walletConnected && session.buyError && (
                 <StatusMessage variant="error">
                   {session.buyError}{" "}
                   <button
@@ -1189,7 +1181,9 @@ export function ArenaSimplePage({
                 </StatusMessage>
               )}
 
-              {session.showWarbowClaimFlagButton && session.chainNowSec !== undefined && (
+              {session.walletConnected &&
+                session.showWarbowClaimFlagButton &&
+                session.chainNowSec !== undefined && (
                 <WarbowClaimFlagButton
                   canClaimWarBowFlag={session.canClaimWarBowFlag}
                   ledgerNowSec={session.chainNowSec}
@@ -1276,6 +1270,9 @@ export function ArenaSimplePage({
       />
 
       <FooterSiteLinksCard />
+      <div className="arena-simple__indexer-status" data-testid="arena-simple-indexer-status">
+        <IndexerStatusBar />
+      </div>
       <LevelUpCelebrationPopover
         feature={levelUpCelebration}
         onDismiss={dismissLevelUpCelebration}

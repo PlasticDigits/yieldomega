@@ -77,11 +77,6 @@ def jobs() -> list[HeaderIconJob]:
             "A clear connect wallet icon: small glossy wallet with a clasp and one visible golden hat-coin peeking out, compact rounded silhouette, thick outline, no letters, no words.",
         ),
         HeaderIconJob(
-            "header-wallet-account",
-            "Wallet account",
-            "A clear wallet account icon: rounded wallet badge paired with a tiny pixel-blockie avatar tile, green-gold trim, friendly arcade style, no readable address, no letters, no words.",
-        ),
-        HeaderIconJob(
             "header-wallet-loading",
             "Wallet loading",
             "A clear wallet loading icon: small wallet with a circular sparkle spinner made from four chunky dots around it, readable as loading at header size, no ellipsis, no letters, no words.",

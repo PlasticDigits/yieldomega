@@ -70,6 +70,24 @@ export function FooterSiteLinkIcon({ icon, className = "footer-link-pill__icon" 
           />
         </svg>
       );
+    case "bridge":
+      return (
+        <svg className={svgClass} viewBox="0 0 24 24" width={20} height={20} aria-hidden>
+          <path
+            fill="currentColor"
+            d="M3 10h18v2H3zm2 2V7h3v5H5zm12 0V7h3v5h-3zM6 16h12v1H6z"
+          />
+        </svg>
+      );
+    case "robot":
+      return (
+        <svg className={svgClass} viewBox="0 0 24 24" width={20} height={20} aria-hidden>
+          <path
+            fill="currentColor"
+            d="M10 2h4v2h-1v1h2a2 2 0 0 1 2 2v1h1v2h-1v7a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-7H5V8h1V7a2 2 0 0 1 2-2h2V4h-1V2zm-2 6v7h8V8H8zm2 2h1v2H10v-2zm4 0h1v2h-1v-2zM11 18h2v2h-2v-2z"
+          />
+        </svg>
+      );
     default:
       return null;
   }

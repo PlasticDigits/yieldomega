@@ -122,6 +122,25 @@ function effectiveViteEnv(mode: string, key: string): string | undefined {
   return loadEnv(mode, process.cwd(), "VITE")[key];
 }
 
+/** Dev-only: proxy `/indexer-proxy` → remote indexer (avoids production CORS on localhost). */
+function indexerDevProxy(mode: string) {
+  if (mode !== "development") {
+    return undefined;
+  }
+  const target = loadEnv(mode, process.cwd(), "VITE").VITE_INDEXER_PROXY_TARGET?.trim();
+  if (!target) {
+    return undefined;
+  }
+  return {
+    "/indexer-proxy": {
+      target,
+      changeOrigin: true,
+      secure: true,
+      rewrite: (path: string) => path.replace(/^\/indexer-proxy/, ""),
+    },
+  };
+}
+
 export default defineConfig(({ command, mode }) => {
   assertProductionBuildEnv(
     { VITE_E2E_MOCK_WALLET: effectiveViteEnv(mode, "VITE_E2E_MOCK_WALLET") },
@@ -133,6 +152,9 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     plugins: [react(), injectSocialMeta(mode)],
+    server: {
+      proxy: indexerDevProxy(mode),
+    },
     build: {
       // Rainbow/wagmi/WalletConnect pull large minified chunks; splitting further is a separate optimization.
       chunkSizeWarningLimit: 1200,

@@ -3,9 +3,7 @@
 import { zeroAddress } from "viem";
 import { PlayerIdentity } from "@/components/arena";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
-import {
-  isArenaLastBuyWalletSurfaceUnlocked,
-} from "@/lib/arenaPageHelpers";
+import { isArenaLastBuyWalletSurfaceUnlocked } from "@/lib/arenaPageHelpers";
 import {
   clampPlayerLevel,
   FEATURE_UNLOCK_LEVEL,
@@ -106,17 +104,19 @@ export function ArenaPodiumTimerChip({
   });
 
   const requiredLevel = feature !== undefined ? FEATURE_UNLOCK_LEVEL[feature] : 1;
+  const sideRailLocked = !walletStatsPending && !lastBuyWalletUnlocked;
   const viewerLevel =
     walletConnected && playerLevel !== undefined ? clampPlayerLevel(playerLevel) : undefined;
   const showProgressionLock =
     feature !== undefined &&
     feature !== "last_buy" &&
+    !sideRailLocked &&
     shouldShowLevelLock(viewerLevel, requiredLevel);
-  const lastBuyLocked = feature === "last_buy" && !walletStatsPending && !lastBuyWalletUnlocked;
+  const chipLocked = sideRailLocked || showProgressionLock;
   const chipVisuallyUnlocked =
     feature === "last_buy"
       ? walletStatsPending || lastBuyWalletUnlocked
-      : !showProgressionLock;
+      : !chipLocked;
 
   const viewerValueRaw = resolveViewerPodiumValueRaw(categoryIndex, podiumRow, address, {
     activeDefendedStreak,
@@ -234,7 +234,7 @@ export function ArenaPodiumTimerChip({
     .join(" ");
   const gateTestId = testId ?? `arena-timer-chip-gate-${contractIndex}`;
 
-  if ((showProgressionLock || lastBuyLocked) && feature !== undefined) {
+  if (chipLocked && feature !== undefined) {
     return (
       <LockedUntilLevel
         requiredLevel={requiredLevel}

@@ -24,4 +24,10 @@ describe("useArenaSaleSession submit paths (GitLab #321)", () => {
     expect(blurBlock).toContain("payUsesKumbaya");
     expect(blurBlock).toMatch(/payUsesKumbaya,\s*\n\s*quotedPayInWei/);
   });
+
+  it("snaps buy spend to minimum when checkout is blocked", () => {
+    expect(src).toContain("isArenaBuySpendDefaultMin");
+    expect(src).toContain("buySpendDefaultMin");
+    expect(src).toContain("quotedBandMinPayInWei");
+  });
 });

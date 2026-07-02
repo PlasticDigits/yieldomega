@@ -95,6 +95,7 @@ vi.mock("@/hooks/useIndexerConnectivity", () => ({
 vi.mock("@/lib/addresses", () => ({
   addresses: { timeArena: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318" },
   indexerBaseUrl: () => mockIndexerBaseUrl,
+  kumbayaDexUrl: () => "https://kumbaya.example/swap",
 }));
 
 vi.mock("@/components/glass", () => ({
@@ -247,11 +248,52 @@ describe("ArenaSimplePage (GitLab #321)", () => {
       baseSession({
         walletConnected: false,
         walletAddress: undefined,
+        cl8ySpendBounds: null,
       }),
     );
     const html = renderPage();
     expect(html).toContain('class="arena-simple__connect"');
     expect(html).toContain("Connect wallet");
+    expect(html).toContain('data-testid="arena-simple-buy-pay"');
+    expect(html).toContain('data-testid="arena-simple-buy-receive"');
+    expect(html).toContain("You pay");
+    expect(html).not.toMatch(/arena-simple__amount-token-combobox[^>]*disabled/);
+  });
+
+  it("keeps YOU PAY visible when wallet balance cannot cover live bounds", () => {
+    mockSession.mockReturnValue(
+      baseSession({
+        cl8ySpendBounds: null,
+        cl8yCheckoutBoundsGate: {
+          kind: "insufficient_cl8y",
+          minSpendWei: 30_020_000_000_000_000_000_000n,
+          walletBalanceWei: 0n,
+        },
+        walletBalanceWei: 0n,
+        payWalletBalance: { raw: 0n, decimals: 18, symbol: "DOUB" },
+      }),
+    );
+    const html = renderPage();
+    const payPos = html.indexOf('data-testid="arena-simple-buy-pay"');
+    const receivePos = html.indexOf('data-testid="arena-simple-buy-receive"');
+    expect(payPos).toBeGreaterThan(0);
+    expect(receivePos).toBeGreaterThan(payPos);
+    expect(html).toContain("Insufficient DOUB");
+  });
+
+  it("keeps routed slippage footnote below buy and drops verbose quote errors", () => {
+    mockSession.mockReturnValue(
+      baseSession({
+        payWith: "eth",
+        swapQuoteFailed: true,
+      }),
+    );
+    const html = renderPage();
+    const footnotePos = html.indexOf("arena-simple__routed-buy-footnote");
+    const swapPos = html.indexOf("arena-simple__swap-stack");
+    expect(footnotePos).toBeGreaterThan(swapPos);
+    expect(html).toContain("Routed buys use a fixed");
+    expect(html).not.toContain("Could not quote this route");
   });
 });
 
@@ -273,6 +315,7 @@ describe("ArenaSimplePage smoke regions (GitLab #321)", () => {
 
   it("renders timer, podium carousel, and spend controls test ids", () => {
     expect(src).toContain('data-testid="arena-simple-amount-pay-token"');
+    expect(src).toContain("payTokenSelectDisabled");
     expect(src).toContain("ArenaTimerPodiumCarousel");
     expect(src).toContain("ArenaTimerChips");
     expect(src).toContain("ArenaCharmCredCard");
@@ -298,7 +341,10 @@ describe("ArenaSimplePage indexer offline banner (GitLab #354)", () => {
     });
     mockSession.mockReturnValue(baseSession());
     const html = renderPage();
-    expect(html).toContain('data-testid="arena-simple-indexer-status"');
+    const footerPos = html.indexOf('data-testid="footer-site-links-card"');
+    const indexerPos = html.indexOf('data-testid="arena-simple-indexer-status"');
+    expect(footerPos).toBeGreaterThan(0);
+    expect(indexerPos).toBeGreaterThan(footerPos);
     expect(html).toContain("INDEXER · offline · retrying");
     expect(html).not.toContain("INDEXER · v");
     expect(html).not.toContain("· live");

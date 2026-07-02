@@ -26,7 +26,7 @@ export function reconcileSpendWeiToCl8yBounds(args: {
   }
 
   if (prev === 0n) {
-    return minS + (maxS - minS) / 2n;
+    return minS;
   }
   if (prev >= minS && prev <= maxS) {
     return prev;

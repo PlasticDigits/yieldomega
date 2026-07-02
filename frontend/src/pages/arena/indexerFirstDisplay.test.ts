@@ -31,6 +31,11 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("coreReadRowsFromArenaTimers");
   });
 
+  it("useArenaSaleSession disables Buy contract-event watch when indexer is on", () => {
+    const src = readArena("useArenaSaleSession.ts");
+    expect(src).toMatch(/useWatchContractEvent\([\s\S]*enabled:\s*Boolean\(tc\)\s*&&\s*!indexerOn/);
+  });
+
   it("useWarbowBpMovingEventWatch disables contract event subscriptions", () => {
     const src = readArena("usePodiumReads.ts");
     expect(src).toContain("const rpcEventsEnabled = false");

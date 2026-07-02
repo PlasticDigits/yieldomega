@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  configuredChain,
   MEGAETH_MAINNET_PRIMARY_RPC,
   megaethMainnetOrderedRpcUrls,
   parseCommaSeparatedRpcUrls,
@@ -99,5 +100,16 @@ describe("resolveChainRpcConfig", () => {
       id: 4326,
       defaultRpcHttp: "https://mainnet.megaeth.com/rpc",
     });
+  });
+});
+
+describe("configuredChain", () => {
+  it("names MegaETH mainnet and exposes canonical RPC for wallet add/switch", () => {
+    vi.stubEnv("VITE_CHAIN_ID", "4326");
+    vi.stubEnv("VITE_RPC_URL", "");
+    vi.stubEnv("VITE_CHAIN_NAME", "");
+    const chain = configuredChain();
+    expect(chain.name).toBe("MegaETH");
+    expect(chain.rpcUrls.default.http).toEqual([MEGAETH_MAINNET_PRIMARY_RPC]);
   });
 });

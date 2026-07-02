@@ -18,6 +18,8 @@ import { xpGainFromBuyReceiptLogs } from "@/lib/arenaWalletXpOptimistic";
 import { xpForCharm } from "@/lib/arenaXpMath";
 import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { extractHttpResponseStatus } from "@/lib/extractHttpResponseStatus";
+import { reportRpcFetchAttempt, reportRpcRateLimited } from "@/lib/rpcConnectivity";
 import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import {
   erc20Abi,
@@ -52,6 +54,7 @@ import {
   WALLET_BUY_SESSION_DRIFT_MESSAGE,
 } from "@/lib/walletBuySessionGuard";
 import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeArenaBuyAmount";
+import { isArenaBuySpendDefaultMin } from "@/lib/timeArenaBuySpendDefault";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeArenaBuyReceipt";
 import { deriveWarbowClaimFlagFields } from "@/lib/warbowClaimFlagState";
 import {
@@ -454,36 +457,6 @@ export function useArenaSaleSession(
     refreshSoft: refreshHeroTimerSoft,
   } = useArenaHeroTimer(tc);
 
-  useWatchContractEvent({
-    address: tc,
-    abi: timeArenaBuyEventAbi,
-    eventName: "Buy",
-    enabled: Boolean(tc),
-    onLogs: (logs) => {
-      if (address) {
-        const w = address.toLowerCase();
-        for (const log of logs) {
-          const buyer = log.args?.buyer;
-          const charmWad = log.args?.charmWad;
-          if (
-            buyer &&
-            charmWad !== undefined &&
-            charmWad > 0n &&
-            buyer.toLowerCase() === w &&
-            log.transactionHash
-          ) {
-            bumpWalletXpAfterBuy(log.transactionHash, charmWad);
-          }
-        }
-      }
-      void refetchCore();
-      void refetchUser();
-      void refetchLastBuyEpoch();
-      void refetchCharmWalletBalance();
-      refreshHeroTimerSoft();
-    },
-  });
-
   const [
     saleStartR,
     deadlineR,
@@ -682,6 +655,63 @@ export function useArenaSaleSession(
     },
   });
   const charmWalletBalanceWad = charmWalletBalance as bigint | undefined;
+
+  const onBuyEventLogs = useCallback(
+    (logs: {
+      args?: { buyer?: `0x${string}`; charmWad?: bigint };
+      transactionHash?: `0x${string}` | null;
+    }[]) => {
+      if (address) {
+        const w = address.toLowerCase();
+        for (const log of logs) {
+          const buyer = log.args?.buyer;
+          const charmWad = log.args?.charmWad;
+          if (
+            buyer &&
+            charmWad !== undefined &&
+            charmWad > 0n &&
+            buyer.toLowerCase() === w &&
+            log.transactionHash
+          ) {
+            bumpWalletXpAfterBuy(log.transactionHash, charmWad);
+          }
+        }
+      }
+      void refetchCore();
+      void refetchUser();
+      void refetchLastBuyEpoch();
+      void refetchCharmWalletBalance();
+      refreshHeroTimerSoft();
+    },
+    [
+      address,
+      bumpWalletXpAfterBuy,
+      refetchCharmWalletBalance,
+      refetchCore,
+      refetchLastBuyEpoch,
+      refetchUser,
+      refreshHeroTimerSoft,
+    ],
+  );
+
+  const onBuyEventWatchError = useCallback((err: Error) => {
+    const status = extractHttpResponseStatus(err);
+    if (status === 429) {
+      reportRpcRateLimited();
+    } else {
+      reportRpcFetchAttempt(false);
+    }
+  }, []);
+
+  /** Indexer-first ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)): no browser filter poll when indexer polls sale head. */
+  useWatchContractEvent({
+    address: tc,
+    abi: timeArenaBuyEventAbi,
+    eventName: "Buy",
+    enabled: Boolean(tc) && !indexerOn,
+    onLogs: onBuyEventLogs,
+    onError: onBuyEventWatchError,
+  });
 
   const prevWalletRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -1105,6 +1135,51 @@ export function useArenaSaleSession(
     (quotedBandMinPayInWei === undefined || quotedBandMaxPayInWei === undefined) &&
     (bandMinPending || bandMinFetching || bandMaxPending || bandMaxFetching);
 
+  const swapQuoteAwaitingFirstResult =
+    quoteEnabled && quotedPayInWei === undefined && (quotePending || quoteFetching);
+
+  const swapQuoteFailed =
+    quoteEnabled &&
+    quoteIsError &&
+    !quoteFetching &&
+    !quotePending &&
+    quotedPayInWei === undefined;
+
+  const buySpendDefaultMin = useMemo(
+    () =>
+      isArenaBuySpendDefaultMin({
+        phase,
+        walletConnected: isConnected && Boolean(address),
+        chainMismatch: chainMismatchWriteMessage(chainId) !== null,
+        cl8ySpendBounds,
+        payWith,
+        cl8yCheckoutBoundsGate,
+        credCheckoutBoundsGate,
+        payUsesKumbaya,
+        kumbayaRoutingBlocker,
+        swapQuoteFailed,
+      }),
+    [
+      phase,
+      isConnected,
+      address,
+      chainId,
+      cl8ySpendBounds,
+      payWith,
+      cl8yCheckoutBoundsGate,
+      credCheckoutBoundsGate,
+      payUsesKumbaya,
+      kumbayaRoutingBlocker,
+      swapQuoteFailed,
+    ],
+  );
+
+  useEffect(() => {
+    if (!cl8ySpendBounds || payInputFocusedRef.current || !buySpendDefaultMin) return;
+    const { minS } = cl8ySpendBounds;
+    setSpendWei((prev) => (prev === minS ? prev : minS));
+  }, [buySpendDefaultMin, cl8ySpendBounds]);
+
   const { data: nativeEthBal } = useBalance({
     address: address as `0x${string}` | undefined,
     query: {
@@ -1157,10 +1232,28 @@ export function useArenaSaleSession(
       setSpendInputStr(formatUnits(c, decimals));
       return;
     }
+    if (payWith === "cred" && buySpendDefaultMin && requiredCredBurnWei !== undefined) {
+      setSpendInputStr(formatUnits(requiredCredBurnWei, 18));
+      return;
+    }
+    if (buySpendDefaultMin && quotedBandMinPayInWei !== undefined) {
+      setSpendInputStr(formatUnits(quotedBandMinPayInWei, payTokenDecimals));
+      return;
+    }
     if (quotedPayInWei !== undefined) {
       setSpendInputStr(formatUnits(quotedPayInWei, payTokenDecimals));
     }
-  }, [cl8ySpendBounds, spendWei, decimals, payWith, quotedPayInWei, payTokenDecimals]);
+  }, [
+    buySpendDefaultMin,
+    cl8ySpendBounds,
+    spendWei,
+    decimals,
+    payWith,
+    quotedPayInWei,
+    quotedBandMinPayInWei,
+    payTokenDecimals,
+    requiredCredBurnWei,
+  ]);
 
   const spendSliderPermille = useMemo(() => {
     if (!cl8ySpendBounds) return 0;
@@ -1674,9 +1767,6 @@ export function useArenaSaleSession(
     refetchAll,
   ]);
 
-  const swapQuoteAwaitingFirstResult =
-    quoteEnabled && quotedPayInWei === undefined && (quotePending || quoteFetching);
-
   const ready = Boolean(coreData && coreData.length > 0 && !coreReadsLoading);
 
   return {
@@ -1759,7 +1849,7 @@ export function useArenaSaleSession(
     payTokenDecimals,
     swapQuoteLoading: swapQuoteAwaitingFirstResult,
     swapQuoteDisplayLoading: swapQuoteAwaitingFirstResult,
-    swapQuoteFailed: quoteIsError,
+    swapQuoteFailed,
     quotedPerCharmPayInWei,
     perCharmPayQuoteLoading,
     perCharmPayQuoteFailed,
