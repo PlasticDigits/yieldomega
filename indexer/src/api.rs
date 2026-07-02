@@ -19,14 +19,16 @@ use tokio::sync::RwLock;
 
 use crate::api_validate::valid_0x_address20;
 use crate::chain_timer::TimecurveHeadSnapshot;
+use crate::doub_spot_price;
 use crate::rpc_metrics::RpcMetrics;
 
-const SCHEMA_VERSION: &str = "2.21.0";
+const SCHEMA_VERSION: &str = "2.22.0";
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
     pub chain_timer: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
+    pub doub_spot_price: Arc<RwLock<Option<doub_spot_price::DoubSpotPriceSnapshot>>>,
     pub ingestion_alive: Arc<AtomicBool>,
     pub last_indexed_at_ms: Arc<AtomicU64>,
     pub rpc_metrics: RpcMetrics,
@@ -666,6 +668,7 @@ mod status_exposure_tests {
         AppState {
             pool: sqlx::PgPool::connect_lazy("postgres://invalid").unwrap(),
             chain_timer: Arc::new(RwLock::new(None)),
+            doub_spot_price: Arc::new(RwLock::new(None)),
             ingestion_alive: Arc::new(AtomicBool::new(true)),
             last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
             rpc_metrics: RpcMetrics::default(),

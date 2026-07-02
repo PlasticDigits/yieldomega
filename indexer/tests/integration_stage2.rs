@@ -199,6 +199,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     for path in ["/healthz", "/v1/status"] {
@@ -329,6 +330,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
     let res = app_unavailable
         .oneshot(
@@ -719,6 +721,7 @@ async fn api_arena_ingest_lag_fields_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     for path in ["/v1/arena/timers", "/v1/arena/podiums"] {
@@ -798,6 +801,7 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -913,6 +917,7 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
     let res2 = app2
         .oneshot(
@@ -969,6 +974,7 @@ async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -1043,6 +1049,7 @@ async fn api_arena_activity_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -1149,6 +1156,7 @@ async fn api_arena_warbow_pending_revenge_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let victim = format!("{:#x}", addr_byte(0xb2));
@@ -1203,6 +1211,7 @@ async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -1311,6 +1320,7 @@ async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let buy_tx_hash = format!("{:#x}", b256_lo(buy_tx_id));
@@ -1532,6 +1542,7 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -1664,6 +1675,7 @@ async fn arena_wallet_stats_level_history_and_reorg() {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -1822,6 +1834,7 @@ async fn last_buy_epoch_global_assignment_non_resetting_participant() {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -1963,6 +1976,7 @@ async fn api_platform_usage_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -1991,6 +2005,7 @@ async fn api_session_summary_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let since_ms = (1_700_000_000i64 - 3600) * 1000;
@@ -2123,6 +2138,7 @@ async fn arena_session_summary_fixture_since_activity() {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let since_ms = (since_ts * 1000) as i64;
@@ -2179,6 +2195,7 @@ async fn api_activity_cursor_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -2265,6 +2282,7 @@ async fn api_buys_cursor_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     let res = app
@@ -2370,6 +2388,7 @@ async fn api_buy_via_kumbaya_pay_kind_smoke(pool: &sqlx::PgPool) {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
     let res = app
         .oneshot(
@@ -2422,6 +2441,7 @@ async fn api_legacy_player_reserve_routes_return_404() {
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
         rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
     });
 
     for path in ["/v1/rabbit/deposits", "/v1/rabbit/health-epochs"] {

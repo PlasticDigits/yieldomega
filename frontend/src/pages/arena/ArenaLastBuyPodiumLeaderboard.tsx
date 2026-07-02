@@ -31,7 +31,7 @@ export type ArenaLastBuyPodiumLeaderboardProps = {
   recentBuys?: readonly BuyItem[] | null;
   podiumNowUnixSec?: number;
   onOpenWalletProfile?: (address: string) => void;
-  /** Indexed TWAP USD-notional per 1 DOUB for podium “≈ $… USD” hints ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
+  /** Indexed / display-parity USD-notional per 1 DOUB for podium “≈ $… USD” hints ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
   doubUsdWad?: bigint;
 };
 

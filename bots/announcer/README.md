@@ -6,8 +6,8 @@ optionally, **`ArenaStarted`**) on MegaETH mainnet. Sibling to the play swarm in
 nothing, cannot spend.
 
 Built for an always-on edge box (e.g. a Jetson): **pure Python stdlib**, no `web3`, no
-`pip`, no venv. Needs only **outbound** HTTPS to the RPC and `api.telegram.org`. No
-inbound ports.
+`pip`, no venv. Needs only **outbound** HTTPS to the RPC, `indexer.yieldomega.com`, and
+`api.telegram.org`. No inbound ports.
 
 ## What it watches
 
@@ -35,6 +35,8 @@ Copy `.env.example` to `.env` (gitignored) and set at least:
 | `TIME_ARENA_ADDRESS` | TimeArena proxy (defaults to the mainnet registry address) |
 | `ANNOUNCE_START_BLOCK` | Optional: first-run start block; otherwise starts at current head |
 | `MIN_DOUB` | Optional: skip buys under this DOUB amount |
+| `INDEXER_URL` | Yieldomega indexer base URL for DOUB→USD TWAP and live prize pools (default `https://indexer.yieldomega.com`) |
+| `INDEXER_CACHE_SEC` | Cache indexer market snapshot TTL in seconds (default `30`) |
 
 ## Run
 

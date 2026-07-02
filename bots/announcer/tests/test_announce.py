@@ -53,11 +53,38 @@ def test_short_addr():
 
 
 def test_build_buy_message_contains_key_fields():
-    msg = announce.build_buy_message(announce.decode_buy(_synth_buy_log()), "0x" + "ab" * 32)
+    market = {"doub_usd_wad": 10**18, "total_prize_pool_doub_wad": 1_400_000 * 10**18}
+    msg = announce.build_buy_message(announce.decode_buy(_synth_buy_log()), "0x" + "ab" * 32, market)
     assert "1,500.00 CHARM" in msg
     assert "250.00 DOUB" in msg
+    assert "WORTH: $250.00 USD" in msg
+    assert "Total Prize Pool:" in msg
+    assert "$1,400,000.00 USD" in msg
     assert "buy #42" in msg
     assert "TIMER HARD RESET" in msg
+
+
+def test_doub_wei_to_usd_indexed_and_fallback():
+    assert announce.doub_wei_to_usd(250 * 10**18, 10**18) == announce.Decimal("250")
+    assert announce.doub_wei_to_usd(100 * 10**18, None) == announce.Decimal("98")
+
+
+def test_sum_active_prize_pools():
+    podiums = {"rows": [
+        {"active_pool_balance_doub_wad": "100"},
+        {"active_pool_balance_doub_wad": "200"},
+        {"active_pool_balance_doub_wad": "0"},
+        {},
+    ]}
+    assert announce._sum_active_prize_pools(podiums) == 300
+
+
+def test_build_buy_message_skips_worth_for_zero_doub():
+    log = _synth_buy_log()
+    b = announce.decode_buy(log)
+    b = {**b, "doubPaid": 0, "paidWithCred": True}
+    msg = announce.build_buy_message(b, "0x" + "ab" * 32, {"doub_usd_wad": 10**18, "total_prize_pool_doub_wad": 0})
+    assert "WORTH:" not in msg
 
 
 def test_tg_payload_forum_topic(monkeypatch):

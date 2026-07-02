@@ -44,6 +44,10 @@ async fn indexed_through_block(pool: &sqlx::PgPool) -> Result<String, sqlx::Erro
 
 pub fn arena_routes() -> axum::Router<AppState> {
     axum::Router::new()
+        .route(
+            "/v1/arena/doub-spot-price",
+            axum::routing::get(arena_doub_spot_price),
+        )
         .route("/v1/arena/timers", axum::routing::get(arena_timers))
         .route(
             "/v1/arena/last-buy-epoch-pricing",
@@ -189,32 +193,28 @@ async fn arena_podium_pool_donations(
         .into_response()
 }
 
-/// TWAP USD-notional wad per 1 DOUB from `LastBuyEpochCharmAnchored` ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)).
-async fn fetch_head_doub_usd_wad(
-    pool: &sqlx::PgPool,
-    last_buy_epoch: &str,
-) -> Result<Option<String>, sqlx::Error> {
-    let for_epoch: Option<String> = sqlx::query_scalar(
-        r#"SELECT MAX(doub_usd_wad)::text
-           FROM idx_arena_last_buy_epoch_started
-           WHERE epoch = $1::numeric AND doub_usd_wad IS NOT NULL"#,
+/// `GET /v1/arena/doub-spot-price` — live DOUB/USD from Kumbaya USDM→DOUB quoter (polled ~60s).
+async fn arena_doub_spot_price(State(state): State<AppState>) -> Response {
+    let snap = state.doub_spot_price.read().await;
+    let Some(s) = snap.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "error": "doub_spot_price_unavailable" })),
+        )
+            .into_response();
+    };
+    let body = json!({
+        "usdm_per_doub_wad": s.usdm_per_doub_wad,
+        "doub_usd_wad": s.doub_usd_wad,
+        "polled_at_ms": s.polled_at_ms,
+        "read_block_number": s.read_block_number,
+    });
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(body),
     )
-    .bind(last_buy_epoch)
-    .fetch_optional(pool)
-    .await?
-    .flatten();
-    if for_epoch.is_some() {
-        return Ok(for_epoch);
-    }
-    sqlx::query_scalar(
-        r#"SELECT doub_usd_wad::text
-           FROM idx_arena_last_buy_epoch_started
-           WHERE doub_usd_wad IS NOT NULL
-           ORDER BY epoch DESC
-           LIMIT 1"#,
-    )
-    .fetch_optional(pool)
-    .await
+        .into_response()
 }
 
 async fn arena_timers(State(state): State<AppState>) -> Response {
@@ -227,10 +227,6 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
             .into_response();
     };
     let indexed_through_block = match indexed_through_block(&state.pool).await {
-        Ok(v) => v,
-        Err(e) => return internal_db_error_response("GET /v1/arena/timers", e),
-    };
-    let doub_usd_wad = match fetch_head_doub_usd_wad(&state.pool, &h.timer.last_buy_epoch).await {
         Ok(v) => v,
         Err(e) => return internal_db_error_response("GET /v1/arena/timers", e),
     };
@@ -251,7 +247,6 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
         "charm_price_wad": h.sale_head.charm_price_wad,
         "epoch_charm_anchor_wad": h.sale_head.epoch_charm_anchor_wad,
         "epoch_anchor_timestamp_sec": h.sale_head.epoch_anchor_timestamp_sec,
-        "doub_usd_wad": doub_usd_wad,
         "doub": h.sale_head.doub,
         "referral_registry": h.sale_head.referral_registry,
         "buy_charge_interval_sec": h.sale_head.buy_charge_interval_sec,

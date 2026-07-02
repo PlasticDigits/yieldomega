@@ -21,6 +21,7 @@ pub enum RpcCaller {
     PodiumLive,
     WarbowScore,
     Reorg,
+    DoubSpotPrice,
 }
 
 impl RpcCaller {
@@ -31,6 +32,7 @@ impl RpcCaller {
             Self::PodiumLive => "podium_live",
             Self::WarbowScore => "warbow_score",
             Self::Reorg => "reorg",
+            Self::DoubSpotPrice => "doub_spot_price",
         }
     }
 }

@@ -58,7 +58,7 @@ export type ArenaSimplePodiumSectionProps = {
   onOpenWalletProfile?: (address: string) => void;
   /** Opens podium mechanic tutorial modal for the matching feature. */
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
-  /** Indexed TWAP USD-notional per 1 DOUB for podium “≈ $… USD” hints ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
+  /** Indexed / display-parity USD-notional per 1 DOUB for podium “≈ $… USD” hints ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
   doubUsdWad?: bigint;
 };
 

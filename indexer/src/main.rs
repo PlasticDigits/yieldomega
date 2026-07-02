@@ -11,7 +11,7 @@ use alloy_primitives::Address;
 use eyre::Result;
 use tokio::sync::RwLock;
 use tower_http::trace::TraceLayer;
-use yieldomega_indexer::{api, chain_timer, config, cors_config, db, ingestion, rpc_metrics};
+use yieldomega_indexer::{api, chain_timer, config, cors_config, db, doub_spot_price, ingestion, rpc_metrics};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -97,6 +97,8 @@ async fn main() -> Result<()> {
 
     let chain_timer_cache: Arc<RwLock<Option<chain_timer::TimecurveHeadSnapshot>>> =
         Arc::new(RwLock::new(None));
+    let doub_spot_price_cache: Arc<RwLock<Option<doub_spot_price::DoubSpotPriceSnapshot>>> =
+        Arc::new(RwLock::new(None));
 
     let rpc_timeout = config.rpc_request_timeout;
     if let Some(addr) = config.address_registry.as_ref().and_then(|r| {
@@ -133,9 +135,43 @@ async fn main() -> Result<()> {
         );
     }
 
+    let cl8y_addr = config.address_registry.as_ref().and_then(|r| {
+        let cl8y = r.contracts.cl8y_reserve.trim();
+        if cl8y.is_empty() {
+            None
+        } else {
+            cl8y.parse::<Address>().ok()
+        }
+    });
+    if let Some(kumbaya) =
+        doub_spot_price::kumbaya_spot_config_from_env(config.chain_id, cl8y_addr)
+    {
+        let rpc_urls = config.rpc_urls.clone();
+        let cache = doub_spot_price_cache.clone();
+        let timer_cache = chain_timer_cache.clone();
+        let spot_metrics = rpc_metrics.clone();
+        tokio::spawn(async move {
+            doub_spot_price::run_poll_loop(
+                &rpc_urls,
+                rpc_timeout,
+                kumbaya,
+                timer_cache,
+                cache,
+                spot_metrics,
+            )
+            .await;
+        });
+    } else {
+        tracing::warn!(
+            chain_id = config.chain_id,
+            "Kumbaya spot config unavailable — /v1/arena/doub-spot-price will return 503"
+        );
+    }
+
     let state = api::AppState {
         pool,
         chain_timer: chain_timer_cache,
+        doub_spot_price: doub_spot_price_cache,
         ingestion_alive: ingestion_progress.ingestion_alive.clone(),
         last_indexed_at_ms: ingestion_progress.last_indexed_at_ms.clone(),
         rpc_metrics,

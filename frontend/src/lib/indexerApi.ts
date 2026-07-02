@@ -859,8 +859,6 @@ export type ArenaTimersResponse = {
   charm_price_wad?: string;
   epoch_charm_anchor_wad?: string;
   epoch_anchor_timestamp_sec?: string;
-  /** TWAP USD-notional per 1 DOUB from `LastBuyEpochCharmAnchored` (schema ≥ 2.21.0 · [#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
-  doub_usd_wad?: string | null;
   doub?: string;
   referral_registry?: string;
   buy_charge_interval_sec?: string;
@@ -974,6 +972,19 @@ export async function fetchArenaActivity(limit = 25, offset = 0, cursor?: string
 
 export async function fetchArenaTimers() {
   return getJson<ArenaTimersResponse>("/v1/arena/timers");
+}
+
+export type ArenaDoubSpotPriceResponse = {
+  /** USDM smallest units (6 decimals) to buy 1 DOUB on Kumbaya. */
+  usdm_per_doub_wad: string;
+  /** 18-decimal USD-notional wad per 1 DOUB for prize USD display. */
+  doub_usd_wad: string;
+  polled_at_ms: number;
+  read_block_number: string;
+};
+
+export async function fetchArenaDoubSpotPrice() {
+  return getJson<ArenaDoubSpotPriceResponse>("/v1/arena/doub-spot-price");
 }
 
 export async function fetchArenaPodiums() {

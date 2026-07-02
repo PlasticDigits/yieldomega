@@ -31,6 +31,7 @@ import {
 import { addresses } from "@/lib/addresses";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { formatAmountTriple, parseBigIntString } from "@/lib/formatAmount";
+import { doubWeiToUsdNotionalWad } from "@/lib/doubSpotUsdPrice";
 import { buyTokenOnKumbayaUrl } from "@/lib/kumbayaSwapUrl";
 import { normalizeReferralCode } from "@/lib/referralCode";
 import { validateCodeClientSide } from "@/lib/referralCodeValidation";
@@ -60,6 +61,7 @@ import {
   REFERRAL_COPY_SUCCESS_BANNER,
 } from "@/pages/referrals/referralShareCopyFeedback";
 import { formatOwnerCodeHash } from "@/pages/referrals/referralAddressDisplay";
+import { useDoubUsdWad } from "@/pages/arena/useArenaSaleState";
 
 function isNonZeroBytes32(
   v: `0x${string}` | bigint | undefined,
@@ -123,6 +125,7 @@ export function ReferralRegisterSection({ className }: Props) {
   }, []);
 
   const tc = addresses.timeArena;
+  const doubUsdWad = useDoubUsdWad(tc ?? undefined);
   const { data: regFromTimeArena } = useReadContract({
     address: tc,
     abi: timeArenaReadAbi,
@@ -183,16 +186,19 @@ export function ReferralRegisterSection({ className }: Props) {
     text: string;
     title: string;
   } | null => {
-    if (burnWad === undefined) return null;
-    const human = Number(
-      formatAmountTriple(parseBigIntString(burnWad.toString()), 18).decimal,
+    if (burnWad === undefined || doubUsdWad === undefined) {
+      return null;
+    }
+    const usdWad = doubWeiToUsdNotionalWad(burnWad, doubUsdWad);
+    const usd = Number(
+      formatAmountTriple(parseBigIntString(usdWad.toString()), 18).decimal,
     );
     return {
-      text: `≈ ${human.toLocaleString(undefined, { maximumFractionDigits: 4 })} DOUB`,
+      text: `≈ $${usd.toLocaleString(undefined, { maximumFractionDigits: 0 })} USD`,
       title:
-        "Burn equals TimeArena `epochCharmAnchorWad` — DOUB per 1 CHARM at the start of the current Last Buy epoch. Updates when the epoch rolls.",
+        "USD from indexer Kumbaya USDM→DOUB spot quote (refreshes about every minute). Burn amount is the onchain Last Buy epoch anchor in DOUB.",
     };
-  }, [burnWad]);
+  }, [burnWad, doubUsdWad]);
 
   const { data: ownerCodeHash, refetch: refetchOwner } = useReadContract({
     address: registry,

@@ -10,20 +10,21 @@ import {
 const WAD = 10n ** 18n;
 
 describe("doubSpotUsdPrice", () => {
-  it("parses indexed doub_usd_wad", () => {
-    expect(parseDoubUsdWad("1000000000000000000")).toBe(WAD);
+  it("parses indexer doub_usd_wad", () => {
+    expect(parseDoubUsdWad("980000000000000000")).toBe(980000000000000000n);
     expect(parseDoubUsdWad("0")).toBeUndefined();
-    expect(parseDoubUsdWad(undefined)).toBeUndefined();
+    expect(parseDoubUsdWad(null)).toBeUndefined();
   });
 
-  it("converts DOUB wei to USD-notional wad at $1/DOUB", () => {
+  it("converts DOUB wei to USD-notional wad using spot doub_usd_wad", () => {
     const prize = 56200n * WAD;
-    expect(doubWeiToUsdNotionalWad(prize, WAD)).toBe(56200n * WAD);
+    const doubUsd = 980000000000000000n;
+    expect(doubWeiToUsdNotionalWad(prize, doubUsd)).toBe(55076000000000000000000n);
   });
 
-  it("prefers indexed doub_usd_wad over static fallback for podium display", () => {
+  it("omits podium USD when no doub/USD rate is available", () => {
     const prize = 1600000000000000000n;
-    expect(podiumPrizeUsdWeiForDisplay(prize, WAD)).toBe(1600000000000000000n);
-    expect(podiumPrizeUsdWeiForDisplay(prize, undefined)).toBe((prize * 98n) / 100n);
+    expect(podiumPrizeUsdWeiForDisplay(prize, undefined)).toBeUndefined();
+    expect(podiumPrizeUsdWeiForDisplay(prize, 980000000000000000n)).toBeGreaterThan(0n);
   });
 });

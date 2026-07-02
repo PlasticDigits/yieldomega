@@ -7,6 +7,7 @@ import { parseDoubUsdWad } from "@/lib/doubSpotUsdPrice";
 import {
   fetchLegacyArenaSaleState,
   fetchArenaTimers,
+  fetchArenaDoubSpotPrice,
   type ArenaSaleState,
 } from "@/lib/indexerApi";
 import {
@@ -16,6 +17,8 @@ import {
 
 export const ARENA_SALE_STATE_QUERY_KEY = ["arena-sale-state"] as const;
 export const ARENA_TIMERS_QUERY_KEY = ["arena-timers"] as const;
+export const ARENA_DOUB_SPOT_PRICE_QUERY_KEY = ["arena-doub-spot-price"] as const;
+export const ARENA_DOUB_SPOT_PRICE_POLL_MS = 60_000;
 
 /** Wagmi multicall row shape shared by Simple and Arena sale-state mappers. */
 export type ContractReadRow = {
@@ -184,8 +187,25 @@ export function useArenaTimersQuery(tc: `0x${string}` | undefined) {
   });
 }
 
-/** Indexed TWAP USD-notional per 1 DOUB from `GET /v1/arena/timers` ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
+/** Live DOUB/USD wad from `GET /v1/arena/doub-spot-price` (Kumbaya USDM→DOUB quoter, ~60s poll). */
+export function useArenaDoubSpotPriceQuery(tc: `0x${string}` | undefined) {
+  const indexerOn = Boolean(indexerBaseUrl());
+  return useQuery({
+    queryKey: ARENA_DOUB_SPOT_PRICE_QUERY_KEY,
+    queryFn: async () => {
+      const body = await fetchArenaDoubSpotPrice();
+      reportIndexerFetchAttempt(body != null);
+      return body;
+    },
+    enabled: indexerOn && Boolean(tc),
+    staleTime: ARENA_DOUB_SPOT_PRICE_POLL_MS / 2,
+    refetchInterval: () => getIndexerBackoffPollMs(ARENA_DOUB_SPOT_PRICE_POLL_MS),
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** DOUB/USD wad for prize-pool and referral USD hints. */
 export function useDoubUsdWad(tc: `0x${string}` | undefined): bigint | undefined {
-  const { data } = useArenaTimersQuery(tc);
-  return useMemo(() => parseDoubUsdWad(data?.doub_usd_wad), [data?.doub_usd_wad]);
+  const { data } = useArenaDoubSpotPriceQuery(tc);
+  return useMemo(() => parseDoubUsdWad(data?.doub_usd_wad), [data]);
 }

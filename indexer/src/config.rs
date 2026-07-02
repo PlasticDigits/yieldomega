@@ -127,6 +127,8 @@ pub struct RegistryContracts {
     pub admin_sell_vault: String,
     #[serde(rename = "ReferralRegistry", default)]
     pub referral_registry: String,
+    #[serde(rename = "CL8Y_reserve", default)]
+    pub cl8y_reserve: String,
 }
 
 impl RegistryContracts {
@@ -544,6 +546,7 @@ mod production_registry_validation_tests {
             podium_vaults: ADDR_A.into(),
             admin_sell_vault: ADDR_A.into(),
             referral_registry: ADDR_A.into(),
+            cl8y_reserve: String::new(),
         }
     }
 
@@ -612,6 +615,7 @@ mod production_registry_validation_tests {
             podium_vaults: "nope2".into(),
             admin_sell_vault: String::new(),
             referral_registry: String::new(),
+            cl8y_reserve: String::new(),
         };
         let r = reg(1, 1, c);
         assert!(validate_address_registry_for_production(&r, 1, true, false).is_err());
@@ -626,6 +630,7 @@ mod production_registry_validation_tests {
             podium_vaults: String::new(),
             admin_sell_vault: String::new(),
             referral_registry: String::new(),
+            cl8y_reserve: String::new(),
         };
         c.time_arena = "bogus".into();
         let r = reg(5, 0, c);

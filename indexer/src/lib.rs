@@ -16,6 +16,7 @@ pub mod arena_podium_participants;
 pub mod arena_wallet_stats;
 pub mod arena_warbow_pending_revenge;
 pub mod chain_timer;
+pub mod doub_spot_price;
 mod chain_timer_poll;
 pub mod config;
 pub mod cors_config;

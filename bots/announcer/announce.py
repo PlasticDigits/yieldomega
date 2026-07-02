@@ -76,6 +76,11 @@ SEND_TEST_ON_START = env_bool("SEND_TEST_ON_START", False)
 STARTUP_PING = env_bool("STARTUP_PING", False)
 HTTP_TIMEOUT = float(env("HTTP_TIMEOUT_SEC", "30"))
 TG_MIN_INTERVAL = float(env("TELEGRAM_MIN_INTERVAL_SEC", "3.5"))  # ~<20 msgs/min group cap
+INDEXER_URL = env("INDEXER_URL", "https://indexer.yieldomega.com").rstrip("/")
+INDEXER_CACHE_SEC = float(env("INDEXER_CACHE_SEC", "30"))
+DOUB_USD_FALLBACK = Decimal(env("DOUB_USD_FALLBACK", "0.98"))  # when indexer has no TWAP anchor yet
+
+_market_cache: dict = {"at": 0.0, "doub_usd_wad": None, "total_prize_pool_doub_wad": 0}
 
 
 # ------------------------- JSON-RPC -------------------------
@@ -181,19 +186,89 @@ def fmt_duration(secs):
     return f"{h}h {m}m"
 
 
+# ------------------------- indexer (USD / prize pool) -------------------------
+def _indexer_get(path):
+    url = f"{INDEXER_URL}{path}"
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as r:
+        return json.loads(r.read())
+
+
+def _parse_wad(raw):
+    if raw is None or raw == "" or raw == "0":
+        return None
+    try:
+        v = int(raw, 0)
+        return v if v > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def doub_wei_to_usd(doub_wei, doub_usd_wad=None):
+    """USD-notional for a DOUB wei amount — indexer TWAP anchor or static fallback."""
+    if doub_wei <= 0:
+        return Decimal(0)
+    base = Decimal(doub_wei) / (Decimal(10) ** DOUB_DECIMALS)
+    rate = (Decimal(doub_usd_wad) / (Decimal(10) ** 18)) if doub_usd_wad else DOUB_USD_FALLBACK
+    return base * rate
+
+
+def fmt_usd(doub_wei, doub_usd_wad=None):
+    return f"{doub_wei_to_usd(doub_wei, doub_usd_wad).quantize(Decimal('0.01')):,.2f}"
+
+
+def _sum_active_prize_pools(podiums):
+    total = 0
+    for row in podiums.get("rows", []):
+        wad = _parse_wad(row.get("active_pool_balance_doub_wad"))
+        if wad:
+            total += wad
+    return total
+
+
+def fetch_market_snapshot():
+    """Cached doub_usd_wad + total active prize pool across all four podiums."""
+    now = time.monotonic()
+    if now - _market_cache["at"] < INDEXER_CACHE_SEC:
+        return _market_cache
+    doub_usd_wad = None
+    total_prize_pool_doub_wad = 0
+    try:
+        timers = _indexer_get("/v1/arena/timers")
+        doub_usd_wad = _parse_wad(timers.get("doub_usd_wad"))
+        podiums = _indexer_get("/v1/arena/podiums")
+        total_prize_pool_doub_wad = _sum_active_prize_pools(podiums)
+    except Exception as e:  # noqa: BLE001
+        LOG.warning("Indexer market snapshot failed (%s): %s", INDEXER_URL, e)
+        if _market_cache["at"] > 0:
+            return _market_cache
+    snap = {"at": now, "doub_usd_wad": doub_usd_wad, "total_prize_pool_doub_wad": total_prize_pool_doub_wad}
+    _market_cache.update(snap)
+    return snap
+
+
 # ---- message templates (edit wording/emojis to taste) ----
-def build_buy_message(b, txhash):
+def build_buy_message(b, txhash, market=None):
     charm = fmt_units(b["charmWad"], CHARM_DECIMALS)
     doub = fmt_units(b["doubPaid"], DOUB_DECIMALS)
     total = fmt_units(b["totalDoubRaisedAfter"], DOUB_DECIMALS)
     buyer = b["buyer"]
+    doub_usd_wad = market.get("doub_usd_wad") if market else None
     lines = [
         "\U0001F7E2 <b>TimeArena BUY</b>",
         f"\U0001F4B0 <b>{charm} CHARM</b> for <b>{doub} DOUB</b>" + (" <i>(Cred)</i>" if b["paidWithCred"] else ""),
+    ]
+    if b["doubPaid"] > 0:
+        worth = fmt_usd(b["doubPaid"], doub_usd_wad)
+        lines.append(f"\U0001F4B5 <b>WORTH: ${worth} USD</b>")
+    lines.extend([
         f"\U0001F464 <a href=\"{EXPLORER_ADDR}{buyer}\">{short_addr(buyer)}</a>",
         f"⏱ +{fmt_duration(b['actualSecondsAdded'])} on the clock · buy #{b['buyIndex']}",
         f"\U0001F3E6 Raised so far: <b>{total} DOUB</b>",
-    ]
+    ])
+    if market and market.get("total_prize_pool_doub_wad", 0) > 0:
+        prize_usd = fmt_usd(market["total_prize_pool_doub_wad"], doub_usd_wad)
+        lines.append(f"\U0001F3C6 Total Prize Pool: <b>${prize_usd} USD</b>")
     if b["timerHardReset"]:
         lines.append("⚡ <b>TIMER HARD RESET</b>")
     lines.append(f"\U0001F517 <a href=\"{EXPLORER_TX}{txhash}\">view tx</a>")
@@ -277,8 +352,9 @@ def selftest():
               "charmWad": 1500 * 10**18, "doubPaid": 250 * 10**18, "newDeadline": 1730000000,
               "totalDoubRaisedAfter": 1_000_000 * 10**18, "buyIndex": 42,
               "actualSecondsAdded": 45, "timerHardReset": True, "paidWithCred": False}
+    market = {"doub_usd_wad": 10**18, "total_prize_pool_doub_wad": 4 * 350_000 * 10**18}
     print("---- sample buy message ----")
-    print(build_buy_message(sample, "0x" + "ab" * 32))
+    print(build_buy_message(sample, "0x" + "ab" * 32, market))
     print("\n---- sample arena-started message ----")
     print(build_arena_started_message(None))
     # round-trip: encode sample into a synthetic log and decode it back
@@ -330,7 +406,7 @@ def main():
         s = {"buyer": "0x000000000000000000000000000000000000dEaD", "charmWad": 1234 * 10**18,
              "doubPaid": 789 * 10**17, "newDeadline": 0, "totalDoubRaisedAfter": 45678 * 10**18,
              "buyIndex": 1, "actualSecondsAdded": 45, "timerHardReset": False, "paidWithCred": False}
-        tg_send(build_buy_message(s, "0x" + "11" * 32))
+        tg_send(build_buy_message(s, "0x" + "11" * 32, fetch_market_snapshot()))
 
     while True:
         try:
@@ -354,7 +430,7 @@ def main():
                         b = decode_buy(log)
                         under_min = MIN_DOUB > 0 and (Decimal(b["doubPaid"]) / (Decimal(10) ** DOUB_DECIMALS)) < MIN_DOUB
                         if not under_min:
-                            tg_send(build_buy_message(b, log["transactionHash"]))
+                            tg_send(build_buy_message(b, log["transactionHash"], fetch_market_snapshot()))
                     elif topic0 == TOPIC_ARENA_STARTED and ANNOUNCE_ARENA_STARTED:
                         tg_send(build_arena_started_message(decode_arena_started(log)))
                 except Exception as e:  # noqa: BLE001
