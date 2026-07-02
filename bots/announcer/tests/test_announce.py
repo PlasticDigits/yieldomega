@@ -58,3 +58,18 @@ def test_build_buy_message_contains_key_fields():
     assert "250.00 DOUB" in msg
     assert "buy #42" in msg
     assert "TIMER HARD RESET" in msg
+
+
+def test_tg_payload_forum_topic(monkeypatch):
+    monkeypatch.setattr(announce, "TG_CHAT", "-100123")
+    monkeypatch.setattr(announce, "TG_THREAD", "42")
+    payload = announce.tg_payload("hello")
+    assert payload["chat_id"] == "-100123"
+    assert payload["message_thread_id"] == 42
+
+
+def test_tg_payload_no_topic(monkeypatch):
+    monkeypatch.setattr(announce, "TG_CHAT", "-100123")
+    monkeypatch.setattr(announce, "TG_THREAD", None)
+    payload = announce.tg_payload("hello")
+    assert "message_thread_id" not in payload

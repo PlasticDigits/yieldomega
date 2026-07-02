@@ -30,6 +30,7 @@ Copy `.env.example` to `.env` (gitignored) and set at least:
 |----------|---------|
 | `TELEGRAM_BOT_TOKEN` | BotFather token (**secret** — never commit) |
 | `TELEGRAM_CHAT_ID`   | Target chat id (negative for groups) |
+| `TELEGRAM_MESSAGE_THREAD_ID` | Forum **topic** id (e.g. **Ω Flow**). Without this, Telegram routes posts to **General**. |
 | `MEGAETH_RPC_URL` / `MEGAETH_RPC_FALLBACKS` | RPC endpoints (MegaETH mainnet defaults) |
 | `TIME_ARENA_ADDRESS` | TimeArena proxy (defaults to the mainnet registry address) |
 | `ANNOUNCE_START_BLOCK` | Optional: first-run start block; otherwise starts at current head |
@@ -82,6 +83,15 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now timearena-buybot
 journalctl -u timearena-buybot -f
 ```
+
+## Forum topics (Ω Flow vs General)
+
+If the target group has **Topics** enabled, set `TELEGRAM_MESSAGE_THREAD_ID` to the **Ω Flow**
+topic id. Without it, `sendMessage` lands in **General** even when `TELEGRAM_CHAT_ID` is correct.
+
+To find the topic id: post any message in **Ω Flow**, then call `getUpdates` on the bot token
+(or inspect the message in a client that shows raw fields) and copy `message_thread_id` from
+that message. Restart the bot after setting the env var.
 
 ## Test group → public
 

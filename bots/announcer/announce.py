@@ -59,6 +59,7 @@ CHAIN_ID = env_int("CHAIN_ID", 4326)
 TIME_ARENA = env("TIME_ARENA_ADDRESS", "0xba39cea0e5ef6808d8cb926c722877480049e0ee").lower()
 TG_TOKEN = env("TELEGRAM_BOT_TOKEN")
 TG_CHAT = env("TELEGRAM_CHAT_ID")
+TG_THREAD = env("TELEGRAM_MESSAGE_THREAD_ID")  # forum topic id, e.g. Ω Flow (omit → General)
 EXPLORER_TX = env("EXPLORER_TX_BASE", "https://mega.etherscan.io/tx/")
 EXPLORER_ADDR = env("EXPLORER_ADDRESS_BASE", "https://mega.etherscan.io/address/")
 POLL_SEC = float(env("POLL_INTERVAL_SEC", "5"))
@@ -209,6 +210,14 @@ def build_arena_started_message(_a):
 _last_send = [0.0]
 
 
+def tg_payload(text):
+    payload = {"chat_id": TG_CHAT, "text": text,
+               "parse_mode": "HTML", "disable_web_page_preview": True}
+    if TG_THREAD:
+        payload["message_thread_id"] = int(TG_THREAD, 0)
+    return payload
+
+
 def tg_send(text):
     if DRY_RUN or not TG_TOKEN or not TG_CHAT:
         LOG.info("[dry-run] %s", text.replace("\n", " | "))
@@ -217,8 +226,7 @@ def tg_send(text):
     if wait > 0:
         time.sleep(wait)
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    body = json.dumps({"chat_id": TG_CHAT, "text": text,
-                       "parse_mode": "HTML", "disable_web_page_preview": True}).encode()
+    body = json.dumps(tg_payload(text)).encode()
     for _ in range(5):
         try:
             req = urllib.request.Request(url, data=body,
@@ -311,6 +319,10 @@ def main():
         last_scanned = (int(START_BLOCK_ENV, 0) - 1) if START_BLOCK_ENV else head
         LOG.info("No cursor; starting from block %s (head=%s).", last_scanned + 1, head)
     LOG.info("Watching TimeArena %s on chain %s. Cursor=%s.", TIME_ARENA, CHAIN_ID, last_scanned)
+    if TG_THREAD:
+        LOG.info("Telegram forum topic: message_thread_id=%s", TG_THREAD)
+    else:
+        LOG.warning("TELEGRAM_MESSAGE_THREAD_ID unset — posts go to the group's General topic.")
 
     if STARTUP_PING:
         tg_send("\U0001F440 Buy watcher online — monitoring TimeArena.")
