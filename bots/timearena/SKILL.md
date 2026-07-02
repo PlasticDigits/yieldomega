@@ -22,6 +22,7 @@ Renamed from `bots/arena/` in GitLab [#245](https://gitlab.com/PlasticDigits/yie
 - **`YIELDOMEGA_TIME_ARENA_ADDRESS`** must be the **ERC1967 proxy** from `DeployDev`, not the implementation row in `run-latest.json`.
 - **Sending txs:** CLI `--send` **or** `YIELDOMEGA_SEND_TX=1` with `YIELDOMEGA_DRY_RUN=0`, plus `YIELDOMEGA_PRIVATE_KEY`.
 - **Anvil dev funding:** `--allow-anvil-funding` or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1` only for **`swarm`** one-shot ETH + DOUB mint on `YIELDOMEGA_CHAIN_ID=31337`.
+- **`run-fun-x` fleet:** `KEY_1`…`KEY_N` + `MEAN_1`…`MEAN_N` (seconds, Poisson per wallet); Docker/Coolify via [`Dockerfile`](Dockerfile).
 
 ## Local Anvil workflow
 

@@ -97,6 +97,7 @@ Deploy logic is **shared** with Playwright Anvil E2E via [`scripts/lib/anvil_dep
 | `defender` | **Loop** cycles of under-15m buys + streak reads (`--steps N` per cycle; `YIELDOMEGA_DEFENDER_MEAN_SEC`, default 90s between cycles) |
 | `seed-local` / `scenario` | Deterministic multi-wallet sequence **once** (slot **0** or no slot), then **loop** min-CHARM buys rotating A0→A1→A2 (`YIELDOMEGA_SEED_LOCAL_MEAN_SEC`, default 45s). **Swarm slots 1–2** skip the deterministic block (only mint + loop) so parallel runs do not fight over the WarBow flag. |
 | `rando` | **Poisson process** inter-arrival times (`YIELDOMEGA_RANDO_MEAN_SEC`, default 45s); each buy picks **uniform** random CHARM in current onchain **[min, max]** |
+| `run-fun-x` | **Fleet supervisor:** spawns one **`fun`** subprocess per **`KEY_1`…`KEY_N`** / **`MEAN_1`…`MEAN_N`** pair (Poisson inter-arrival per wallet, independent timers). Restarts workers on crash; exits when all workers stop cleanly (e.g. sale ended). **Mainnet / Coolify** — see [§ run-fun-x fleet](#run-fun-x-fleet-coolify). |
 | `swarm` | Spawns **3×** each of `fun`, `shark`, `pvp`, `defender`, `seed-local` plus **3×** `rando` (Anvil **31337** only). Requires **`--allow-anvil-funding`** (or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`) for a **one-shot** mock CL8Y mint + **`anvil_setBalance` 10k ETH** per swarm wallet (plus any **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES`** and the **referral registrar** HD index **27** when referrals are enabled), then starts bots with **`YIELDOMEGA_SEND_TX` / `YIELDOMEGA_DRY_RUN`** (no `--send` in subprocess env — avoids Typer quirks). **Referrals ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)):** unless `YIELDOMEGA_SWARM_REFERRALS=0`, registers **`YIELDOMEGA_SWARM_REFERRAL_CODE`** (default `swarmyo`) from account index **27** and exports **`YIELDOMEGA_REFERRAL_CODE`** to workers so `buy` uses `buy(charmWad, codeHash, false)`. [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) sets `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1` when `SKIP_ANVIL_RICH_STATE=1` runs the swarm. **Buy traffic + chain time ([GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99)):** stack-started Anvil uses **`--block-time`** (**`YIELDOMEGA_ANVIL_BLOCK_TIME_SEC`**, default **12**); for denser bursts set **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** / **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)). Play checklist: [`../../docs/testing/manual-qa-checklists.md#manual-qa-issue-99`](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-99). |
 
 Global options: `--send`, `--allow-anvil-funding`, `--env-file PATH`.
@@ -125,6 +126,50 @@ Use this when Anvil + DeployDev (or `frontend/.env.local`) already exist and you
    ```
 
 If `load_config` fails (missing RPC or TimeArena), `run_swarm()` prints a short hint to run **`sync-bot-env-from-frontend.sh`** and stay at repo root.
+
+### run-fun-x fleet (Coolify)
+
+Run **N** independent **`fun`** bots — each wallet on its own Poisson timer — from numbered environment variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `KEY_1`, `KEY_2`, … | Private key hex for wallet *i* (optional `0x` prefix) |
+| `MEAN_1`, `MEAN_2`, … | Mean inter-arrival seconds for wallet *i* (Poisson, same as `fun`) |
+
+Indices must be **consecutive** starting at **1**; scanning stops at the first missing `KEY_i`.
+
+Shared config (same as other commands): `YIELDOMEGA_RPC_URL`, `YIELDOMEGA_CHAIN_ID`, `YIELDOMEGA_TIME_ARENA_ADDRESS`, optional `YIELDOMEGA_ACCEPTED_ASSET_ADDRESS`, optional `YIELDOMEGA_REFERRAL_CODE`.
+
+**Local:**
+
+```bash
+export YIELDOMEGA_RPC_URL=https://mainnet.megaeth.com/rpc
+export YIELDOMEGA_CHAIN_ID=4326
+export YIELDOMEGA_TIME_ARENA_ADDRESS=0xba39cea0e5ef6808d8cb926c722877480049e0ee
+export YIELDOMEGA_ACCEPTED_ASSET_ADDRESS=0xc3654b4f879937b767afbb64b7c230ff436d2342
+export KEY_1=…
+export MEAN_1=1800
+export KEY_2=…
+export MEAN_2=2400
+timearena-bot --send run-fun-x
+```
+
+**Docker** (from repository root):
+
+```bash
+docker build -f bots/timearena/Dockerfile -t yieldomega-fun-fleet .
+docker run --rm \
+  -e YIELDOMEGA_RPC_URL=… \
+  -e YIELDOMEGA_CHAIN_ID=4326 \
+  -e YIELDOMEGA_TIME_ARENA_ADDRESS=… \
+  -e KEY_1=… -e MEAN_1=1800 \
+  -e KEY_2=… -e MEAN_2=2400 \
+  yieldomega-fun-fleet
+```
+
+**Coolify:** create a **Dockerfile** application pointing at [`bots/timearena/Dockerfile`](Dockerfile) (build context = repository root). Set the env vars above in the Coolify UI (mark `KEY_*` as secrets). Default container command is already `timearena-bot --send run-fun-x`. Use a **persistent** long-running service (not a one-shot job). Do **not** set `YIELDOMEGA_ALLOW_ANVIL_FUNDING` on mainnet.
+
+Each worker logs with a `fun-N:` prefix on stdout. Fund every wallet with **ETH** (gas) and **DOUB** (min-CHARM buys).
 
 ## Implementation note
 

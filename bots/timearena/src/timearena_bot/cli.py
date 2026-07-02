@@ -136,6 +136,15 @@ def cmd_rando(ctx: typer.Context) -> None:
     rando.run(w3, cfg, tc, asset)
 
 
+@app.command("run-fun-x")
+def cmd_run_fun_x(ctx: typer.Context) -> None:
+    """Supervise N independent fun loops from KEY_1..KEY_N and MEAN_1..MEAN_N (needs --send)."""
+    cfg: BotConfig = ctx.obj
+    from timearena_bot import run_fun_x
+
+    run_fun_x.run_fun_fleet(cfg=cfg)
+
+
 @app.command("swarm")
 def cmd_swarm(
     ctx: typer.Context,
