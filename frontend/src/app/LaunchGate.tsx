@@ -25,6 +25,10 @@ const ArenaProtocolPage = lazyPage(
   "ArenaProtocolPage",
 );
 const ArenaBranchPage = lazyPage(() => import("@/pages/ArenaBranchPage"), "ArenaBranchPage");
+const ReferralBranchPage = lazyPage(
+  () => import("@/pages/ReferralBranchPage"),
+  "ReferralBranchPage",
+);
 const ReferralsPage = lazyPage(() => import("@/pages/ReferralsPage"), "ReferralsPage");
 const KumbayaPage = lazyPage(() => import("@/pages/KumbayaPage"), "KumbayaPage");
 const SirPage = lazyPage(() => import("@/pages/SirPage"), "SirPage");
@@ -36,7 +40,7 @@ function LegacyArenaSegmentRedirect() {
   if (!seg) {
     return <Navigate to="/" replace />;
   }
-  return <Navigate to={`/arena/${encodeURIComponent(seg)}`} replace />;
+  return <Navigate to={`/${encodeURIComponent(seg)}`} replace />;
 }
 
 type Surface = { path: string | undefined; element: ReactNode };
@@ -67,12 +71,19 @@ const ARENA_ROUTES: Surface[] = [
   { path: "timecurve/:arenaLegacySegment", element: <LegacyArenaSegmentRedirect /> },
 ];
 
+/** Top-level `/{code}` referral slugs — after explicit routes, before the 404 catch-all. */
+const REFERRAL_ROUTE: Surface = {
+  path: ":referralSegment",
+  element: <ReferralBranchPage />,
+};
+
 const ROUTES_NO_ENV: Surface[] = [
   { path: undefined, element: <TimeArenaPage /> },
   { path: "home", element: <HomePage /> },
   AUDIT_ROUTE,
   ...ARENA_ROUTES,
   ...SECONDARY_ROUTES,
+  REFERRAL_ROUTE,
 ];
 
 const ROUTES_POST_LAUNCH: Surface[] = [
@@ -81,6 +92,7 @@ const ROUTES_POST_LAUNCH: Surface[] = [
   AUDIT_ROUTE,
   ...ARENA_ROUTES,
   ...SECONDARY_ROUTES,
+  REFERRAL_ROUTE,
 ];
 
 function RouteFallback() {

@@ -10,6 +10,7 @@ import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { SwitchToTargetChainButton } from "@/components/SwitchToTargetChainButton";
 import { useIsViewportAtMost } from "@/hooks/useIsViewportAtMost";
 import { configuredTargetChainId } from "@/lib/chain";
+import { isReferralPlayPathname } from "@/lib/referralPathCapture";
 import { addressTailHex } from "@/lib/addressFormat";
 import { MEGAETH_CHAIN_IDS, MEGA_MARK } from "@/lib/tokenMedia";
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
@@ -234,10 +235,7 @@ export function RootLayout() {
   // podiums). The global footer's agent/operator readouts are useful elsewhere,
   // but they compete with the live buy decision when always visible.
   // See [`docs/frontend/arena-views.md`](../../docs/frontend/arena-views.md).
-  const isArenaPlayRoute =
-    location.pathname === "/" ||
-    location.pathname === "/arena" ||
-    location.pathname.startsWith("/arena/");
+  const isArenaPlayRoute = isReferralPlayPathname(location.pathname);
   const isReferralsRoute = location.pathname === "/referrals";
 
   const shellClassName = [

@@ -10,6 +10,7 @@ describe("isReferralSlugReservedForRouting", () => {
   });
 
   it("blocks mirrored top-level path segments", () => {
+    expect(isReferralSlugReservedForRouting("audit")).toBe(true);
     expect(isReferralSlugReservedForRouting("home")).toBe(true);
     expect(isReferralSlugReservedForRouting("referrals")).toBe(true);
     expect(isReferralSlugReservedForRouting("timecurve")).toBe(true);

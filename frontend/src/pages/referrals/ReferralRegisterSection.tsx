@@ -288,11 +288,15 @@ export function ReferralRegisterSection({ className }: Props) {
     | { kind: "empty" }
     | { kind: "invalid-length" }
     | { kind: "invalid-charset" }
+    | { kind: "reserved" }
     | { kind: "checking" }
     | { kind: "available" }
     | { kind: "taken" };
   const codeAvailability = useMemo<CodeAvailability>(() => {
     if (clientValidation.kind !== "ok") return { kind: clientValidation.kind };
+    if (isReferralSlugReservedForRouting(clientValidation.normalized)) {
+      return { kind: "reserved" };
+    }
     if (codeInput.trim().toLowerCase() !== clientValidation.normalized)
       return { kind: "checking" };
     if (!hashForTyped || ownerOfTyped === undefined)
@@ -322,7 +326,7 @@ export function ReferralRegisterSection({ className }: Props) {
     }
     const b = (path: string) => `${origin}${path}`;
     return {
-      arena: b(`/arena/${displayCode}`),
+      path: b(`/${displayCode}`),
       query: b(`/?ref=${encodeURIComponent(displayCode)}`),
     };
   }, [displayCode, origin]);
@@ -625,7 +629,7 @@ export function ReferralRegisterSection({ className }: Props) {
               </p>
               {(
                 [
-                  ["Arena path", referLinks.arena],
+                  ["Direct path", referLinks.path],
                   ["Query ref", referLinks.query],
                 ] as const
               ).map(([label, url]) => (
@@ -735,7 +739,8 @@ export function ReferralRegisterSection({ className }: Props) {
                     !codeInput.trim() ||
                     codeAvailability.kind === "taken" ||
                     codeAvailability.kind === "invalid-length" ||
-                    codeAvailability.kind === "invalid-charset"
+                    codeAvailability.kind === "invalid-charset" ||
+                    codeAvailability.kind === "reserved"
                   }
                 >
                   {isWritePending
@@ -782,6 +787,15 @@ export function ReferralRegisterSection({ className }: Props) {
                   data-testid="referrals-code-status-invalid-charset"
                 >
                   Code may only use letters (a–z) and digits (0–9).
+                </small>
+              )}
+              {codeAvailability.kind === "reserved" && (
+                <small
+                  style={{ color: "var(--color-warning, #b58400)" }}
+                  data-testid="referrals-code-status-reserved"
+                >
+                  That code is reserved for an app route (for example audit or referrals) and
+                  cannot be registered.
                 </small>
               )}
               {formErr && (

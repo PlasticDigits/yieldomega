@@ -115,7 +115,7 @@ import {
   type SaleSessionPhase,
 } from "@/pages/arena/arenaSimplePhase";
 import { ARENA_CHARM_MIN_WAD, ARENA_CHARM_MAX_WAD, ARENA_REFERRAL_FLAT_CRED_WAD } from "@/lib/arenaConstants";
-import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { formatBuyProjectedGuideCredLine } from "@/pages/arena/arenaBuyProjectedEffects";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
@@ -1051,10 +1051,7 @@ export function useArenaSaleSession(
       referralRegistryOn &&
       pendingReferralCode?.trim()
     ) {
-      const credLabel = formatCompactFromRaw(referralFlatCredWadResolved, 18, { sigfigs: 4 });
-      const raw = pendingReferralCode.trim();
-      const codeLabel = raw.length > 22 ? `${raw.slice(0, 20)}…` : raw;
-      lines.push(`+${credLabel} CRED Referral ${codeLabel}`);
+      lines.push(formatBuyProjectedGuideCredLine(referralFlatCredWadResolved));
     }
     return lines;
   }, [

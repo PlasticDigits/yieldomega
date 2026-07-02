@@ -299,6 +299,22 @@ describe("ArenaSimplePage (GitLab #321)", () => {
     expect(html).toContain("Routed buys use a fixed");
     expect(html).not.toContain("Could not quote this route");
   });
+
+  it("shows +5 Guide CRED in buy preview pills when a referral bonus applies", () => {
+    mockSession.mockReturnValue(
+      baseSession({
+        referralRegistryOn: true,
+        pendingReferralCode: "luck777",
+        useReferral: true,
+        buyCharmBonusPreviewLines: ["+5 Guide CRED"],
+      }),
+    );
+    const html = renderPage();
+    expect(html).toContain('data-testid="arena-simple-buy-preview"');
+    expect(html).toContain("+5 Guide CRED");
+    expect(html).toContain("Last Buyer");
+    expect(html).not.toContain('data-testid="arena-simple-buy-preview-bonuses"');
+  });
 });
 
 describe("ArenaSimplePage smoke regions (GitLab #321)", () => {

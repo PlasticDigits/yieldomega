@@ -23,7 +23,7 @@ export function pendingMatchesMyReferralCode(
 }
 
 /**
- * Drop `yieldomega.ref.v1` when the pending slug is the connected wallet's own code
+ * Drop `yieldomega.ref.v2` when the pending slug is the connected wallet's own code
  * ([GitLab #222](https://gitlab.com/PlasticDigits/yieldomega/-/issues/222)).
  *
  * @returns whether pending storage was cleared

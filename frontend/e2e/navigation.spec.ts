@@ -41,21 +41,29 @@ test("unknown routes show branded 404 inside RootLayout", async ({ page }) => {
   await expect(page.getByLabel("Primary")).toBeVisible();
 });
 
-test("valid arena referral path does not show 404", async ({ page }) => {
+test("valid referral path does not show 404", async ({ page }) => {
+  const state = await detectLaunchState(page);
+  test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
+
+  await page.goto("/abc12");
+  await expect(page).toHaveURL(/\/abc12/);
+  await expect(page.getByTestId("not-found-page")).toHaveCount(0);
+});
+
+test("legacy /arena/:code redirects to /:code", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
   await page.goto("/arena/abc12");
-  await expect(page).toHaveURL(/\/arena\/abc12/);
-  await expect(page.getByTestId("not-found-page")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/abc12/);
 });
 
-test("legacy /timecurve referral path redirects to /arena/:code", async ({ page }) => {
+test("legacy /timecurve referral path redirects to /:code", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
   await page.goto("/timecurve/abc12");
-  await expect(page).toHaveURL(/\/arena\/abc12/);
+  await expect(page).toHaveURL(/\/abc12/);
 });
 
 test("legacy /arena root redirects to /", async ({ page }) => {

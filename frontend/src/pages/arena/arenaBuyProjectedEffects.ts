@@ -4,6 +4,7 @@ import type { HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
 import { clampPlayerLevel, isFeatureUnlocked, MAX_PLAYER_LEVEL } from "@/lib/arenaProgression";
 import { applyXpGain, xpForCharm } from "@/lib/arenaXpMath";
+import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import type { BuyItem } from "@/lib/indexerApi";
 import {
@@ -86,6 +87,26 @@ export type BuildArenaBuyProjectedEffectLinesArgs = {
  */
 /** Buy preview chip when the first qualifying buy will arm Last Buy (#330). */
 export const BUY_PREVIEW_START_TIMER = "START TIMER";
+
+/** Referrer flat CRED pill when a pending referral code applies to the checkout buy. */
+export function formatBuyProjectedGuideCredLine(referralFlatCredWad: bigint): string {
+  const credLabel = formatCompactFromRaw(referralFlatCredWad, 18, { sigfigs: 4 });
+  return `+${credLabel} Guide CRED`;
+}
+
+/** Inserts bonus pills (e.g. Guide CRED) before the trailing "Last Buyer" chip. */
+export function mergeArenaBuyProjectedEffectBonusLines(
+  base: readonly string[],
+  bonusLines: readonly string[],
+): string[] {
+  if (bonusLines.length === 0) {
+    return [...base];
+  }
+  if (base.length > 0 && base[base.length - 1] === "Last Buyer") {
+    return [...base.slice(0, -1), ...bonusLines, base[base.length - 1]!];
+  }
+  return [...base, ...bonusLines];
+}
 
 export function buildArenaBuyProjectedEffectLines(
   args: BuildArenaBuyProjectedEffectLinesArgs,

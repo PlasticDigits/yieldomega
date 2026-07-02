@@ -67,7 +67,10 @@ import { useArenaSimplePageSfx } from "@/pages/arena/useArenaSimplePageSfx";
 import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { ArenaBuyProjectedEffectsPills } from "@/pages/arena/ArenaBuyProjectedEffectsPills";
 import { ArenaEffectToastStack } from "@/pages/arena/ArenaEffectToastStack";
-import { buildArenaBuyProjectedEffectLines } from "@/pages/arena/arenaBuyProjectedEffects";
+import {
+  buildArenaBuyProjectedEffectLines,
+  mergeArenaBuyProjectedEffectBonusLines,
+} from "@/pages/arena/arenaBuyProjectedEffects";
 import { useArenaBuyEffectToasts } from "@/pages/arena/useArenaBuyEffectToasts";
 import {
   type PodiumReadRow,
@@ -124,23 +127,26 @@ function buildSimplePageProjectedEffectLines(args: {
   xpTowardNext: bigint | undefined;
 }): readonly string[] {
   const { latch, session, recentBuys, playerLevelRaw, xpTowardNext } = args;
-  return buildArenaBuyProjectedEffectLines({
-    charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
-    charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
-    secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
-    lastBuyTimerArmed: session.lastBuyTimerArmed ?? latch.lastBuyTimerArmed,
-    timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
-    activeDefendedStreak: session.activeDefendedStreak ?? latch.activeDefendedStreak,
-    recentBuys,
-    previewPolicy: session.buyPreviewPolicy,
-    plantWarBowFlag: session.plantWarBowFlag,
-    flagOwnerAddr: session.warbowPendingFlagOwner ?? latch.warbowPendingFlagOwner,
-    flagPlantAtSec: session.warbowPendingFlagPlantAt,
-    walletAddress: session.walletAddress,
-    playerLevel: playerLevelRaw,
-    xpTowardNext,
-    formatRivalWallet: (addr) => shortAddress(addr),
-  });
+  return mergeArenaBuyProjectedEffectBonusLines(
+    buildArenaBuyProjectedEffectLines({
+      charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
+      charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
+      secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
+      lastBuyTimerArmed: session.lastBuyTimerArmed ?? latch.lastBuyTimerArmed,
+      timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
+      activeDefendedStreak: session.activeDefendedStreak ?? latch.activeDefendedStreak,
+      recentBuys,
+      previewPolicy: session.buyPreviewPolicy,
+      plantWarBowFlag: session.plantWarBowFlag,
+      flagOwnerAddr: session.warbowPendingFlagOwner ?? latch.warbowPendingFlagOwner,
+      flagPlantAtSec: session.warbowPendingFlagPlantAt,
+      walletAddress: session.walletAddress,
+      playerLevel: playerLevelRaw,
+      xpTowardNext,
+      formatRivalWallet: (addr) => shortAddress(addr),
+    }),
+    session.buyCharmBonusPreviewLines,
+  );
 }
 
 function buildWarbowTargets(
@@ -528,6 +534,7 @@ export function ArenaSimplePage({
     xpTowardNextBigint,
     session.activeDefendedStreak,
     session.buyCheckoutCharmWeightWad,
+    session.buyCharmBonusPreviewLines,
     session.buyPreviewPolicy,
     session.charmWadSelected,
     session.plantWarBowFlag,
@@ -812,21 +819,7 @@ export function ArenaSimplePage({
         Loading CHARM preview…
       </div>
     ) : (
-      <>
-        <ArenaBuyProjectedEffectsPills lines={buyProjectedEffects} />
-        {session.buyCharmBonusPreviewLines.length > 0 ? (
-          <div
-            className="arena-simple__buy-preview-bonuses"
-            data-testid="arena-simple-buy-preview-bonuses"
-          >
-            {session.buyCharmBonusPreviewLines.map((line, i) => (
-              <div key={`${i}:${line}`} className="arena-simple__buy-preview-bonus-line">
-                {line}
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </>
+      <ArenaBuyProjectedEffectsPills lines={buyProjectedEffects} />
     );
 
   const payUsesKumbaya = payUsesKumbayaRoute(session.payWith, session.isArenaV2);

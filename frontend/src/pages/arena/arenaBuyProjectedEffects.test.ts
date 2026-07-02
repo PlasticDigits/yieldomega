@@ -6,9 +6,11 @@ import {
   buildArenaBuyActualEffectLines,
   buildArenaBuyProjectedEffectLines,
   BUY_PREVIEW_START_TIMER,
+  formatBuyProjectedGuideCredLine,
   formatBuyProjectedLevelLine,
   formatBuyProjectedXpLine,
   inferSecondsRemainingBeforeBuy,
+  mergeArenaBuyProjectedEffectBonusLines,
   previewBuyPlayerLevelAfterCharm,
 } from "./arenaBuyProjectedEffects";
 import type { BuyItem } from "@/lib/indexerApi";
@@ -223,5 +225,29 @@ describe("buildArenaBuyActualEffectLines", () => {
 
   it("infers pre-buy remaining from deadline, actual seconds, and block time", () => {
     expect(inferSecondsRemainingBeforeBuy(baseBuy)).toBe(880);
+  });
+});
+
+describe("formatBuyProjectedGuideCredLine", () => {
+  it("formats the flat referrer CRED pill", () => {
+    expect(formatBuyProjectedGuideCredLine(5n * 10n ** 18n)).toBe("+5 Guide CRED");
+  });
+});
+
+describe("mergeArenaBuyProjectedEffectBonusLines", () => {
+  it("inserts bonus pills before Last Buyer", () => {
+    expect(
+      mergeArenaBuyProjectedEffectBonusLines(
+        ["+1xp", BUY_PREVIEW_START_TIMER, "Last Buyer"],
+        ["+5 Guide CRED"],
+      ),
+    ).toEqual(["+1xp", BUY_PREVIEW_START_TIMER, "+5 Guide CRED", "Last Buyer"]);
+  });
+
+  it("appends bonuses when Last Buyer is absent", () => {
+    expect(mergeArenaBuyProjectedEffectBonusLines(["+1xp"], ["+5 Guide CRED"])).toEqual([
+      "+1xp",
+      "+5 Guide CRED",
+    ]);
   });
 });

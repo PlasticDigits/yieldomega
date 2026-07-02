@@ -11,7 +11,7 @@ const REQUIRED_ROUTE_SECTIONS = [
   "## `/` and `/home`",
   "## `/` — Time Arena play surface",
   "## `/audit`",
-  "## `/arena/:code`",
+  "## `/:code`",
   "## `/referrals`",
   "## `/kumbaya` and `/sir`",
   "## 404 and under-construction fallbacks",

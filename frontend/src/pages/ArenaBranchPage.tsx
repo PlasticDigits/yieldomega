@@ -1,30 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { lazy, Suspense } from "react";
 import { Navigate, useParams } from "react-router-dom";
+import { normalizeReferralCode } from "@/lib/referralCode";
 import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 
-const TimeArenaPage = lazy(() =>
-  import("@/pages/TimeArenaPage").then((m) => ({ default: m.TimeArenaPage })),
-);
-
-function ArenaRouteFallback() {
-  return (
-    <div className="loading-state" aria-live="polite">
-      <img
-        src="/art/icons/loading-mascot-ring.png"
-        alt=""
-        width={96}
-        height={96}
-        decoding="async"
-      />
-      <p>Loading Time Arena route…</p>
-    </div>
-  );
+function tryNormalizeReferralSlug(raw: string): string | null {
+  try {
+    return normalizeReferralCode(raw);
+  } catch {
+    return null;
+  }
 }
 
 /**
- * `/arena/:segment` for referral slugs. Reserved segments redirect to canonical paths.
+ * Legacy `/arena/:segment` redirects to canonical `/{code}` referral paths.
  */
 export function ArenaBranchPage() {
   const { arenaSegment } = useParams<{ arenaSegment: string }>();
@@ -35,9 +24,9 @@ export function ArenaBranchPage() {
   if (isReferralSlugReservedForRouting(s)) {
     return <Navigate to="/" replace />;
   }
-  return (
-    <Suspense fallback={<ArenaRouteFallback />}>
-      <TimeArenaPage />
-    </Suspense>
-  );
+  const code = tryNormalizeReferralSlug(s);
+  if (!code) {
+    return <Navigate to="/" replace />;
+  }
+  return <Navigate to={`/${encodeURIComponent(code)}`} replace />;
 }

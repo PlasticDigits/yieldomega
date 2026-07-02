@@ -9,9 +9,54 @@ import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
  * Persists until overwritten by a new `?ref=` / path capture or manual site-data clear —
  * successful Time Arena buys do **not** remove this entry.
  */
-const REF_STORAGE = "yieldomega.ref.v1";
+const REF_STORAGE = "yieldomega.ref.v2";
 
-const MY_REF_KEY_PREFIX = "yieldomega.myrefcode.v1." as const;
+const MY_REF_KEY_PREFIX = "yieldomega.myrefcode.v2." as const;
+
+const LEGACY_REF_STORAGE = "yieldomega.ref.v1";
+const LEGACY_MY_REF_KEY_PREFIX = "yieldomega.myrefcode.v1." as const;
+
+/** Drop v1 pending referral keys — safe to call on every read. */
+function purgeLegacyPendingReferralStorage(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(LEGACY_REF_STORAGE);
+    window.sessionStorage.removeItem(LEGACY_REF_STORAGE);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+/** Drop v1 wallet myrefcode cache keys after the on-chain referral reset — do not migrate payloads. */
+function purgeLegacyMyReferralCodeStorage(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(LEGACY_MY_REF_KEY_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+    for (const key of keysToRemove) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+/** Drop all v1 referral keys after the on-chain referral reset — do not migrate payloads. */
+function purgeLegacyReferralStorage(): void {
+  purgeLegacyPendingReferralStorage();
+  purgeLegacyMyReferralCodeStorage();
+}
+
+purgeLegacyReferralStorage();
 
 type PendingReferralListener = () => void;
 const pendingReferralListeners = new Set<PendingReferralListener>();
@@ -137,6 +182,7 @@ export function applyReferralUrlCapture(pathname: string, search: string): void 
   if (typeof window === "undefined") {
     return;
   }
+  purgeLegacyReferralStorage();
   syncPendingReferralAcrossStores();
   if (captureFromRefQueryString(search)) {
     return;
@@ -161,6 +207,7 @@ export function getPendingReferralCode(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
+  purgeLegacyReferralStorage();
   syncPendingReferralAcrossStores();
   try {
     /** Prefer local first: it survives tab close; session is kept in sync above. */
@@ -220,6 +267,7 @@ export function getStoredMyReferralCodeForWallet(address: `0x${string}` | undefi
   if (typeof window === "undefined" || !address) {
     return null;
   }
+  purgeLegacyReferralStorage();
   try {
     const raw = window.localStorage.getItem(`${MY_REF_KEY_PREFIX}${address.toLowerCase()}`);
     if (!raw) {

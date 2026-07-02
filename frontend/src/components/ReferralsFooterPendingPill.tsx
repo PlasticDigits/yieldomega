@@ -7,7 +7,7 @@ import { shouldShowPendingPill } from "@/lib/referralStorage";
  * Footer pill showing the browser-locked pending referral code on `/referrals`
  * (GitLab #205).
  *
- * - Reads `yieldomega.ref.v1` via `getPendingReferralCode()` so the same
+ * - Reads `yieldomega.ref.v2` via `getPendingReferralCode()` so the same
  *   normalization / cross-store sync used by the rest of the app applies here.
  * - Subscribes to the `storage` event so the pill stays accurate when other tabs
  *   capture a new `?ref=` (cross-tab) and refreshes on route navigation in the

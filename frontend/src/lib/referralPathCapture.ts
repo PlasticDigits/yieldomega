@@ -9,12 +9,19 @@ function pathSegments(pathname: string): string[] {
 
 /**
  * Extracts a referral code from the path for client capture (localStorage).
- * **Supported:** `/arena/{code}` or legacy `/arena/{code}` when the second
+ * **Supported:** `/{code}`, legacy `/arena/{code}`, or `/timecurve/{code}` when the
  * segment is not a fixed sub-route (`protocol`, …) and not otherwise reserved.
- * Prefer `?ref=` or `/arena/{code}` (GitLab #266).
+ * Prefer `?ref=` or `/{code}` for share links.
  */
 export function extractReferralCodeFromPathname(pathname: string): string | null {
   const parts = pathSegments(pathname);
+  if (parts.length === 1) {
+    const seg = parts[0]!;
+    if (isReferralSlugReservedForRouting(seg)) {
+      return null;
+    }
+    return tryNormalizeReferralSlug(seg);
+  }
   if (parts.length === 2) {
     const root = parts[0]!.toLowerCase();
     if (root !== "timecurve" && root !== "arena") {
@@ -29,6 +36,13 @@ export function extractReferralCodeFromPathname(pathname: string): string | null
   return null;
 }
 
+/** True when the pathname should use the minimal arena play shell (index or referral slug). */
+export function isReferralPlayPathname(pathname: string): boolean {
+  if (pathname === "/" || pathname === "/arena") {
+    return true;
+  }
+  return extractReferralCodeFromPathname(pathname) !== null;
+}
 
 function tryNormalizeReferralSlug(raw: string): string | null {
   try {

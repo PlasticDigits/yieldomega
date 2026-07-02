@@ -5,7 +5,7 @@
  * R3 (disconnected) and R1 post-launch shell variants are covered in `referrals-surface.spec.ts` + manual QA.
  *
  * R4–R6: asserts share-link UI after `registerCode`; does **not** assert `localStorage` key
- * `yieldomega.myrefcode.v1.*` directly (that cache backs the panel — see `referralStorage.ts`, GitLab #85).
+ * `yieldomega.myrefcode.v2.*` directly (that cache backs the panel — see `referralStorage.ts`, GitLab #85).
  */
 import { expect, test } from "@playwright/test";
 import { ARENA_E2E_TIMEOUT_MS } from "./arenaE2eHelpers";
@@ -72,7 +72,7 @@ test.describe("Anvil referrals surface", () => {
     await sharePanel.getByRole("button", { name: /^Copy$/ }).nth(0).click();
     await expect(page.getByTestId("referrals-copy-feedback")).toContainText(/Copied to clipboard/i);
     const copiedPath = await page.evaluate(() => navigator.clipboard.readText());
-    expect(copiedPath).toContain(`/arena/${code}`);
+    expect(copiedPath).toContain(`/${code}`);
     await expect(sharePanel.getByRole("button", { name: /^Copied!$/ })).toHaveCount(1);
     await sharePanel.getByRole("button", { name: /^Copied!$/ }).click();
     await expect(page.getByTestId("referrals-copy-feedback")).toContainText(/Copied to clipboard/i);

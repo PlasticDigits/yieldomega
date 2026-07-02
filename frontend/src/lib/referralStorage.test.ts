@@ -3,7 +3,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /** Same key as `REF_STORAGE` in `referralStorage.ts`; split so gitleaks does not treat it as a secret. */
-const KEY = ["yieldomega", "ref", "v1"].join(".");
+const KEY = ["yieldomega", "ref", "v2"].join(".");
+const LEGACY_KEY = ["yieldomega", "ref", "v1"].join(".");
+const LEGACY_MY_REF_PREFIX = ["yieldomega", "myrefcode", "v1."].join(".");
 
 function memStorage(): Storage {
   const m = new Map<string, string>();
@@ -107,6 +109,39 @@ describe("referralStorage pending cross-store sync", () => {
     expect(getPendingReferralCode()).toBeNull();
     applyReferralUrlCapture("/", "?ref=other12");
     expect(getPendingReferralCode()).toBe("other12");
+  });
+
+  it("purges legacy v1 pending and myrefcode keys on module load", async () => {
+    const legacyPending = JSON.stringify({ code: "oldref", ts: 1 });
+    window.localStorage.setItem(LEGACY_KEY, legacyPending);
+    window.sessionStorage.setItem(LEGACY_KEY, legacyPending);
+    window.localStorage.setItem(
+      `${LEGACY_MY_REF_PREFIX}0x0000000000000000000000000000000000000001`,
+      JSON.stringify({ code: "oldco", ts: 1 }),
+    );
+    const { getPendingReferralCode, getStoredMyReferralCodeForWallet } =
+      await import("./referralStorage");
+    expect(getPendingReferralCode()).toBeNull();
+    expect(getPendingReferralCode()).not.toBe("oldref");
+    expect(window.localStorage.getItem(LEGACY_KEY)).toBeNull();
+    expect(window.sessionStorage.getItem(LEGACY_KEY)).toBeNull();
+    expect(
+      window.localStorage.getItem(
+        `${LEGACY_MY_REF_PREFIX}0x0000000000000000000000000000000000000001`,
+      ),
+    ).toBeNull();
+    expect(
+      getStoredMyReferralCodeForWallet(
+        "0x0000000000000000000000000000000000000001" as `0x${string}`,
+      ),
+    ).toBeNull();
+  });
+
+  it("never reads legacy v1 pending even when v2 is empty", async () => {
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify({ code: "stale99", ts: 1 }));
+    const { getPendingReferralCode } = await import("./referralStorage");
+    expect(getPendingReferralCode()).toBeNull();
+    expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 });
 

@@ -3,7 +3,7 @@
  * `/referrals` UI smoke and `?ref=` capture (GitLab #64 checklist rows R1, R3, R7 for CI builds).
  * Rows R4–R6 (wallet writes + clipboard) run under Anvil — see `anvil-referrals.spec.ts` via `scripts/e2e-anvil.sh`.
  *
- * R7 asserts **pending** referral storage only: key `yieldomega.ref.v1` (JSON `{ code, ts }` in localStorage).
+ * R7 asserts **pending** referral storage only: key `yieldomega.ref.v2` (JSON `{ code, ts }` in localStorage).
  * Post-register “my code” uses a different key prefix — see `referralStorage.ts` / [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85).
  */
 import { expect, test } from "@playwright/test";
@@ -67,7 +67,7 @@ test("query ?ref= captures pending referral on first paint (R7)", async ({ page 
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
   await page.goto("/?ref=ab12cd");
-  const pending = await page.evaluate(() => window.localStorage.getItem("yieldomega.ref.v1"));
+  const pending = await page.evaluate(() => window.localStorage.getItem("yieldomega.ref.v2"));
   expect(pending).toBeTruthy();
   const p = JSON.parse(pending!) as { code?: string };
   expect(p.code).toBe("ab12cd");

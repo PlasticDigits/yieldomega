@@ -91,13 +91,13 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 
 ---
 
-## `/arena/:code` — referral path capture
+## `/:code` — referral path capture
 
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
-| Route | Valid referral segment loads play surface via `ArenaBranchPage` (not 404) | `LaunchGate.tsx` |
+| Route | Valid referral segment loads play surface via `ReferralBranchPage` (not 404) | `LaunchGate.tsx` |
 | Capture | Pending key `yieldomega.ref.v1` on `?ref=` or path segment | [referrals.md](../product/referrals.md) |
-| Legacy redirect | `/timecurve/:code` → `/arena/:code` | [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) |
+| Legacy redirect | `/timecurve/:code` and `/arena/:code` → `/:code` | [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) |
 
 **E2E:** `e2e/referral-path.spec.ts`, `e2e/navigation.spec.ts` · **Manual:** [manual QA §64](manual-qa-checklists.md#manual-qa-issue-64)
 
@@ -109,7 +109,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 |-------|---------------|------------------|
 | Hero | **CRED Network**; **Register. Share. Track CRED.** | [design §296](../frontend/design.md#secondary-product-surfaces-gitlab-296) |
 | Mechanics | Flat **5 CRED + 5 CRED** on referred **DOUB** buys; **1 CL8Y** registration burn; one code per wallet | [referrals.md](../product/referrals.md#referral-flat-cred-gitlab-272) |
-| Share links | Canonical **`/arena/{code}`** and **`?ref=`**; no **TimeCurve path** label | `ReferralRegisterSection.tsx` |
+| Share links | Canonical **`/{code}`** and **`?ref=`**; no **TimeCurve path** label | `ReferralRegisterSection.tsx` |
 | Leaderboard | Blockie + last-six `AddressInline`; Guide CRED / Buyer CRED / Total CRED | `e2e/referrals-surface.spec.ts` |
 | Forbidden copy | No sale-end / CHARM-referral-boost / legacy BPS framing | [manual QA §296](manual-qa-checklists.md#manual-qa-issue-296) |
 
