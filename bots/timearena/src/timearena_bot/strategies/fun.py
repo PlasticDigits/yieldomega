@@ -40,6 +40,11 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
         if sale_ended(w3, tc):
             print("fun: sale ended; stopping.")
             return
+        delay = random.expovariate(1.0 / mean)
+        time.sleep(delay)
+        if sale_ended(w3, tc):
+            print("fun: sale ended; stopping.")
+            return
         desired = cfg.charm_wad_fun if cfg.charm_wad_fun > 0 else charm_bounds(tc)[0]
         charm = charm_for_buy(tc, desired)
         need2 = asset_amount_for_charm(tc, charm)
@@ -48,5 +53,3 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
             buy(w3, tc, acct, charm, gas_multiplier=cfg.gas_multiplier, send=True)
         except Exception as e:
             print(f"fun: buy failed ({e!s}); retrying on next interval")
-        delay = random.expovariate(1.0 / mean)
-        time.sleep(delay)

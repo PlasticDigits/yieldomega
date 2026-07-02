@@ -13,9 +13,12 @@ Built for an always-on edge box (e.g. a Jetson): **pure Python stdlib**, no `web
 
 - **TimeArena** proxy `0xba39cea0e5ef6808d8cb926c722877480049e0ee`, chain **4326** — from
   [`indexer/address-registry.megaeth-mainnet.json`](../../indexer/address-registry.megaeth-mainnet.json).
-- Events: `Buy(address indexed buyer, uint256 charmWad, uint256 doubPaid, uint256 newDeadline,
+- Events: `Buy`, `LevelUp`, `FirstBuyCredScheduled` (level-up banner on buys), and optional `ArenaStarted`.
+  `Buy(address indexed buyer, uint256 charmWad, uint256 doubPaid, uint256 newDeadline,
   uint256 totalDoubRaisedAfter, uint256 buyIndex, uint256 actualSecondsAdded, bool timerHardReset,
   bool paidWithCred)` and `ArenaStarted(uint256,uint256)`.
+  Level-up line: `LevelUp` in the same tx → **LEVEL UP! Now level N**; wallet first buy
+  (`FirstBuyCredScheduled`, no `LevelUp`) → **Now level 1**.
 - Source: `eth_getLogs` polling (topic-filtered), block-range splitting for RPC caps, and a
   persisted cursor (`announce-cursor.json`) for restart safety.
 

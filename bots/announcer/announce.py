@@ -26,6 +26,9 @@ LOG = logging.getLogger("buybot")
 # --- keccak256(event signature) topic0, precomputed (see repo ABI) ---
 TOPIC_BUY = "0xbaf9a64575edd1ebb4308874e8680288c787f6741d8edc4d66ce61418bad169b"
 TOPIC_ARENA_STARTED = "0x33789300e7043c21750457cc66f0c68d69dda90fedc0c70b1b6dcc38d16c94c5"
+TOPIC_LEVEL_UP = "0x91e51c29e7e87a74ad3b8ccba98538970f50a4309242735467f41e27c6b0fbac"
+TOPIC_FIRST_BUY_CRED_SCHEDULED = "0x135d669544c1a460dd7b5f82c47189c86898c39919d3f604f6d023b68c9849fd"
+WATCH_TOPICS = [TOPIC_BUY, TOPIC_ARENA_STARTED, TOPIC_LEVEL_UP, TOPIC_FIRST_BUY_CRED_SCHEDULED]
 
 
 # ------------------------- env helpers -------------------------
@@ -115,7 +118,7 @@ def get_logs(lo, hi):
     return rpc("eth_getLogs", [{
         "fromBlock": hex(lo), "toBlock": hex(hi),
         "address": TIME_ARENA,
-        "topics": [[TOPIC_BUY, TOPIC_ARENA_STARTED]],
+        "topics": [WATCH_TOPICS],
     }])
 
 
@@ -163,6 +166,44 @@ def decode_buy(log):
 def decode_arena_started(log):
     d = log["data"][2:]
     return {"startTimestamp": _word(d, 0), "initialDeadline": _word(d, 1)}
+
+
+def _topic_addr(topics, i):
+    return ("0x" + topics[i][-40:]).lower()
+
+
+def decode_level_up(log):
+    return {"player": _topic_addr(log["topics"], 1), "newLevel": _word(log["data"][2:], 0)}
+
+
+def decode_first_buy_cred_scheduled(log):
+    return {"buyer": _topic_addr(log["topics"], 1)}
+
+
+def build_tx_level_hints(logs):
+    """Per-tx level-up signals from `LevelUp` and first-buy `FirstBuyCredScheduled` logs."""
+    hints = {}
+    for log in logs:
+        topic0 = log["topics"][0].lower()
+        tx = log["transactionHash"].lower()
+        side = hints.setdefault(tx, {"level_ups": {}, "first_buys": set()})
+        if topic0 == TOPIC_LEVEL_UP:
+            lu = decode_level_up(log)
+            side["level_ups"][lu["player"]] = lu["newLevel"]
+        elif topic0 == TOPIC_FIRST_BUY_CRED_SCHEDULED:
+            side["first_buys"].add(decode_first_buy_cred_scheduled(log)["buyer"])
+    return hints
+
+
+def resolve_new_level(buyer, tx_hash, hints):
+    """New player level when a buy leveled up, or 1 on wallet first buy."""
+    side = hints.get(tx_hash.lower(), {})
+    buyer_l = buyer.lower()
+    if buyer_l in side.get("level_ups", {}):
+        return side["level_ups"][buyer_l]
+    if buyer_l in side.get("first_buys", set()):
+        return 1
+    return None
 
 
 # ------------------------- formatting -------------------------
@@ -265,16 +306,19 @@ def fetch_market_snapshot():
 
 
 # ---- message templates (edit wording/emojis to taste) ----
-def build_buy_message(b, txhash, market=None):
+def build_buy_message(b, txhash, market=None, new_level=None):
     charm = fmt_units(b["charmWad"], CHARM_DECIMALS)
     doub = fmt_units(b["doubPaid"], DOUB_DECIMALS)
     total = fmt_units(b["totalDoubRaisedAfter"], DOUB_DECIMALS)
     buyer = b["buyer"]
     doub_usd_wad = market.get("doub_usd_wad") if market else None
-    lines = [
-        "\U0001F7E2 <b>TimeArena BUY</b>",
+    lines = []
+    if new_level is not None:
+        lines.append(f"\U0001F389 <b>LEVEL UP!</b> Now level {int(new_level)}")
+    lines.append("\U0001F7E2 <b>TimeArena BUY</b>")
+    lines.append(
         f"\U0001F4B0 <b>{charm} CHARM</b> for <b>{doub} DOUB</b>" + (" <i>(Cred)</i>" if b["paidWithCred"] else ""),
-    ]
+    )
     if b["doubPaid"] > 0:
         worth = fmt_usd(b["doubPaid"], doub_usd_wad)
         lines.append(f"\U0001F4B5 <b>WORTH: ${worth} USD</b>")
@@ -370,8 +414,10 @@ def selftest():
               "totalDoubRaisedAfter": 1_000_000 * 10**18, "buyIndex": 42,
               "actualSecondsAdded": 45, "timerHardReset": True, "paidWithCred": False}
     market = {"doub_usd_wad": 10**18, "total_prize_pool_doub_wad": 4 * 350_000 * 10**18}
-    print("---- sample buy message ----")
-    print(build_buy_message(sample, "0x" + "ab" * 32, market))
+    print("---- sample buy message (level up) ----")
+    print(build_buy_message(sample, "0x" + "ab" * 32, market, new_level=2))
+    print("\n---- sample buy message (first buy) ----")
+    print(build_buy_message(sample, "0x" + "cd" * 32, market, new_level=1))
     print("\n---- sample arena-started message ----")
     print(build_arena_started_message(None))
     # round-trip: encode sample into a synthetic log and decode it back
@@ -437,6 +483,7 @@ def main():
                 collected.extend(get_logs_chunked(lo, hi))
                 lo = hi + 1
             collected.sort(key=lambda l: (hexint(l["blockNumber"]), hexint(l["logIndex"])))
+            tx_level_hints = build_tx_level_hints(collected)
             for log in collected:
                 lid = f'{log["transactionHash"]}:{hexint(log["logIndex"])}'
                 if lid in recent_ids:
@@ -447,7 +494,10 @@ def main():
                         b = decode_buy(log)
                         under_min = MIN_DOUB > 0 and (Decimal(b["doubPaid"]) / (Decimal(10) ** DOUB_DECIMALS)) < MIN_DOUB
                         if not under_min:
-                            tg_send(build_buy_message(b, log["transactionHash"], fetch_market_snapshot()))
+                            new_level = resolve_new_level(b["buyer"], log["transactionHash"], tx_level_hints)
+                            tg_send(build_buy_message(
+                                b, log["transactionHash"], fetch_market_snapshot(), new_level=new_level,
+                            ))
                     elif topic0 == TOPIC_ARENA_STARTED and ANNOUNCE_ARENA_STARTED:
                         tg_send(build_arena_started_message(decode_arena_started(log)))
                 except Exception as e:  # noqa: BLE001

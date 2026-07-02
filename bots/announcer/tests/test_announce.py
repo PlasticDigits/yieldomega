@@ -62,6 +62,46 @@ def test_build_buy_message_contains_key_fields():
     assert "$1,400,000.00 USD" in msg
     assert "buy #42" in msg
     assert "TIMER HARD RESET" in msg
+    assert "LEVEL UP!" not in msg
+
+
+def test_build_buy_message_level_up_banner():
+    market = {"doub_usd_wad": 10**18, "total_prize_pool_doub_wad": 0}
+    msg = announce.build_buy_message(
+        announce.decode_buy(_synth_buy_log()), "0x" + "ab" * 32, market, new_level=2,
+    )
+    assert msg.startswith("\U0001F389 <b>LEVEL UP!</b> Now level 2")
+    assert "\U0001F7E2 <b>TimeArena BUY</b>" in msg
+
+
+def test_build_buy_message_first_buy_level_one():
+    msg = announce.build_buy_message(
+        announce.decode_buy(_synth_buy_log()), "0x" + "ab" * 32, None, new_level=1,
+    )
+    assert msg.startswith("\U0001F389 <b>LEVEL UP!</b> Now level 1")
+
+
+def test_decode_level_up_and_first_buy():
+    buyer = "0x000000000000000000000000000000000000dEaD"
+    level_log = {
+        "topics": [announce.TOPIC_LEVEL_UP, "0x" + "0" * 24 + buyer[2:]],
+        "data": "0x" + f"{2:064x}",
+        "transactionHash": "0x" + "aa" * 32,
+    }
+    first_log = {
+        "topics": [
+            announce.TOPIC_FIRST_BUY_CRED_SCHEDULED,
+            "0x" + "0" * 24 + buyer[2:],
+            "0x" + f"{5:064x}",
+        ],
+        "data": "0x" + f"{1100 * 10**18:064x}",
+        "transactionHash": "0x" + "bb" * 32,
+    }
+    assert announce.decode_level_up(level_log)["newLevel"] == 2
+    hints = announce.build_tx_level_hints([level_log, first_log])
+    assert announce.resolve_new_level(buyer, level_log["transactionHash"], hints) == 2
+    assert announce.resolve_new_level(buyer, first_log["transactionHash"], hints) == 1
+    assert announce.resolve_new_level(buyer, "0x" + "cc" * 32, hints) is None
 
 
 def test_doub_wei_to_usd_indexed_and_fallback():
