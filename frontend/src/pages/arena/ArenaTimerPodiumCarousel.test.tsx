@@ -107,7 +107,7 @@ describe("ArenaTimerPodiumCarousel", () => {
       panelHeader: createElement("div", { "data-testid": "timer-panel-header" }, "Timer hero"),
     });
     expect(html).toContain('data-testid="arena-timer-podium-lock-1"');
-    expect(html).toContain("Locked until Level 4");
+    expect(html).toContain("LEVEL 4");
     expect(html).toContain('data-testid="timer-panel-header"');
     expect(html).toContain('data-testid="arena-timer-podium-carousel-prev"');
     expect(html).toContain('data-testid="arena-timer-podium-carousel-dot-3"');

@@ -5,6 +5,7 @@ import { useAccount } from "wagmi";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { TokenLogo } from "@/components/TokenLogo";
 import { fetchReferralWalletCredSummary, type ReferralWalletCredSummary } from "@/lib/indexerApi";
 import { CRED_TOKEN_LOGO } from "@/lib/tokenMedia";
 
@@ -82,7 +83,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
     >
       {!isConnected || !address ? (
         <div className="referrals-empty-state referrals-empty-state--charm">
-          <img className="referrals-empty-state__token" src={CRED_TOKEN_LOGO} alt="" width={40} height={40} decoding="async" />
+          <TokenLogo className="referrals-empty-state__token cred-token-icon" src={CRED_TOKEN_LOGO} width={40} height={40} />
           <div>
             <strong>Connect to see your CRED</strong>
             <p title="Reads GET /v1/referrals/wallet-cred-summary for referrer and buyer CRED totals.">
@@ -108,7 +109,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             data-testid="referrals-earnings-guide-cred"
             title="CRED minted to this wallet as the referrer side of ReferralCredApplied."
           >
-            <span><img src={CRED_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" /> GUIDE CRED:</span>{" "}
+            <span><TokenLogo src={CRED_TOKEN_LOGO} width={18} height={18} /> GUIDE CRED:</span>{" "}
             <strong className="tabular-nums">{credHumanized?.guide}</strong>
           </p>
           <p
@@ -116,7 +117,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             data-testid="referrals-earnings-buyer-cred"
             title="CRED minted to this wallet as the referred buyer side of ReferralCredApplied."
           >
-            <span><img src={CRED_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" /> BUYER CRED:</span>{" "}
+            <span><TokenLogo src={CRED_TOKEN_LOGO} width={18} height={18} /> BUYER CRED:</span>{" "}
             <strong className="tabular-nums">{credHumanized?.buyer}</strong>
           </p>
           <p
@@ -124,7 +125,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             data-testid="referrals-earnings-total-cred"
             title="Guide-side plus buyer-side referral Play CRED for this wallet."
           >
-            <span><img src={CRED_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" /> TOTAL CRED:</span>{" "}
+            <span><TokenLogo src={CRED_TOKEN_LOGO} width={18} height={18} /> TOTAL CRED:</span>{" "}
             <strong className="tabular-nums">{credHumanized?.total}</strong>
           </p>
           <p

@@ -5,6 +5,7 @@ import { xpForCharm } from "@/lib/arenaXpMath";
 import {
   buildArenaBuyActualEffectLines,
   buildArenaBuyProjectedEffectLines,
+  BUY_PREVIEW_START_TIMER,
   formatBuyProjectedLevelLine,
   formatBuyProjectedXpLine,
   inferSecondsRemainingBeforeBuy,
@@ -156,6 +157,28 @@ describe("buildArenaBuyProjectedEffectLines", () => {
     });
     expect(lines).toContain("3->4 Level (+1 max move)");
     expect(lines.some((line) => line.includes("BP"))).toBe(true);
+  });
+
+  it("shows START TIMER when Last Buy epoch is unarmed", () => {
+    const lines = buildArenaBuyProjectedEffectLines({
+      charmWadSelected: 1n * 10n ** 18n,
+      secondsRemaining: undefined,
+      lastBuyTimerArmed: false,
+      plantWarBowFlag: false,
+      formatRivalWallet: fmt,
+    });
+    expect(lines).toContain(BUY_PREVIEW_START_TIMER);
+    expect(lines).not.toContain("Timer pending");
+  });
+
+  it("shows Timer pending when countdown is unknown but timer may be armed", () => {
+    const lines = buildArenaBuyProjectedEffectLines({
+      secondsRemaining: undefined,
+      plantWarBowFlag: false,
+      formatRivalWallet: fmt,
+    });
+    expect(lines).toContain("Timer pending");
+    expect(lines).not.toContain(BUY_PREVIEW_START_TIMER);
   });
 
   it("hides WarBow flag preview below level 5 (#299)", () => {

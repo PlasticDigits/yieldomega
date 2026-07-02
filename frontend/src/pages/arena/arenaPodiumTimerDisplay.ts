@@ -6,7 +6,7 @@ import {
 } from "@/pages/arena/formatTimer";
 
 /** Copy when a podium epoch timer is unarmed (GitLab #330). */
-export const PODIUM_TIMER_AWAITING_FIRST_BUY = "awaiting first buy";
+export const PODIUM_TIMER_AWAITING_FIRST_BUY = "BUY TO START";
 
 export function isPodiumTimerArmed(
   armed: readonly boolean[] | undefined,

@@ -22,7 +22,7 @@ export function isArenaBuySpendDefaultMin(input: {
   if (!input.walletConnected) return true;
   if (input.chainMismatch) return true;
   if (input.cl8ySpendBounds === null) return true;
-  if (input.payWith === "cl8y" && input.cl8yCheckoutBoundsGate.kind === "insufficient_cl8y") {
+  if ((input.payWith === "cl8y" || input.payWith === "doub") && input.cl8yCheckoutBoundsGate.kind === "insufficient_cl8y") {
     return true;
   }
   if (input.payWith === "cred" && input.credCheckoutBoundsGate.kind === "insufficient_cred") {

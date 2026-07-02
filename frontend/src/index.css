@@ -1181,6 +1181,13 @@ label:has(input[type="radio"]:disabled) {
   border-radius: inherit;
 }
 
+/* Arena buy preview: YOU PAY stays interactive under wrong-network overlay (connect + amount + slider). */
+.arena-simple__buy-panel.chain-write-gate .arena-simple__swap-pay,
+.arena-simple__buy-panel.chain-write-gate .arena-simple__connect {
+  position: relative;
+  z-index: 6;
+}
+
 .chain-write-gate__overlay {
   position: absolute;
   inset: 0;
@@ -9929,6 +9936,15 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-shrink: 0;
 }
 
+.charm-token-icon,
+.cred-token-icon {
+  flex-shrink: 0;
+}
+
+.cred-token-icon {
+  color: var(--yo-cyan, #35f0c2);
+}
+
 .arena-simple__amount-token-combobox {
   display: inline-flex;
   align-items: center;
@@ -10105,7 +10121,10 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input.arena-buy-spend-range,
 .arena-simple__slider-row--pay-cl8y .arena-buy-spend-range,
-.arena-simple__pay-slider-row--pay-cl8y .arena-buy-spend-range {
+.arena-simple__pay-slider-row--pay-cl8y .arena-buy-spend-range,
+.arena-cl8y-buy-controls__slider-label--pay-doub input[type="range"].form-input.arena-buy-spend-range,
+.arena-simple__slider-row--pay-doub .arena-buy-spend-range,
+.arena-simple__pay-slider-row--pay-doub .arena-buy-spend-range {
   accent-color: var(--arcade-green-600, #15803d);
 }
 
@@ -10336,8 +10355,7 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.18rem;
 }
 
-/* Live "now" row: inline CHARM glyph + label + price + pay-token logo on one
-   wrapping flex line (`/tokens/charm.png` + `/tokens/doub.png`, etc.). */
+/* Live "now" row: inline CHARM glyph + label + price + pay-token logo on one wrapping flex line. */
 .arena-simple__rate-row--now {
   flex-direction: row;
   flex-wrap: wrap;
@@ -14094,10 +14112,20 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .locked-until-level__icon {
   width: clamp(2.15rem, 18%, 3.2rem);
-  height: auto;
-  filter:
-    drop-shadow(0 0 0.65rem rgba(232, 192, 74, 0.22))
-    drop-shadow(0 0.18rem 0.35rem rgba(0, 0, 0, 0.34));
+  height: clamp(2.15rem, 18%, 3.2rem);
+  flex-shrink: 0;
+  color: var(--yo-cyan-soft, #7ef1ff);
+}
+
+.locked-until-level__headline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+}
+
+.locked-until-level--panel .locked-until-level__headline {
+  flex-direction: column;
 }
 
 .locked-until-level__overlay strong {
@@ -14124,13 +14152,16 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .locked-until-level--compact .locked-until-level__overlay {
-  grid-template-columns: auto minmax(0, auto) auto;
-  grid-auto-flow: column;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   padding: 0.35rem 0.45rem;
 }
 
 .locked-until-level--compact .locked-until-level__icon {
   width: 1.45rem;
+  height: 1.45rem;
 }
 
 .locked-until-level--compact .locked-until-level__overlay strong {

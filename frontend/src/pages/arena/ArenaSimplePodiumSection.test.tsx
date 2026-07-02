@@ -129,10 +129,10 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain('data-testid="arena-podium-lock-3"');
     expect(html).not.toContain('data-testid="arena-podium-lock-2"');
     expect(html).not.toContain('data-testid="arena-podium-lock-1"');
-    expect(html).toContain("Locked until Level 2");
+    expect(html).toContain("LEVEL 2");
     expect(html).toContain("Time Booster");
-    expect(html).not.toContain("Locked until Level 3");
-    expect(html).not.toContain("Locked until Level 4");
+    expect(html).not.toContain("LEVEL 3");
+    expect(html).not.toContain("LEVEL 4");
     expect(html).not.toContain("Connect wallet to buy CHARM.");
   });
 

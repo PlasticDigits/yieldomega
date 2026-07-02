@@ -70,6 +70,8 @@ export type BuildArenaBuyProjectedEffectLinesArgs = {
   playerLevel?: bigint | number;
   /** Cached progress toward next level; used for level-up chip + post-buy feature gates (#265). */
   xpTowardNext?: bigint | number;
+  /** Last Buy timer armed (`podium_timer_armed[0]`); false when first buy starts the epoch timer (#330). */
+  lastBuyTimerArmed?: boolean;
   /** `formatWallet(addr, "rival")` on Arena; Simple may use {@link shortAddress}. */
   formatRivalWallet: (addr: HexAddress) => string;
 };
@@ -82,6 +84,9 @@ export type BuildArenaBuyProjectedEffectLinesArgs = {
  * Timer/scoring pills mirror **Last Buy (cat 0)** only ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
  * Secondary podium extensions and scoring lines follow player level ([#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)).
  */
+/** Buy preview chip when the first qualifying buy will arm Last Buy (#330). */
+export const BUY_PREVIEW_START_TIMER = "START TIMER";
+
 export function buildArenaBuyProjectedEffectLines(
   args: BuildArenaBuyProjectedEffectLinesArgs,
 ): string[] {
@@ -98,6 +103,7 @@ export function buildArenaBuyProjectedEffectLines(
     previewPolicy,
     playerLevel = MAX_PLAYER_LEVEL,
     xpTowardNext,
+    lastBuyTimerArmed,
     formatRivalWallet,
   } = args;
 
@@ -120,7 +126,7 @@ export function buildArenaBuyProjectedEffectLines(
   }
 
   if (secondsRemaining === undefined) {
-    items.push("Timer pending");
+    items.push(lastBuyTimerArmed === false ? BUY_PREVIEW_START_TIMER : "Timer pending");
   } else {
     const fx = previewWarbowBuyEffects({
       secondsRemaining,

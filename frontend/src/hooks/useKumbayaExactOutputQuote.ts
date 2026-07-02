@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
 import type { HexAddress } from "@/lib/addresses";
 import {
@@ -24,7 +24,7 @@ export function useKumbayaExactOutputQuote(params: {
   const quoter = kConfig?.quoter;
   const canRun =
     enabled &&
-    (payWith === "eth" || payWith === "usdm") &&
+    (payWith === "eth" || payWith === "usdm" || payWith === "cl8y") &&
     quoter !== undefined &&
     kConfig !== undefined &&
     acceptedCl8y !== undefined &&
@@ -47,18 +47,25 @@ export function useKumbayaExactOutputQuote(params: {
         ? quoteKumbayaArenaExactOutputAmountIn(wagmiConfig, {
             quoter: quoter!,
             kConfig: kConfig!,
-            payWith: payWith as Exclude<PayWithAsset, "cl8y">,
+            payWith: payWith as Exclude<PayWithAsset, "doub" | "cred">,
             doubAddress: acceptedCl8y!,
             amountOut: amountOut!,
           })
         : quoteKumbayaExactOutputAmountIn(wagmiConfig, {
             quoter: quoter!,
             kConfig: kConfig!,
-            payWith: payWith as Exclude<PayWithAsset, "cl8y">,
+            payWith: payWith as Exclude<PayWithAsset, "cl8y" | "doub" | "cred">,
             acceptedCl8y: acceptedCl8y!,
             amountOut: amountOut!,
           }),
     enabled: canRun,
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData, previousQuery) => {
+      const prevPayWith = previousQuery?.queryKey[1];
+      const prevAmountOut = previousQuery?.queryKey[3];
+      if (prevPayWith !== payWith || prevAmountOut !== amountOut?.toString()) {
+        return undefined;
+      }
+      return previousData;
+    },
   });
 }

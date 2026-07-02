@@ -163,6 +163,7 @@ function baseSession(overrides: Partial<UseArenaSaleSession> = {}): UseArenaSale
     buyCharmBonusPreviewLines: [],
     preStartCountdownSec: undefined,
     saleCountdownSec: 120,
+    lastBuyTimerArmed: true,
     heroCountdownPlaceholder: undefined,
     chainNowSec: 1_700_000_000,
     timerExtensionPreviewSec: 60,
@@ -193,8 +194,9 @@ function baseSession(overrides: Partial<UseArenaSaleSession> = {}): UseArenaSale
     isWriting: false,
     buyError: null,
     clearBuyError: () => {},
-    payWith: "cl8y",
+    payWith: "doub",
     setPayWith: () => {},
+    paySpendBandReady: true,
     isArenaV2: true,
     playCredAddress: undefined,
     credBalanceWei: undefined,
@@ -248,7 +250,6 @@ describe("ArenaSimplePage (GitLab #321)", () => {
       baseSession({
         walletConnected: false,
         walletAddress: undefined,
-        cl8ySpendBounds: null,
       }),
     );
     const html = renderPage();
@@ -258,6 +259,8 @@ describe("ArenaSimplePage (GitLab #321)", () => {
     expect(html).toContain('data-testid="arena-simple-buy-receive"');
     expect(html).toContain("You pay");
     expect(html).not.toMatch(/arena-simple__amount-token-combobox[^>]*disabled/);
+    expect(html).not.toMatch(/arena-simple__amount-field[^>]*disabled/);
+    expect(html).not.toMatch(/arena-simple__pay-slider[^>]*disabled/);
   });
 
   it("keeps YOU PAY visible when wallet balance cannot cover live bounds", () => {
@@ -316,6 +319,8 @@ describe("ArenaSimplePage smoke regions (GitLab #321)", () => {
   it("renders timer, podium carousel, and spend controls test ids", () => {
     expect(src).toContain('data-testid="arena-simple-amount-pay-token"');
     expect(src).toContain("payTokenSelectDisabled");
+    expect(src).toContain("spendControlsDisabled");
+    expect(src).toContain("Preview-only: amount + slider stay editable");
     expect(src).toContain("ArenaTimerPodiumCarousel");
     expect(src).toContain("ArenaTimerChips");
     expect(src).toContain("ArenaCharmCredCard");

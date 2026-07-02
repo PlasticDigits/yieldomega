@@ -22,12 +22,16 @@ describe("useArenaSaleSession submit paths (GitLab #321)", () => {
   it("includes payUsesKumbaya in spend blur reconciliation deps", () => {
     const blurBlock = src.slice(src.indexOf("const setSpendFromInputBlur"), src.indexOf("const chainNowForCooldown"));
     expect(blurBlock).toContain("payUsesKumbaya");
-    expect(blurBlock).toMatch(/payUsesKumbaya,\s*\n\s*quotedPayInWei/);
+    expect(blurBlock).toContain("quotedPayInWei");
   });
 
   it("snaps buy spend to minimum when checkout is blocked", () => {
     expect(src).toContain("isArenaBuySpendDefaultMin");
     expect(src).toContain("buySpendDefaultMin");
     expect(src).toContain("quotedBandMinPayInWei");
+    expect(src).toContain("formatArenaPaySpendInputDisplay");
+    expect(src).toContain("paySpendInputCompactRef");
+    expect(src).toContain("resolveArenaPayTokenSpendBand");
+    expect(src).toContain("payTokenSpendBand");
   });
 });

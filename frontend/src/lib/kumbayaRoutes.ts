@@ -7,7 +7,7 @@ import type { HexAddress } from "@/lib/addresses";
 import { parseHexAddress } from "@/lib/addresses";
 
 /** User-selected spend asset for Time Arena entry (issue #41). Arena v2 adds `cred` (#269). */
-export type PayWithAsset = "cl8y" | "eth" | "usdm" | "cred";
+export type PayWithAsset = "doub" | "cl8y" | "eth" | "usdm" | "cred";
 
 export type KumbayaResolveErrorReason =
   | "unsupported_chain"
@@ -321,8 +321,23 @@ export function routingForArenaPayAsset(
   doubAddress: HexAddress,
   config: KumbayaChainConfigResolved,
 ): RouteForPayResult {
-  if (payWith === "cl8y") {
+  if (payWith === "doub") {
     return { ok: true, path: "0x" as `0x${string}`, tokenIn: doubAddress };
+  }
+  if (payWith === "cl8y") {
+    if (isZeroAddr(config.cl8y)) {
+      return {
+        ok: false,
+        reason: "no_route",
+        message: "Reserve CL8Y is not configured for Kumbaya routing on this chain.",
+      };
+    }
+    try {
+      const path = buildV3PathExactOutput([doubAddress, config.cl8y], [config.doubCl8yFee]);
+      return { ok: true, path, tokenIn: config.cl8y };
+    } catch {
+      return { ok: false, reason: "no_route", message: "Could not build CL8Y → DOUB routing path." };
+    }
   }
   if (isZeroAddr(config.cl8y)) {
     return {

@@ -312,7 +312,6 @@ export function ArenaCharmCredCard({
           className="data-panel arena-charm-cred-card arena-charm-cred-card__gate arena-level-gate arena-level-gate--locked"
           testId="arena-charm-cred-card"
           overlayTestId="arena-charm-cred-lock"
-          detail="Buy CHARM to activate this mechanic."
         >
           <ArenaCharmCredCardHeading actions={walletHelpButton} />
           {walletBody}

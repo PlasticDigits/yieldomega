@@ -53,7 +53,7 @@ export type ArenaPodiumTimerChipProps = {
   /** When false, timer bay owns the feature tutorial trigger (Last Buy bay). */
   showFeatureHelp?: boolean;
   countdownRemainingSec?: number;
-  /** Override chip countdown copy (e.g. awaiting first buy). */
+  /** Override chip countdown copy (e.g. BUY TO START). */
   countdownDisplay?: string;
   /** E2E hook when timer is expired/settling ([#343](https://gitlab.com/PlasticDigits/yieldomega/-/issues/343)). */
   transitionTestId?: string;

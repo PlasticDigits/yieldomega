@@ -23,7 +23,7 @@ export function resolveCl8yCheckoutBoundsGate(input: {
   if (minBuyWei === undefined || maxBuyWei === undefined) {
     return { kind: "loading" };
   }
-  if (payWith !== "cl8y") {
+  if (payWith !== "cl8y" && payWith !== "doub") {
     return { kind: "ready" };
   }
   if (walletBalanceWei === undefined) {

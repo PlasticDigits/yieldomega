@@ -43,7 +43,6 @@ export function ArenaLevelGate({
       requiredLevel={required}
       className={className ? `${className} arena-level-gate arena-level-gate--locked` : "arena-level-gate arena-level-gate--locked"}
       testId={testId ?? `arena-level-gate-${feature}`}
-      detail="Buy CHARM to activate this mechanic."
     >
       {children}
     </LockedUntilLevel>

@@ -88,16 +88,17 @@ surfaces do not depend on the older bright arcade JPG pack.
 
 ### Canonical token marks (`frontend/public/tokens/`)
 
-On-chain ticker art for **CHARM**, **CL8Y**, **DOUB**, **ETH**, **USDM**, plus a **MegaETH** ecosystem mark, lives **outside** `art/` so token SVG/PNG can evolve without overloading the issue #45 icon pack. Files are served as **`/tokens/<filename>`** (Vite `public/` root). TypeScript should import URL constants from **[`tokenMedia.ts`](../../src/lib/tokenMedia.ts)** rather than hard-coding strings. Short folder README: [`tokens/README.md`](../tokens/README.md).
+On-chain ticker art for **CL8Y**, **DOUB**, **ETH**, **USDM**, plus a **MegaETH** ecosystem mark, lives **outside** `art/` so token SVG/PNG can evolve without overloading the issue #45 icon pack. Files are served as **`/tokens/<filename>`** (Vite `public/` root). **CHARM** and **CRED** render through inline SVG token components. TypeScript should import constants from **[`tokenMedia.ts`](../../src/lib/tokenMedia.ts)** rather than hard-coding strings. Short folder README: [`tokens/README.md`](../tokens/README.md).
 
 | File | Used by (via `tokenMedia.ts`) |
 |------|-------------------------------|
-| [`tokens/charm.png`](../tokens/charm.png) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx), [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx) (via [`tokenMedia.ts`](../../src/lib/tokenMedia.ts)) |
 | [`tokens/cl8y.svg`](../tokens/cl8y.svg) | [`arenaPayTokenOptions.ts`](../../src/lib/arenaPayTokenOptions.ts), [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx), [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx) |
 | [`tokens/doub.png`](../tokens/doub.png) | [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx) (`PageHero` `coinSrc` via [`tokenMedia.ts`](../../src/lib/tokenMedia.ts)) |
 | [`tokens/eth.svg`](../tokens/eth.svg) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) (via [`arenaPayTokenOptions.ts`](../../src/lib/arenaPayTokenOptions.ts)) |
 | [`tokens/usdm.svg`](../tokens/usdm.svg) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) (via [`arenaPayTokenOptions.ts`](../../src/lib/arenaPayTokenOptions.ts)) |
 | [`tokens/mega.svg`](../tokens/mega.svg) | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx) — network pill when `chainId` is in `MEGAETH_CHAIN_IDS` (MegaETH mainnet / testnet; aligned with [`kumbayaRoutes.ts`](../../src/lib/kumbayaRoutes.ts) defaults) |
+
+Inline marks: **CHARM** uses [`CharmTokenIcon.tsx`](../../src/components/CharmTokenIcon.tsx); **CRED** uses [`CredTokenIcon.tsx`](../../src/components/CredTokenIcon.tsx).
 
 ### `icons/`
 
@@ -110,7 +111,7 @@ stem.
 
 | Slug                              | Used by                                                                    | Notes                                                                |
 |-----------------------------------|----------------------------------------------------------------------------|----------------------------------------------------------------------|
-| `token-cl8y.png` / `token-doub.png` / `token-charm.png` / `token-usdm.png` | [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) resampling | **Legacy / pipeline rasters.** Product UI for these tickers uses **`/tokens/`** + [`tokenMedia.ts`](../../src/lib/tokenMedia.ts) (see **Canonical token marks** above). Do not add new `/art/icons/token-*.png` consumers for those glyphs. |
+| `token-cl8y.png` / `token-doub.png` / `token-charm.png` / `token-usdm.png` | [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) resampling | **Legacy / pipeline rasters.** Product UI uses inline CHARM/CRED glyphs plus **`/tokens/`** art for other tickers through [`tokenMedia.ts`](../../src/lib/tokenMedia.ts) (see **Canonical token marks** above). Do not add new `/art/icons/token-*.png` consumers for those glyphs. |
 | `status-live.png`                 | [`PageBadge`](../../src/components/ui/PageBadge.tsx) tone `live`           | Phase badge (Sale live).                                            |
 | `status-ended.png`                | [`PageBadge`](../../src/components/ui/PageBadge.tsx) tone `info` (ended)   | Phase badge (Sale ended).                                          |
 | `status-prelaunch.png`            | [`phaseBadge`](../../src/pages/arena/arenaSimplePhase.ts) `saleStartPending` → [`PageBadge`](../../src/components/ui/PageBadge.tsx) tone `soon` | Pre-launch pictogram ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |

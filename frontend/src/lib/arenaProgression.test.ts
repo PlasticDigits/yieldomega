@@ -41,7 +41,7 @@ describe("arenaProgression", () => {
   });
 
   it("formats locked copy", () => {
-    expect(lockedUntilLevelCopy(FEATURE_UNLOCK_LEVEL.warbow)).toBe("Locked until Level 4");
+    expect(lockedUntilLevelCopy(FEATURE_UNLOCK_LEVEL.warbow)).toBe("LEVEL 4");
   });
 
   it("nextUnlockLevel returns immediate next tier through L5 cap (#334)", () => {

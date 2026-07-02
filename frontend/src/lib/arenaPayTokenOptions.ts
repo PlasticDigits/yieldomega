@@ -20,9 +20,15 @@ const BASE_PAY_TOKEN_OPTIONS: readonly PayTokenOption[] = [
 const CRED_OPTION: PayTokenOption = { value: "cred", label: "CRED", logo: CRED_TOKEN_LOGO };
 
 const DOUB_PRIMARY_OPTION: PayTokenOption = {
-  value: "cl8y",
+  value: "doub",
   label: "DOUB",
   logo: DOUB_TOKEN_LOGO,
+};
+
+const CL8Y_RESERVE_OPTION: PayTokenOption = {
+  value: "cl8y",
+  label: "CL8Y",
+  logo: CL8Y_TOKEN_LOGO,
 };
 
 /** Buy-panel pay tokens — CRED on Arena v2 mounts (#269); submit gated when `playCred` unset. */
@@ -30,6 +36,7 @@ export function payTokenOptionsForSimpleBuy(input: { isArenaV2: boolean }): read
   if (input.isArenaV2) {
     return [
       DOUB_PRIMARY_OPTION,
+      CL8Y_RESERVE_OPTION,
       { value: "eth", label: "ETH", logo: ETH_TOKEN_LOGO },
       { value: "usdm", label: "USDM", logo: USDM_TOKEN_LOGO },
       CRED_OPTION,

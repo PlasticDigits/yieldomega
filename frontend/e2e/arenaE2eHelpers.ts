@@ -58,12 +58,19 @@ export async function waitArenaSaleLive(page: Page): Promise<void> {
 
 export async function selectPayWith(
   page: Page,
-  asset: "cl8y" | "eth" | "usdm" | "cred",
+  asset: "doub" | "cl8y" | "eth" | "usdm" | "cred",
 ): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
   const trigger = buyPanel.getByTestId("arena-simple-amount-pay-token");
   const option = buyPanel.locator(`[data-pay-token-value="${asset}"]`);
-  const labelPattern = asset === "cl8y" ? /DOUB|CL8Y/i : new RegExp(asset, "i");
+  const labelPattern =
+    asset === "doub"
+      ? /DOUB/i
+      : asset === "cl8y"
+        ? /CL8Y/i
+        : asset === "cred"
+          ? /CRED/i
+          : new RegExp(asset, "i");
   const ariaLabel = await trigger.getAttribute("aria-label").catch(() => null);
   if (ariaLabel && labelPattern.test(ariaLabel)) {
     return;

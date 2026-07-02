@@ -27,6 +27,12 @@ import {
   timeArenaReadAbi,
   timeArenaWriteAbi,
 } from "@/lib/abis";
+import {
+  defaultArenaPayWith,
+  directArenaSpendLabel,
+  isDirectArenaSpendPay,
+  payUsesKumbayaRoute,
+} from "@/lib/arenaPayAsset";
 import { readArenaDoubUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
 import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
 import { useKumbayaExactOutputQuote } from "@/hooks/useKumbayaExactOutputQuote";
@@ -55,6 +61,10 @@ import {
 } from "@/lib/walletBuySessionGuard";
 import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeArenaBuyAmount";
 import { isArenaBuySpendDefaultMin } from "@/lib/timeArenaBuySpendDefault";
+import {
+  ARENA_PAY_SPEND_INPUT_SLIDER_FRACTION_DIGITS,
+  formatArenaPaySpendInputDisplay,
+} from "@/lib/timeArenaPaySpendInputFormat";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeArenaBuyReceipt";
 import { deriveWarbowClaimFlagFields } from "@/lib/warbowClaimFlagState";
 import {
@@ -66,6 +76,14 @@ import {
   resolveCl8yCheckoutBoundsGate,
   type Cl8yCheckoutBoundsGate,
 } from "@/lib/timeArenaCl8yCheckoutBounds";
+import {
+  doubSpendWeiFromCredPayTarget,
+  doubSpendWeiFromPayTokenSliderTarget,
+  payTokenWeiAtSliderPermille,
+  resolveArenaPayTokenDisplayWei,
+  resolveArenaPayTokenSpendBand,
+  sliderPermilleForPayTokenWei,
+} from "@/lib/arenaPayTokenSpendBand";
 import {
   credBurnForCharmWad,
   resolveCredCheckoutBoundsGate,
@@ -191,6 +209,8 @@ export type UseArenaSaleSession = {
   preStartCountdownSec: number | undefined;
   /** Live sale countdown — uses the shared `useArenaHeroTimer` skew. */
   saleCountdownSec: number | undefined;
+  /** Last Buy timer armed; false when epoch timer awaits first buy ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)). */
+  lastBuyTimerArmed: boolean | undefined;
   /** Hero placeholder when Last Buy timer is unarmed ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)). */
   heroCountdownPlaceholder: string | undefined;
   /** Wall-vs-chain skewed `chain time` shared with the hero timer. */
@@ -245,6 +265,8 @@ export type UseArenaSaleSession = {
   clearBuyError: () => void;
   payWith: PayWithAsset;
   setPayWith: (p: PayWithAsset) => void;
+  /** Active pay-token min/max band resolved for YOU PAY + slider (null while quotes load). */
+  paySpendBandReady: boolean;
   /** Arena v2 mount — enables Play CRED pay (#269). */
   isArenaV2: boolean;
   /** `TimeArena.playCred()` or env override; unset when CRED buys unavailable. */
@@ -303,12 +325,14 @@ export function useArenaSaleSession(
   const [spendWei, setSpendWei] = useState(0n);
   const [spendInputStr, setSpendInputStr] = useState("");
   const payInputFocusedRef = useRef(false);
+  /** When true, YOU PAY shows two decimals for slider/default (ETH always full precision). */
+  const paySpendInputCompactRef = useRef(true);
   const [useReferral, setUseReferral] = useState(true);
   const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
   const pendingReferralCode = usePendingReferralCode();
   const [buyError, setBuyError] = useState<string | null>(null);
-  const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
-  const payUsesKumbaya = payWith === "eth" || payWith === "usdm";
+  const [payWith, setPayWithState] = useState<PayWithAsset>("doub");
+  const prevPayWithRef = useRef<PayWithAsset>("doub");
   const [preemptiveCooldownUntilChainSec, setPreemptiveCooldownUntilChainSec] = useState<number | null>(
     null,
   );
@@ -352,6 +376,14 @@ export function useArenaSaleSession(
     [address, queryClient, tc],
   );
   const isArenaV2 = Boolean(options?.forceArenaV2) || isTimeArenaV2(tc);
+  const payUsesKumbaya = payUsesKumbayaRoute(payWith, isArenaV2);
+
+  useEffect(() => {
+    if (!isArenaV2 && payWith === "doub") {
+      setPayWithState("cl8y");
+    }
+  }, [isArenaV2, payWith]);
+
   const indexerOn = Boolean(indexerBaseUrl());
   const timersQuery = useArenaTimersQuery(tc);
   const saleStateQuery = useArenaSaleStateQuery(tc, { enabled: !isArenaV2 });
@@ -824,6 +856,16 @@ export function useArenaSaleSession(
     return undefined;
   }, [phase, pricePerCharmR]);
 
+  const charmBoundsResolved = useMemo((): readonly [bigint, bigint] | undefined => {
+    if (charmBoundsR?.status === "success") {
+      return charmBoundsR.result as readonly [bigint, bigint];
+    }
+    if (phase === "saleActive") {
+      return checkoutReadLatchRef.current.charmBounds;
+    }
+    return undefined;
+  }, [phase, charmBoundsR]);
+
   const buyEnvelopeParams = useMemo((): EnvelopeCurveParamsWire | null => {
     if (pricePerCharmWad === undefined || pricePerCharmWad <= 0n) {
       return null;
@@ -877,13 +919,13 @@ export function useArenaSaleSession(
     }
     const minS = minCl8ySpendBroadcastHeadroom(liveMinBuyWei);
     let maxS = liveMaxBuyWei;
-    if (payWith === "cl8y" && walletBalanceWei !== undefined) {
+    if (isDirectArenaSpendPay(payWith, isArenaV2) && walletBalanceWei !== undefined) {
       const b = BigInt(walletBalanceWei);
       if (b < maxS) maxS = b;
     }
     if (minS > maxS) return null;
     return { minS, maxS };
-  }, [liveMinBuyWei, liveMaxBuyWei, walletBalanceWei, payWith]);
+  }, [liveMinBuyWei, liveMaxBuyWei, walletBalanceWei, payWith, isArenaV2]);
 
   const cl8ySpendBoundsRef = useRef<{ minS: bigint; maxS: bigint } | null>(null);
 
@@ -947,7 +989,7 @@ export function useArenaSaleSession(
 
   useEffect(() => {
     if (payWith === "cred" && isArenaV2 && !playCredConfigured) {
-      setPayWith("cl8y");
+      setPayWithState(defaultArenaPayWith(isArenaV2));
     }
   }, [payWith, isArenaV2, playCredConfigured]);
 
@@ -1174,8 +1216,28 @@ export function useArenaSaleSession(
     ],
   );
 
+  const spendInputDecimals = isDirectArenaSpendPay(payWith, isArenaV2)
+    ? decimals
+    : payWith === "cred"
+      ? 18
+      : payTokenDecimals;
+
+  const formatSpendInputDisplay = useCallback(
+    (wei: bigint, tokenDecimals: number) =>
+      formatArenaPaySpendInputDisplay(
+        wei,
+        tokenDecimals,
+        payWith,
+        paySpendInputCompactRef.current
+          ? { compactFractionDigits: ARENA_PAY_SPEND_INPUT_SLIDER_FRACTION_DIGITS }
+          : undefined,
+      ),
+    [payWith],
+  );
+
   useEffect(() => {
     if (!cl8ySpendBounds || payInputFocusedRef.current || !buySpendDefaultMin) return;
+    paySpendInputCompactRef.current = true;
     const { minS } = cl8ySpendBounds;
     setSpendWei((prev) => (prev === minS ? prev : minS));
   }, [buySpendDefaultMin, cl8ySpendBounds]);
@@ -1200,9 +1262,34 @@ export function useArenaSaleSession(
     },
   });
 
+  const reserveCl8yAddress =
+    payWith === "cl8y" && isArenaV2 && kumbayaResolved.ok ? kumbayaResolved.config.cl8y : undefined;
+
+  const { data: reserveCl8yWalletBal } = useReadContract({
+    address: reserveCl8yAddress,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: reserveCl8yAddress && address ? [address] : undefined,
+    query: {
+      enabled: Boolean(reserveCl8yAddress && address && isConnected),
+      placeholderData: keepPreviousData,
+    },
+  });
+
   const payWalletBalance = useMemo(() => {
-    if (payWith === "cl8y") {
-      return { raw: walletBalanceWei, decimals, symbol: isArenaV2 ? "DOUB" : "CL8Y" };
+    if (isDirectArenaSpendPay(payWith, isArenaV2)) {
+      return {
+        raw: walletBalanceWei,
+        decimals,
+        symbol: directArenaSpendLabel(isArenaV2),
+      };
+    }
+    if (payWith === "cl8y" && isArenaV2) {
+      return {
+        raw: reserveCl8yWalletBal !== undefined ? (reserveCl8yWalletBal as bigint) : undefined,
+        decimals: 18,
+        symbol: "CL8Y",
+      };
     }
     if (payWith === "cred") {
       return { raw: credBalanceWei, decimals: 18, symbol: "CRED" };
@@ -1219,67 +1306,220 @@ export function useArenaSaleSession(
       decimals: payTokenDecimals,
       symbol: "USDM",
     };
-  }, [payWith, walletBalanceWei, credBalanceWei, decimals, isArenaV2, nativeEthBal, usdmWalletBal, payTokenDecimals]);
+  }, [
+    payWith,
+    walletBalanceWei,
+    credBalanceWei,
+    decimals,
+    isArenaV2,
+    nativeEthBal,
+    usdmWalletBal,
+    reserveCl8yWalletBal,
+    payTokenDecimals,
+  ]);
 
-  const spendInputDecimals =
-    payWith === "cl8y" ? decimals : payWith === "cred" ? 18 : payTokenDecimals;
+  const payTokenSpendBand = useMemo(
+    () =>
+      resolveArenaPayTokenSpendBand({
+        payWith,
+        isArenaV2,
+        cl8ySpendBounds,
+        decimals,
+        payTokenDecimals,
+        quotedBandMinPayInWei,
+        quotedBandMaxPayInWei,
+        walletPayBalanceWei: payWalletBalance.raw,
+        credPerCharmWad,
+        pricePerCharmWad,
+        charmBounds: charmBoundsResolved,
+      }),
+    [
+      payWith,
+      isArenaV2,
+      cl8ySpendBounds,
+      decimals,
+      payTokenDecimals,
+      quotedBandMinPayInWei,
+      quotedBandMaxPayInWei,
+      payWalletBalance.raw,
+      credPerCharmWad,
+      pricePerCharmWad,
+      charmBoundsResolved,
+    ],
+  );
+
+  const setPayWith = useCallback((next: PayWithAsset) => {
+    setPayWithState((prev) => (prev === next ? prev : next));
+  }, []);
+
+  useEffect(() => {
+    if (prevPayWithRef.current === payWith) return;
+    prevPayWithRef.current = payWith;
+    paySpendInputCompactRef.current = true;
+    payInputFocusedRef.current = false;
+    if (cl8ySpendBounds) {
+      setSpendWei(cl8ySpendBounds.minS);
+    }
+  }, [payWith, cl8ySpendBounds]);
+
+  const currentPayTokenWei = useMemo((): bigint | undefined => {
+    if (!cl8ySpendBounds) return undefined;
+    return resolveArenaPayTokenDisplayWei({
+      payWith,
+      isArenaV2,
+      spendWei,
+      cl8ySpendBounds,
+      payTokenSpendBand,
+      quotedPayInWei,
+      quoteLoading: quotePending || quoteFetching,
+      requiredCredBurnWei,
+      credPerCharmWad,
+      pricePerCharmWad,
+      charmBounds: charmBoundsResolved,
+    });
+  }, [
+    payTokenSpendBand,
+    cl8ySpendBounds,
+    payWith,
+    isArenaV2,
+    spendWei,
+    requiredCredBurnWei,
+    quotedPayInWei,
+    quotePending,
+    quoteFetching,
+    credPerCharmWad,
+    pricePerCharmWad,
+    charmBoundsResolved,
+  ]);
 
   useEffect(() => {
     if (!cl8ySpendBounds || payInputFocusedRef.current) return;
-    const { minS, maxS } = cl8ySpendBounds;
-    const c = clampBigint(spendWei, minS, maxS);
-    if (payWith === "cl8y") {
-      setSpendInputStr(formatUnits(c, decimals));
-      return;
-    }
-    if (payWith === "cred" && buySpendDefaultMin && requiredCredBurnWei !== undefined) {
-      setSpendInputStr(formatUnits(requiredCredBurnWei, 18));
-      return;
-    }
-    if (buySpendDefaultMin && quotedBandMinPayInWei !== undefined) {
-      setSpendInputStr(formatUnits(quotedBandMinPayInWei, payTokenDecimals));
-      return;
-    }
-    if (quotedPayInWei !== undefined) {
-      setSpendInputStr(formatUnits(quotedPayInWei, payTokenDecimals));
-    }
+    const displayWei = resolveArenaPayTokenDisplayWei({
+      payWith,
+      isArenaV2,
+      spendWei,
+      cl8ySpendBounds,
+      payTokenSpendBand,
+      quotedPayInWei,
+      quoteLoading: quotePending || quoteFetching,
+      requiredCredBurnWei,
+      credPerCharmWad,
+      pricePerCharmWad,
+      charmBounds: charmBoundsResolved,
+    });
+    if (displayWei === undefined) return;
+    const tokenDecimals =
+      payTokenSpendBand?.tokenDecimals ??
+      (isDirectArenaSpendPay(payWith, isArenaV2)
+        ? decimals
+        : payWith === "cred"
+          ? 18
+          : payTokenDecimals);
+    setSpendInputStr(formatSpendInputDisplay(displayWei, tokenDecimals));
   }, [
-    buySpendDefaultMin,
     cl8ySpendBounds,
+    payTokenSpendBand,
     spendWei,
     decimals,
     payWith,
+    isArenaV2,
     quotedPayInWei,
-    quotedBandMinPayInWei,
-    payTokenDecimals,
+    quotePending,
+    quoteFetching,
     requiredCredBurnWei,
+    credPerCharmWad,
+    pricePerCharmWad,
+    charmBoundsResolved,
+    payTokenDecimals,
+    formatSpendInputDisplay,
   ]);
 
   const spendSliderPermille = useMemo(() => {
+    if (payTokenSpendBand && currentPayTokenWei !== undefined) {
+      return sliderPermilleForPayTokenWei(payTokenSpendBand, currentPayTokenWei);
+    }
     if (!cl8ySpendBounds) return 0;
     const { minS, maxS } = cl8ySpendBounds;
     const span = maxS - minS;
     if (span <= 0n) return 0;
     const sw = clampBigint(spendWei, minS, maxS);
     return Number(((sw - minS) * 10000n) / span);
-  }, [cl8ySpendBounds, spendWei]);
+  }, [cl8ySpendBounds, currentPayTokenWei, payTokenSpendBand, spendWei]);
 
   const setSpendFromSliderPermille = useCallback(
     (permille: number) => {
       if (!cl8ySpendBounds) return;
       payInputFocusedRef.current = false;
+      paySpendInputCompactRef.current = true;
       const { minS, maxS } = cl8ySpendBounds;
       const p = clampBigint(BigInt(Math.round(permille)), 0n, 10000n);
-      const spend = minS + ((maxS - minS) * p) / 10000n;
-      setSpendWei(spend);
-      if (payWith === "cl8y") {
-        setSpendInputStr(formatUnits(spend, decimals));
+      if (!payTokenSpendBand) {
+        const spend = minS + ((maxS - minS) * p) / 10000n;
+        setSpendWei(spend);
+        const previewWei = resolveArenaPayTokenDisplayWei({
+          payWith,
+          isArenaV2,
+          spendWei: spend,
+          cl8ySpendBounds,
+          payTokenSpendBand: null,
+          quotedPayInWei,
+          quoteLoading: quotePending || quoteFetching,
+          requiredCredBurnWei,
+          credPerCharmWad,
+          pricePerCharmWad,
+          charmBounds: charmBoundsResolved,
+        });
+        if (previewWei !== undefined) {
+          const tokenDecimals =
+            payWith === "cred" ? 18 : payWith === "cl8y" ? 18 : payTokenDecimals;
+          setSpendInputStr(formatSpendInputDisplay(previewWei, tokenDecimals));
+        } else if (isDirectArenaSpendPay(payWith, isArenaV2)) {
+          setSpendInputStr(formatSpendInputDisplay(spend, decimals));
+        }
+        return;
       }
+      const { tokenDecimals } = payTokenSpendBand;
+      const targetPay = payTokenWeiAtSliderPermille(payTokenSpendBand, p);
+      let spend: bigint;
+      if (isDirectArenaSpendPay(payWith, isArenaV2)) {
+        spend = clampBigint(targetPay, minS, maxS);
+      } else if (payWith === "cl8y" && isArenaV2) {
+        spend = minS + ((maxS - minS) * p) / 10000n;
+      } else {
+        spend = doubSpendWeiFromPayTokenSliderTarget({
+          payWith,
+          isArenaV2,
+          targetPayWei: targetPay,
+          minSpendWei: minS,
+          maxSpendWei: maxS,
+          credPerCharmWad,
+          pricePerCharmWad,
+          charmBounds: charmBoundsResolved,
+        });
+      }
+      setSpendWei(spend);
+      setSpendInputStr(formatSpendInputDisplay(targetPay, tokenDecimals));
     },
-    [cl8ySpendBounds, decimals, payWith],
+    [
+      charmBoundsResolved,
+      cl8ySpendBounds,
+      credPerCharmWad,
+      decimals,
+      formatSpendInputDisplay,
+      isArenaV2,
+      payTokenDecimals,
+      payTokenSpendBand,
+      payWith,
+      pricePerCharmWad,
+      quotePending,
+      quoteFetching,
+      quotedPayInWei,
+      requiredCredBurnWei,
+    ],
   );
 
   const setSpendFromInput = useCallback((raw: string) => {
+    paySpendInputCompactRef.current = false;
     setSpendInputStr(raw);
   }, []);
 
@@ -1289,10 +1529,11 @@ export function useArenaSaleSession(
 
   const setSpendFromInputBlur = useCallback(async () => {
     payInputFocusedRef.current = false;
+    paySpendInputCompactRef.current = false;
     if (!cl8ySpendBounds) return;
     const { minS, maxS } = cl8ySpendBounds;
 
-    if (payWith === "cl8y") {
+    if (isDirectArenaSpendPay(payWith, isArenaV2)) {
       try {
         const raw = spendInputStr.trim() === "" ? "0" : spendInputStr.trim();
         const p = parseUnits(raw, decimals);
@@ -1301,6 +1542,43 @@ export function useArenaSaleSession(
         setSpendInputStr(formatUnits(c, decimals));
       } catch {
         setSpendInputStr(formatUnits(clampBigint(spendWei, minS, maxS), decimals));
+      }
+      return;
+    }
+
+    if (payWith === "cred") {
+      try {
+        const raw = spendInputStr.trim() === "" ? "0" : spendInputStr.trim();
+        let targetPay = parseUnits(raw, 18);
+        const walletCap = payWalletBalance.raw;
+        if (walletCap !== undefined && targetPay > walletCap) {
+          targetPay = walletCap;
+        }
+        let spend = minS;
+        if (
+          credPerCharmWad !== undefined &&
+          pricePerCharmWad !== undefined &&
+          charmBoundsResolved !== undefined
+        ) {
+          const [minCharmWad, maxCharmWad] = charmBoundsResolved;
+          spend = doubSpendWeiFromCredPayTarget({
+            targetCredWei: targetPay,
+            credPerCharmWad,
+            pricePerCharmWad,
+            minCharmWad,
+            maxCharmWad,
+            minSpendWei: minS,
+            maxSpendWei: maxS,
+          });
+        }
+        setSpendWei(spend);
+        setSpendInputStr(formatUnits(targetPay, 18));
+      } catch {
+        if (requiredCredBurnWei !== undefined) {
+          setSpendInputStr(formatUnits(requiredCredBurnWei, 18));
+        } else {
+          setSpendInputStr(formatUnits(clampBigint(spendWei, minS, maxS), decimals));
+        }
       }
       return;
     }
@@ -1318,13 +1596,14 @@ export function useArenaSaleSession(
         spend = await cl8ySpendWeiFromPayTokenBudget(wagmiConfig, {
           quoter: kumbayaResolved.config.quoter,
           kConfig: kumbayaResolved.config,
-          payWith,
+          payWith: payWith as Exclude<PayWithAsset, "doub" | "cred">,
           acceptedCl8y: acceptedAsset,
           targetPayInWei: targetPay,
           minSpendWei: minS,
           maxSpendWei: maxS,
+          swapOutToken: isArenaV2 ? "doub" : "cl8y",
         });
-      } else if (payUsesKumbaya) {
+      } else if (payUsesKumbaya && (payWith === "eth" || payWith === "usdm")) {
         spend = cl8ySpendWeiFromPayTokenFallback(targetPay, payWith, minS, maxS);
       } else {
         spend = clampBigint(spendWei, minS, maxS);
@@ -1340,14 +1619,19 @@ export function useArenaSaleSession(
     }
   }, [
     acceptedAsset,
+    charmBoundsResolved,
     cl8ySpendBounds,
+    credPerCharmWad,
     decimals,
+    isArenaV2,
     kumbayaResolved,
     payTokenDecimals,
     payWalletBalance.raw,
     payWith,
     payUsesKumbaya,
+    pricePerCharmWad,
     quotedPayInWei,
+    requiredCredBurnWei,
     spendInputStr,
     spendWei,
     swapRoute,
@@ -1586,7 +1870,7 @@ export function useArenaSaleSession(
             : parseUnits("1000", 18);
         const needDoub = (cw * priceWad) / parseUnits("1", 18);
 
-        if (payWith !== "cl8y") {
+        if (payUsesKumbayaRoute(payWith, isArenaV2)) {
           const k = resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv);
           if (!k.ok) {
             setBuyError(k.message);
@@ -1635,7 +1919,7 @@ export function useArenaSaleSession(
             timeArenaBuyRouter: singleRes.router,
             timeArenaAddress: tc,
             doubAddress: acceptedAsset,
-            payWith,
+            payWith: payWith as "eth" | "usdm" | "cl8y",
             kConfig: k.config,
             route,
             charmWad: cw,
@@ -1806,6 +2090,7 @@ export function useArenaSaleSession(
     buyCharmBonusPreviewLines,
     preStartCountdownSec,
     saleCountdownSec,
+    lastBuyTimerArmed: heroTimer?.lastBuyTimerArmed,
     heroCountdownPlaceholder,
     chainNowSec: heroChainNowSec,
     timerExtensionPreviewSec,
@@ -1839,6 +2124,7 @@ export function useArenaSaleSession(
     clearBuyError: () => setBuyError(null),
     payWith,
     setPayWith,
+    paySpendBandReady: payTokenSpendBand !== null,
     isArenaV2,
     playCredAddress,
     credBalanceWei,

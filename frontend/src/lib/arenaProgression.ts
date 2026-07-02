@@ -63,7 +63,7 @@ export function shouldShowPodiumLevelLock(
 }
 
 export function lockedUntilLevelCopy(requiredLevel: number): string {
-  return `Locked until Level ${requiredLevel}`;
+  return `LEVEL ${requiredLevel}`;
 }
 
 const TUTORIAL_STORAGE_PREFIX = "yieldomega.arena.featureTutorialSeen.v1.";

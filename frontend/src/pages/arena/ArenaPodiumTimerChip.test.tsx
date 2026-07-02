@@ -40,7 +40,7 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
       createElement(ArenaPodiumTimerChip, { ...baseProps, address: undefined }),
     );
     expect(html).toContain('data-testid="arena-timer-chip-lock-2"');
-    expect(html).toContain("Locked until Level 3");
+    expect(html).toContain("LEVEL 3");
     expect(html).not.toContain("Buy CHARM to activate this mechanic.");
   });
 
@@ -57,7 +57,7 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
       }),
     );
     expect(html).toContain('data-testid="arena-timer-chip-lock-2"');
-    expect(html).toContain("Locked until Level 3");
+    expect(html).toContain("LEVEL 3");
   });
 
   it("shows each feature unlock tier on side-rail pre-buy locks", () => {
@@ -88,7 +88,7 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
           address: undefined,
         }),
       );
-      expect(html).toContain(`Locked until Level ${chip.level}`);
+      expect(html).toContain(`LEVEL ${chip.level}`);
     }
   });
 

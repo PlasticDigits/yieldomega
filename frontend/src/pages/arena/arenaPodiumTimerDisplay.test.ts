@@ -13,7 +13,7 @@ describe("arenaPodiumTimerDisplay", () => {
     expect(podiumCountdownSec(false, 9_000, 1_000)).toBeUndefined();
   });
 
-  it("shows awaiting first buy copy when unarmed", () => {
+  it("shows BUY TO START copy when unarmed", () => {
     expect(formatPodiumChipTimerDisplay(false, undefined)).toBe(PODIUM_TIMER_AWAITING_FIRST_BUY);
     expect(formatPodiumHeroTimerDisplay(false, undefined)).toBe(PODIUM_TIMER_AWAITING_FIRST_BUY);
   });

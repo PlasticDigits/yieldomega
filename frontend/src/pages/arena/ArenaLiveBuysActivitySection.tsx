@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AddressInline } from "@/components/AddressInline";
+import { TokenLogo } from "@/components/TokenLogo";
 import { TxHash } from "@/components/TxHash";
 import { PageSection } from "@/components/ui/PageSection";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
@@ -232,6 +233,10 @@ function activityArtSrc(item: ArenaActivityItem): string {
   }
 }
 
+function TickerArt({ src }: { src: string }) {
+  return <TokenLogo src={src} width={42} height={42} />;
+}
+
 function formatGuardUntil(raw: string | null | undefined): string | null {
   const value = parseTickerBigInt(raw);
   if (value === null || value <= 0n) return null;
@@ -348,7 +353,7 @@ export function ArenaLiveBuysActivitySection({
                       .join(" ")}
                   >
                     <div className="arena-simple__ticker-art" aria-hidden="true">
-                      <img src={activityArtSrc(item)} alt="" width={42} height={42} decoding="async" />
+                      <TickerArt src={activityArtSrc(item)} />
                     </div>
                     <div className="arena-simple__ticker-main">
                       <span className="arena-simple__ticker-badge">{activityBadge(item)}</span>
@@ -384,7 +389,7 @@ export function ArenaLiveBuysActivitySection({
                       ) : null}
                       {item.charm_wad ? (
                         <span className="arena-simple__ticker-amount arena-simple__ticker-amount--charm">
-                          <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+                          <TokenLogo src={CHARM_TOKEN_LOGO} width={18} height={18} />
                           <strong>{formatBuyHubDerivedCompact(item.charm_wad, 18)}</strong>
                           <span> CHARM</span>
                         </span>
@@ -492,7 +497,7 @@ export function ArenaLiveBuysActivitySection({
                     style={tickerStyle}
                   >
                     <div className="arena-simple__ticker-art" aria-hidden="true">
-                      <img src={theme.artSrc} alt="" width={42} height={42} decoding="async" />
+                      <TickerArt src={theme.artSrc} />
                     </div>
                     <div className="arena-simple__ticker-main">
                       <span className="arena-simple__ticker-badge">{theme.badge}</span>
@@ -514,7 +519,7 @@ export function ArenaLiveBuysActivitySection({
                         <span> DOUB</span>
                       </span>
                       <span className="arena-simple__ticker-amount arena-simple__ticker-amount--charm">
-                        <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+                        <TokenLogo src={CHARM_TOKEN_LOGO} width={18} height={18} />
                         <strong>{formatBuyHubDerivedCompact(b.charm_wad, 18)}</strong>
                         <span> CHARM</span>
                       </span>

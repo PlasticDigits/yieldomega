@@ -5,6 +5,9 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import type { ArenaWalletStats } from "@/lib/indexerApi";
 import { formatLocaleInteger } from "@/lib/formatAmount";
+import { CredTokenIcon } from "@/components/CredTokenIcon";
+import { TokenLogo } from "@/components/TokenLogo";
+import type { WalletProfileBalancesSnapshot } from "@/hooks/useWalletProfileBalances";
 import {
   CHARM_TOKEN_LOGO,
   CRED_TOKEN_LOGO,
@@ -12,7 +15,6 @@ import {
   ETH_TOKEN_LOGO,
   USDM_TOKEN_LOGO,
 } from "@/lib/tokenMedia";
-import type { WalletProfileBalancesSnapshot } from "@/hooks/useWalletProfileBalances";
 import {
   formatWalletProfileRankLabel,
   formatWalletProfileIso8601,
@@ -38,7 +40,7 @@ function DoubAmount({ raw }: { raw: string }) {
 function CredAmount({ raw }: { raw: string }) {
   return (
     <span className="token-amount token-amount--cred">
-      <img src={CRED_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+      <CredTokenIcon className="cred-token-icon" width={18} height={18} />
       <AmountDisplay raw={raw} decimals={18} valueMono={false} />
     </span>
   );
@@ -60,7 +62,7 @@ function TokenBalanceValue({
   }
   return (
     <span className="token-amount">
-      <img src={logo} alt="" width={18} height={18} decoding="async" />
+      <TokenLogo src={logo} width={18} height={18} />
       <AmountDisplay raw={String(raw)} decimals={decimals} valueMono={false} /> {symbol}
     </span>
   );

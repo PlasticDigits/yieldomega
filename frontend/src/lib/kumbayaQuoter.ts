@@ -216,13 +216,23 @@ export async function quoteKumbayaArenaExactOutputAmountIn(
   params: {
     quoter: HexAddress;
     kConfig: KumbayaChainConfigResolved;
-    payWith: Exclude<PayWithAsset, "cl8y">;
+    payWith: Exclude<PayWithAsset, "doub" | "cred">;
     doubAddress: HexAddress;
     amountOut: bigint;
   },
 ): Promise<bigint> {
   const { quoter, kConfig, payWith, doubAddress, amountOut } = params;
   const outForQuote = grossCl8yWithQuoteHeadroom(amountOut);
+  if (payWith === "cl8y") {
+    return quoteExactOutputSingleAmountIn(
+      wagmiConfig,
+      quoter,
+      kConfig.cl8y,
+      doubAddress,
+      outForQuote,
+      kConfig.doubCl8yFee,
+    );
+  }
   if (payWith === "usdm") {
     return quoteArenaUsdmPathAmountIn(wagmiConfig, quoter, kConfig, doubAddress, outForQuote);
   }

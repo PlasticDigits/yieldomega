@@ -2,8 +2,8 @@
 
 import type { Config } from "wagmi";
 import type { HexAddress } from "@/lib/addresses";
-import { quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
-import type { KumbayaChainConfigResolved } from "@/lib/kumbayaRoutes";
+import { quoteKumbayaArenaExactOutputAmountIn, quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
+import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
 
 const MAX_BINARY_SEARCH_STEPS = 48;
 
@@ -16,26 +16,43 @@ export async function cl8ySpendWeiFromPayTokenBudget(
   params: {
     quoter: HexAddress;
     kConfig: KumbayaChainConfigResolved;
-    payWith: "eth" | "usdm";
+    payWith: Exclude<PayWithAsset, "doub" | "cred">;
     acceptedCl8y: HexAddress;
     targetPayInWei: bigint;
     minSpendWei: bigint;
     maxSpendWei: bigint;
+    swapOutToken?: "cl8y" | "doub";
   },
 ): Promise<bigint> {
-  const { targetPayInWei, minSpendWei, maxSpendWei, quoter, kConfig, payWith, acceptedCl8y } =
-    params;
+  const {
+    targetPayInWei,
+    minSpendWei,
+    maxSpendWei,
+    quoter,
+    kConfig,
+    payWith,
+    acceptedCl8y,
+    swapOutToken = "cl8y",
+  } = params;
   if (maxSpendWei <= minSpendWei) return minSpendWei;
   if (targetPayInWei <= 0n) return minSpendWei;
 
   const quoteAt = (amountOut: bigint) =>
-    quoteKumbayaExactOutputAmountIn(wagmiConfig, {
-      quoter,
-      kConfig,
-      payWith,
-      acceptedCl8y,
-      amountOut,
-    });
+    swapOutToken === "doub"
+      ? quoteKumbayaArenaExactOutputAmountIn(wagmiConfig, {
+          quoter,
+          kConfig,
+          payWith,
+          doubAddress: acceptedCl8y,
+          amountOut,
+        })
+      : quoteKumbayaExactOutputAmountIn(wagmiConfig, {
+          quoter,
+          kConfig,
+          payWith: payWith as Exclude<PayWithAsset, "cl8y" | "doub" | "cred">,
+          acceptedCl8y,
+          amountOut,
+        });
 
   const qMin = await quoteAt(minSpendWei);
   if (qMin >= targetPayInWei) return minSpendWei;

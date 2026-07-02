@@ -27,6 +27,8 @@ import {
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { payTokenOptionsForSimpleBuy } from "@/lib/arenaPayTokenOptions";
 import type { PayTokenOption } from "@/lib/arenaPayTokenOptions";
+import { isDirectArenaSpendPay, payUsesKumbayaRoute } from "@/lib/arenaPayAsset";
+import { TokenLogo } from "@/components/TokenLogo";
 import { CHARM_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { formatUnits, isAddress, zeroAddress } from "viem";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
@@ -91,6 +93,7 @@ const ZERO_ADDRESS_LOWER = zeroAddress.toLowerCase();
  */
 type SimpleProjectedEffectsLatch = {
   saleCountdownSec: number | undefined;
+  lastBuyTimerArmed: boolean | undefined;
   timerExtensionPreviewSec: number | undefined;
   charmWadSelected: bigint | undefined;
   buyCheckoutCharmWeightWad: bigint | undefined;
@@ -102,6 +105,7 @@ type SimpleProjectedEffectsLatch = {
 function emptySimpleProjectedEffectsLatch(): SimpleProjectedEffectsLatch {
   return {
     saleCountdownSec: undefined,
+    lastBuyTimerArmed: undefined,
     timerExtensionPreviewSec: undefined,
     charmWadSelected: undefined,
     buyCheckoutCharmWeightWad: undefined,
@@ -123,6 +127,7 @@ function buildSimplePageProjectedEffectLines(args: {
     charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
     charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
     secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
+    lastBuyTimerArmed: session.lastBuyTimerArmed ?? latch.lastBuyTimerArmed,
     timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
     activeDefendedStreak: session.activeDefendedStreak ?? latch.activeDefendedStreak,
     recentBuys,
@@ -260,14 +265,11 @@ function ArenaSimpleAmountPayTokenSelect({
           }
         }}
       >
-        <img
+        <TokenLogo
           className="arena-simple__amount-token-dropdown-icon"
           src={active.logo}
-          alt=""
           width={16}
           height={16}
-          decoding="async"
-          aria-hidden="true"
         />
         <span className="arena-simple__amount-token-combobox-label">{active.label}</span>
         <span className="arena-simple__amount-token-combobox-chevron" aria-hidden="true">
@@ -303,14 +305,11 @@ function ArenaSimpleAmountPayTokenSelect({
                 comboboxRef.current?.focus();
               }}
             >
-              <img
+              <TokenLogo
                 className="arena-simple__amount-token-dropdown-icon"
                 src={o.logo}
-                alt=""
                 width={16}
                 height={16}
-                decoding="async"
-                aria-hidden="true"
               />
               <span>{o.label}</span>
             </button>
@@ -415,6 +414,7 @@ export function ArenaSimplePage({
     }
     const c = simpleProjectedEffectsLatchRef.current;
     if (session.saleCountdownSec !== undefined) c.saleCountdownSec = session.saleCountdownSec;
+    if (session.lastBuyTimerArmed !== undefined) c.lastBuyTimerArmed = session.lastBuyTimerArmed;
     if (session.timerExtensionPreviewSec !== undefined) c.timerExtensionPreviewSec = session.timerExtensionPreviewSec;
     if (session.charmWadSelected !== undefined) c.charmWadSelected = session.charmWadSelected;
     if (session.buyCheckoutCharmWeightWad !== undefined) c.buyCheckoutCharmWeightWad = session.buyCheckoutCharmWeightWad;
@@ -428,6 +428,7 @@ export function ArenaSimplePage({
     session.estimatedSpendWei,
     session.phase,
     session.saleCountdownSec,
+    session.lastBuyTimerArmed,
     session.timerExtensionPreviewSec,
     session.walletConnected,
     session.warbowPendingFlagOwner,
@@ -517,6 +518,7 @@ export function ArenaSimplePage({
     session.charmWadSelected,
     session.plantWarBowFlag,
     session.saleCountdownSec,
+    session.lastBuyTimerArmed,
     session.timerExtensionPreviewSec,
     session.walletAddress,
     session.warbowPendingFlagOwner,
@@ -602,18 +604,19 @@ export function ArenaSimplePage({
   }, [recentBuys, podiumReads.data, playerWalletStats?.warbow_battle_points, session.walletAddress]);
 
   const paySpendSuffix =
-    session.payWith === "cl8y"
-      ? primarySpendAssetLabel
-      : session.payWith === "cred"
-        ? "CRED"
-        : session.payWith === "eth"
-          ? "ETH"
-          : "USDM";
+    session.payWith === "doub"
+      ? "DOUB"
+      : session.payWith === "cl8y"
+        ? "CL8Y"
+        : session.payWith === "cred"
+          ? "CRED"
+          : session.payWith === "eth"
+            ? "ETH"
+            : "USDM";
 
+  /** Preview-only: amount + slider stay editable unless sale inactive or band reads are missing. */
   const spendControlsDisabled =
-    session.phase !== "saleActive" ||
-    !session.walletConnected ||
-    session.cl8ySpendBounds === null;
+    session.phase !== "saleActive" || session.cl8ySpendBounds === null;
 
   /** Spend-asset picker stays interactive while writes are gated (connect / wrong network / buy blockers). */
   const payTokenSelectDisabled = session.phase !== "saleActive";
@@ -628,11 +631,11 @@ export function ArenaSimplePage({
             leadingLabel={`YOUR ${session.payWalletBalance.symbol.toUpperCase()}:`}
             valueMono={false}
           />
-          {session.payWith === "cl8y" && (
+          {isDirectArenaSpendPay(session.payWith, session.isArenaV2) && (
             <button
               type="button"
               className="arena-simple__balance-refresh"
-              aria-label={`Refresh ${primarySpendAssetLabel} balance`}
+              aria-label={`Refresh ${session.payWalletBalance.symbol} balance`}
               disabled={session.walletBalanceRefreshing}
               onClick={() => session.refetchWalletBalance()}
             >
@@ -740,7 +743,7 @@ export function ArenaSimplePage({
       ? session.cl8yCheckoutBoundsGate
       : null;
   const insufficientCl8yForBuy =
-    session.payWith === "cl8y" && insufficientCl8yGate !== null;
+    isDirectArenaSpendPay(session.payWith, session.isArenaV2) && insufficientCl8yGate !== null;
 
   const insufficientCredGate =
     session.credCheckoutBoundsGate.kind === "insufficient_cred"
@@ -809,7 +812,7 @@ export function ArenaSimplePage({
       </>
     );
 
-  const payUsesKumbaya = session.payWith === "eth" || session.payWith === "usdm";
+  const payUsesKumbaya = payUsesKumbayaRoute(session.payWith, session.isArenaV2);
   const nonCl8yBlocked =
     payUsesKumbaya &&
     (session.kumbayaRoutingBlocker !== null ||
@@ -927,14 +930,11 @@ export function ArenaSimplePage({
             <strong className="arena-simple__receive-amount">{receiveCharmLabel}</strong>
             <div className="arena-simple__receive-token-stack">
               <span className="arena-simple__receive-token">
-                <img
+                <TokenLogo
                   className="arena-simple__receive-token-logo"
                   src={CHARM_TOKEN_LOGO}
-                  alt=""
-                  aria-hidden="true"
                   width={24}
                   height={24}
-                  decoding="async"
                 />
                 CHARM
               </span>
@@ -1155,12 +1155,12 @@ export function ArenaSimplePage({
                   </div>
                 ) : null}
               </div>
-              {session.walletConnected && session.payWith !== "cl8y" && !session.kumbayaRoutingBlocker ? (
+              {session.walletConnected && payUsesKumbaya && !session.kumbayaRoutingBlocker ? (
                 <p className="muted arena-simple__routed-buy-footnote">
                   Routed buys use a fixed <strong>3%</strong> max slippage cap.
                 </p>
               ) : null}
-              {session.walletConnected && session.payWith !== "cl8y" && session.kumbayaRoutingBlocker ? (
+              {session.walletConnected && payUsesKumbaya && session.kumbayaRoutingBlocker ? (
                 <StatusMessage variant="error">{session.kumbayaRoutingBlocker}</StatusMessage>
               ) : null}
               {session.walletConnected && session.arenaPaused === true && (
@@ -1218,7 +1218,6 @@ export function ArenaSimplePage({
               className="arena-simple__warbow-gate arena-level-gate arena-level-gate--locked"
               testId="warbow-hero-level-gate"
               overlayTestId="warbow-hero-level-lock"
-              detail="Buy CHARM to activate this mechanic."
             >
               <ArenaWarbowGatePreview />
             </LockedUntilLevel>

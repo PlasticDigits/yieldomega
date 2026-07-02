@@ -46,6 +46,7 @@ const BYTES32_ZERO =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 const PAY_ETH = 0;
 const PAY_STABLE = 1;
+const PAY_CL8Y = 2;
 
 function bytes32OrZero(codeHash: `0x${string}` | undefined): `0x${string}` {
   if (codeHash && codeHash.length === 66) {
@@ -62,7 +63,7 @@ export async function submitArenaKumbayaSingleTxBuy(params: {
   timeArenaBuyRouter: HexAddress;
   timeArenaAddress: HexAddress;
   doubAddress: HexAddress;
-  payWith: "eth" | "usdm";
+  payWith: "eth" | "usdm" | "cl8y";
   kConfig: KumbayaChainConfigResolved;
   route: RouteForPayOk;
   charmWad: bigint;
@@ -90,6 +91,7 @@ export async function submitArenaKumbayaSingleTxBuy(params: {
   } = params;
   const router = timeArenaBuyRouter as `0x${string}`;
   const payDecimals = payWith === "usdm" ? 6 : 18;
+  const paySymbol = payWith === "eth" ? "ETH" : payWith === "usdm" ? "USDM" : "CL8Y";
 
   kumbayaBuyDebugLog("arena-submit:start", {
     userAddress,
@@ -114,10 +116,10 @@ export async function submitArenaKumbayaSingleTxBuy(params: {
     });
     assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
     const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
-    const payKind = payWith === "eth" ? PAY_ETH : PAY_STABLE;
+    const payKind = payWith === "eth" ? PAY_ETH : payWith === "usdm" ? PAY_STABLE : PAY_CL8Y;
     const h = bytes32OrZero(codeHash);
 
-    if (payWith === "usdm") {
+    if (payWith === "usdm" || payWith === "cl8y") {
       const uAllow = await readContract(cfg, {
         address: route.tokenIn,
         abi: erc20Abi,
@@ -147,8 +149,8 @@ export async function submitArenaKumbayaSingleTxBuy(params: {
     const buyArgs = [charmWad, h, plantWarBowFlag, payKind, deadline, maxIn, route.path] as const;
     kumbayaBuyDebugLog("arena-submit:write", {
       grossDoub: grossDoub.toString(),
-      quotedIn: formatKumbayaWei(qIn, payDecimals, payWith === "eth" ? "ETH" : "USDM"),
-      maxIn: formatKumbayaWei(maxIn, payDecimals, payWith === "eth" ? "ETH" : "USDM"),
+      quotedIn: formatKumbayaWei(qIn, payDecimals, paySymbol),
+      maxIn: formatKumbayaWei(maxIn, payDecimals, paySymbol),
     });
 
     const { hash } = await writeContractWithGasBuffer({

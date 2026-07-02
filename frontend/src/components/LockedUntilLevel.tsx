@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { ReactNode } from "react";
+import { LevelLockIcon } from "@/components/LevelLockIcon";
 import { lockedUntilLevelCopy } from "@/lib/arenaProgression";
-
-const LOCK_ICON_SRC = "/art/icons/arena-lock-level.png?v=glass1";
 
 type Props = {
   requiredLevel: number;
@@ -12,7 +11,7 @@ type Props = {
   contentClassName?: string;
   overlayTestId?: string;
   testId?: string;
-  /** Overrides default “Locked until Level N” headline. */
+  /** Overrides default “LEVEL N” headline. */
   title?: ReactNode;
   detail?: ReactNode;
   action?: ReactNode;
@@ -46,17 +45,10 @@ export function LockedUntilLevel({
         {children}
       </div>
       <div className="locked-until-level__overlay" data-testid={overlayTestId} role="note" aria-label={ariaLabel}>
-        <img
-          className="locked-until-level__icon"
-          src={LOCK_ICON_SRC}
-          alt=""
-          width={96}
-          height={96}
-          loading="lazy"
-          decoding="async"
-          aria-hidden="true"
-        />
-        <strong>{copy}</strong>
+        <div className="locked-until-level__headline">
+          <LevelLockIcon className="locked-until-level__icon" />
+          <strong>{copy}</strong>
+        </div>
         {detail ? <span>{detail}</span> : null}
         {action ? <span className="locked-until-level__action">{action}</span> : null}
       </div>

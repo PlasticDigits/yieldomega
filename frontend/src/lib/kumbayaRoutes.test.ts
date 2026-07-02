@@ -9,6 +9,7 @@ import {
   resolveTimeArenaBuyRouterForKumbayaSingleTx,
   resolveArenaBuyRouterForKumbayaSingleTx,
   routingForPayAsset,
+  routingForArenaPayAsset,
   type KumbayaChainConfigResolved,
 } from "./kumbayaRoutes";
 
@@ -18,6 +19,7 @@ const CL8Y = "0x2222222222222222222222222222222222222222" as const;
 const ROUTER = "0x3333333333333333333333333333333333333333" as const;
 const QUOTER = "0x4444444444444444444444444444444444444444" as const;
 const BUY_R = "0x5555555555555555555555555555555555555555" as const;
+const DOUB = "0x6666666666666666666666666666666666666666" as const;
 
 function sampleConfig(over?: Partial<KumbayaChainConfigResolved>): KumbayaChainConfigResolved {
   return {
@@ -146,6 +148,29 @@ describe("routingForPayAsset", () => {
     const pay = routingForPayAsset("usdm", CL8Y, r.config);
     expect(pay.ok).toBe(false);
     if (!pay.ok) expect(pay.reason).toBe("missing_usdm");
+  });
+});
+
+describe("routingForArenaPayAsset", () => {
+  const cfg = sampleConfig();
+
+  it("DOUB is direct", () => {
+    const r = routingForArenaPayAsset("doub", DOUB, cfg);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.path).toBe("0x");
+      expect(r.tokenIn).toBe(DOUB);
+    }
+  });
+
+  it("reserve CL8Y uses single-hop path into DOUB", () => {
+    const r = routingForArenaPayAsset("cl8y", DOUB, cfg);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.tokenIn).toBe(CL8Y);
+      expect(r.path.startsWith("0x")).toBe(true);
+      expect(r.path.length).toBeGreaterThan(2);
+    }
   });
 });
 
