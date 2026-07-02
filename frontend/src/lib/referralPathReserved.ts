@@ -8,6 +8,7 @@
 export const APP_RESERVED_TOP_LEVEL_SEGMENTS: ReadonlySet<string> = new Set([
   "api",
   "assets",
+  "audit",
   "collection",
   "favicon.ico",
   "home",
@@ -24,6 +25,7 @@ export const APP_RESERVED_TOP_LEVEL_SEGMENTS: ReadonlySet<string> = new Set([
  */
 export const APP_RESERVED_UNDER_TIMECURVE: ReadonlySet<string> = new Set([
   "arena",
+  "audit",
   "protocol",
 ]);
 

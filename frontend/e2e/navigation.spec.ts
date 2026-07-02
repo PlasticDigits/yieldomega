@@ -19,7 +19,7 @@ test("deep link from home to each surface", async ({ page }) => {
 
   await page.goto(navHomeRoute);
   await nav.getByRole("link", { name: "AUDIT" }).click();
-  await expect(page).toHaveURL(/\/arena\/protocol$/);
+  await expect(page).toHaveURL(/\/audit$/);
 
   for (const path of ["/kumbaya", "/sir"] as const) {
     await page.goto(path);

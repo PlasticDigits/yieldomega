@@ -268,7 +268,7 @@ export type ArenaLiveBuysActivitySectionProps = {
 
 /**
  * Full-height Arena action ticker cards.
- * Wired on the protocol / audit view (`/arena/protocol`) so operators can
+ * Wired on the audit view (`/audit`) so operators can
  * correlate indexed activity with raw onchain reads.
  */
 export function ArenaLiveBuysActivitySection({

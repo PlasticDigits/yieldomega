@@ -16,6 +16,7 @@ vi.mock("@/hooks/useArenaPendingRevengeTargets", () => ({
     pendingRevengeTargets: [],
     hasRevengeOpen: false,
     revengeIndexerConfigured: true,
+    pendingRevengeLoadFailed: false,
   }),
 }));
 

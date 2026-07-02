@@ -47,30 +47,30 @@ const SECONDARY_ROUTES: Surface[] = [
   { path: "sir", element: <SirPage /> },
 ];
 
+const AUDIT_ROUTE: Surface = {
+  path: "audit",
+  element: (
+    <ArenaProtocolDataProvider>
+      <ArenaProtocolPage />
+    </ArenaProtocolDataProvider>
+  ),
+};
+
 /** Arena sub-routes and legacy `/arena` redirect (#256, #266). Play surface is index `/`. */
 const ARENA_ROUTES: Surface[] = [
   { path: "arena", element: <Navigate to="/" replace /> },
-  {
-    path: "arena/protocol",
-    element: (
-      <ArenaProtocolDataProvider>
-        <ArenaProtocolPage />
-      </ArenaProtocolDataProvider>
-    ),
-  },
+  { path: "arena/protocol", element: <Navigate to="/audit" replace /> },
   { path: "arena/:arenaSegment", element: <ArenaBranchPage /> },
   { path: "timecurve", element: <Navigate to="/" replace /> },
   { path: "timecurve/arena", element: <Navigate to="/" replace /> },
-  {
-    path: "timecurve/protocol",
-    element: <Navigate to="/arena/protocol" replace />,
-  },
+  { path: "timecurve/protocol", element: <Navigate to="/audit" replace /> },
   { path: "timecurve/:arenaLegacySegment", element: <LegacyArenaSegmentRedirect /> },
 ];
 
 const ROUTES_NO_ENV: Surface[] = [
   { path: undefined, element: <TimeArenaPage /> },
   { path: "home", element: <HomePage /> },
+  AUDIT_ROUTE,
   ...ARENA_ROUTES,
   ...SECONDARY_ROUTES,
 ];
@@ -78,6 +78,7 @@ const ROUTES_NO_ENV: Surface[] = [
 const ROUTES_POST_LAUNCH: Surface[] = [
   { path: undefined, element: <TimeArenaPage /> },
   { path: "home", element: <HomePage /> },
+  AUDIT_ROUTE,
   ...ARENA_ROUTES,
   ...SECONDARY_ROUTES,
 ];

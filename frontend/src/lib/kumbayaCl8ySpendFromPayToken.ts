@@ -3,6 +3,7 @@
 import type { Config } from "wagmi";
 import type { HexAddress } from "@/lib/addresses";
 import { quoteKumbayaArenaExactOutputAmountIn, quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
+import { USDM_FROM_DOUB_DECIMAL_SCALE } from "@/lib/arenaPayAsset";
 import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
 
 const MAX_BINARY_SEARCH_STEPS = 48;
@@ -80,7 +81,7 @@ export function cl8ySpendWeiFromPayTokenFallback(
   if (targetPayInWei <= 0n) return minSpendWei;
   let spend: bigint;
   if (payWith === "usdm") {
-    spend = (targetPayInWei * 100n) / 98n;
+    spend = (targetPayInWei * 100n * USDM_FROM_DOUB_DECIMAL_SCALE) / 98n;
   } else {
     spend = (targetPayInWei * 1_000_000n) / 419n;
   }

@@ -7,6 +7,7 @@ import {
   estimateKumbayaPayTokenInFromDoubSpend,
   payTokenWeiAtSliderPermille,
   payTokenWeiForDoubSpend,
+  payTokenWeiFromCachedQuoteRate,
   resolveArenaPayTokenDisplayWei,
   resolveArenaPayTokenSpendBand,
   sliderPermilleForPayTokenWei,
@@ -56,10 +57,10 @@ describe("resolveArenaPayTokenSpendBand", () => {
       isArenaV2: true,
       cl8ySpendBounds: doubBounds,
       decimals: 18,
-      payTokenDecimals: 18,
+      payTokenDecimals: 6,
     });
-    expect(band?.minPayWei).toBe((10n * WAD * 98n) / 100n);
-    expect(band?.maxPayWei).toBe((100n * WAD * 98n) / 100n);
+    expect(band?.minPayWei).toBe((10n * WAD * 98n) / (100n * 10n ** 12n));
+    expect(band?.maxPayWei).toBe((100n * WAD * 98n) / (100n * 10n ** 12n));
   });
 
   it("derives CRED min/max from charm burn at DOUB band edges", () => {
@@ -87,6 +88,24 @@ describe("pay token slider helpers", () => {
     expect(sliderPermilleForPayTokenWei(band, 60n)).toBe(5000);
   });
 
+  it("derives slider permille from DOUB spend, not stale quoter output", () => {
+    const band = {
+      minPayWei: 100n,
+      maxPayWei: 200n,
+      tokenDecimals: 18,
+    };
+    const spendWei = 55n * WAD;
+    const linearPay = payTokenWeiForDoubSpend({
+      spendWei,
+      cl8ySpendBounds: doubBounds,
+      payTokenSpendBand: band,
+    });
+    expect(linearPay).toBe(150n);
+    expect(sliderPermilleForPayTokenWei(band, linearPay)).toBe(5000);
+    // Live quoter at the same DOUB spend can differ; slider must track band permille.
+    expect(sliderPermilleForPayTokenWei(band, 999n)).not.toBe(5000);
+  });
+
   it("maps CRED pay targets back to DOUB spend", () => {
     const spend = doubSpendWeiFromCredPayTarget({
       targetCredWei: 200n * WAD,
@@ -100,7 +119,7 @@ describe("pay token slider helpers", () => {
     expect(spend).toBe(10n * WAD);
   });
 
-  it("prefers live quoter output but uses linear preview while quote is loading", () => {
+  it("uses band-linear YOU PAY for ETH while a spend band is active", () => {
     const band = {
       minPayWei: 100n,
       maxPayWei: 200n,
@@ -112,39 +131,107 @@ describe("pay token slider helpers", () => {
       payTokenSpendBand: band,
     });
     expect(linearMid).toBe(150n);
+    const base = {
+      payWith: "eth" as const,
+      isArenaV2: true,
+      spendWei: 55n * WAD,
+      cl8ySpendBounds: doubBounds,
+      payTokenSpendBand: band,
+      quotedPayInWei: 999n,
+      quotedForAmountOutWei: 55n * WAD,
+      requiredCredBurnWei: undefined,
+      credPerCharmWad: undefined,
+      pricePerCharmWad: undefined,
+      charmBounds: undefined,
+    };
+    expect(
+      resolveArenaPayTokenDisplayWei({ ...base, quoteLoading: true }),
+    ).toBe(150n);
+    expect(
+      resolveArenaPayTokenDisplayWei({ ...base, quoteLoading: false }),
+    ).toBe(150n);
+  });
+
+  it("scales USDM YOU PAY from cached quoter rate even when spend band exists", () => {
+    const band = {
+      minPayWei: 100n,
+      maxPayWei: 200n,
+      tokenDecimals: 6,
+    };
+    const quotedPay = 999n;
+    const quotedOut = 55n * WAD;
+    const halfOut = 27n * WAD + 5n * 10n ** 17n;
     expect(
       resolveArenaPayTokenDisplayWei({
         payWith: "usdm",
         isArenaV2: true,
-        spendWei: 55n * WAD,
+        spendWei: halfOut,
         cl8ySpendBounds: doubBounds,
         payTokenSpendBand: band,
-        quotedPayInWei: 999n,
+        quotedPayInWei: quotedPay,
+        quotedForAmountOutWei: quotedOut,
         quoteLoading: true,
         requiredCredBurnWei: undefined,
         credPerCharmWad: undefined,
         pricePerCharmWad: undefined,
         charmBounds: undefined,
       }),
-    ).toBe(150n);
+    ).toBe((quotedPay * halfOut) / quotedOut);
+  });
+
+  it("prefers live quoter output when spend band is still loading", () => {
+    const quotedPay = 999n;
+    const quotedOut = 55n * WAD;
+    const halfOut = 27n * WAD + 5n * 10n ** 17n;
+    expect(
+      resolveArenaPayTokenDisplayWei({
+        payWith: "usdm",
+        isArenaV2: true,
+        spendWei: halfOut,
+        cl8ySpendBounds: doubBounds,
+        payTokenSpendBand: null,
+        quotedPayInWei: quotedPay,
+        quotedForAmountOutWei: quotedOut,
+        quoteLoading: true,
+        requiredCredBurnWei: undefined,
+        credPerCharmWad: undefined,
+        pricePerCharmWad: undefined,
+        charmBounds: undefined,
+      }),
+    ).toBe((quotedPay * halfOut) / quotedOut);
     expect(
       resolveArenaPayTokenDisplayWei({
         payWith: "usdm",
         isArenaV2: true,
         spendWei: 55n * WAD,
         cl8ySpendBounds: doubBounds,
-        payTokenSpendBand: band,
-        quotedPayInWei: 999n,
+        payTokenSpendBand: null,
+        quotedPayInWei: quotedPay,
+        quotedForAmountOutWei: quotedOut,
         quoteLoading: false,
         requiredCredBurnWei: undefined,
         credPerCharmWad: undefined,
         pricePerCharmWad: undefined,
         charmBounds: undefined,
       }),
-    ).toBe(999n);
+    ).toBe(quotedPay);
+  });
+
+  it("scales cached USDM quote rate along DOUB spend", () => {
+    const payIn = 98n * 10n ** 6n;
+    const amountOut = 10n * WAD;
+    const spend = 50n * WAD;
+    expect(
+      payTokenWeiFromCachedQuoteRate({
+        spendWei: spend,
+        cl8ySpendBounds: doubBounds,
+        quotedPayInWei: payIn,
+        quotedForAmountOutWei: amountOut,
+      }),
+    ).toBe(490n * 10n ** 6n);
   });
 
   it("estimates USDM from DOUB when quoter band is unavailable", () => {
-    expect(estimateKumbayaPayTokenInFromDoubSpend("usdm", true, 100n * WAD)).toBe(98n * WAD);
+    expect(estimateKumbayaPayTokenInFromDoubSpend("usdm", true, 100n * WAD)).toBe(98n * 10n ** 6n);
   });
 });

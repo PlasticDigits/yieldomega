@@ -4,6 +4,11 @@ import { useEffect } from "react";
 import { extractHttpResponseStatus } from "@/lib/extractHttpResponseStatus";
 import { reportRpcFetchAttempt, reportRpcRateLimited } from "@/lib/rpcConnectivity";
 
+/** HTTP statuses that should jump straight to shared RPC backoff (rate limits / overload). */
+function isRpcThrottleHttpStatus(status: number | undefined): boolean {
+  return status === 429 || status === 403 || status === 503;
+}
+
 type RpcQueryHealthPick = {
   isFetched: boolean;
   isFetching: boolean;
@@ -23,7 +28,7 @@ export function useRpcQueryHealthForRefetch(query: RpcQueryHealthPick): void {
     }
     if (query.isError && query.error) {
       const status = extractHttpResponseStatus(query.error);
-      if (status === 429) {
+      if (isRpcThrottleHttpStatus(status)) {
         reportRpcRateLimited();
       } else {
         reportRpcFetchAttempt(false);

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useMemo } from "react";
-import { useReadContracts } from "wagmi";
 import { timeArenaReadAbi } from "@/lib/abis";
 import type { ArenaPodiumApiRow, ArenaTimersResponse } from "@/lib/indexerApi";
 import {
@@ -36,6 +35,53 @@ export type ProtocolPodiumAuditRow = {
 };
 
 const ZERO_WINNER = "0x0000000000000000000000000000000000000000" as const;
+
+/** On-chain per-podium timer params for the AUDIT accordion (12 multicall rows). */
+export function arenaProtocolPodiumTimerAuditContracts(arenaAddress: `0x${string}`) {
+  const contracts: {
+    address: `0x${string}`;
+    abi: typeof timeArenaReadAbi;
+    functionName: "podiumTimerExtensionSec" | "podiumInitialTimerSec" | "podiumTimerCapSec";
+    args: readonly [bigint];
+  }[] = [];
+  for (let cat = 0; cat < 4; cat += 1) {
+    const catArg = BigInt(cat);
+    contracts.push(
+      {
+        address: arenaAddress,
+        abi: timeArenaReadAbi,
+        functionName: "podiumTimerExtensionSec",
+        args: [catArg],
+      },
+      {
+        address: arenaAddress,
+        abi: timeArenaReadAbi,
+        functionName: "podiumInitialTimerSec",
+        args: [catArg],
+      },
+      {
+        address: arenaAddress,
+        abi: timeArenaReadAbi,
+        functionName: "podiumTimerCapSec",
+        args: [catArg],
+      },
+    );
+  }
+  return contracts;
+}
+
+export function readPodiumTimerSecFromMulticall(
+  timerReads: readonly { status: string; result?: unknown }[] | undefined,
+  contractCategoryIndex: number,
+  slot: 0 | 1 | 2,
+): number | undefined {
+  const idx = contractCategoryIndex * 3 + slot;
+  const row = timerReads?.[idx];
+  if (row?.status === "success" && row.result !== undefined) {
+    return Number(row.result as bigint);
+  }
+  return undefined;
+}
 
 function indexerRowForContractCat(
   rows: readonly ArenaPodiumApiRow[],
@@ -84,59 +130,13 @@ export function useArenaProtocolPodiumAudit(
   podiumRows: readonly PodiumReadRow[],
   indexerRows: readonly ArenaPodiumApiRow[],
   chainNowSec: number | undefined,
+  podiumTimerReads?: readonly { status: string; result?: unknown }[],
 ) {
   const { data: timerData } = useArenaTimersQuery(arenaAddress);
 
-  const timerContracts = useMemo(() => {
-    if (!arenaAddress) {
-      return [];
-    }
-    const contracts: {
-      address: `0x${string}`;
-      abi: typeof timeArenaReadAbi;
-      functionName: "podiumTimerExtensionSec" | "podiumInitialTimerSec" | "podiumTimerCapSec";
-      args: readonly [bigint];
-    }[] = [];
-    for (let cat = 0; cat < 4; cat += 1) {
-      const catArg = BigInt(cat);
-      contracts.push(
-        {
-          address: arenaAddress,
-          abi: timeArenaReadAbi,
-          functionName: "podiumTimerExtensionSec",
-          args: [catArg],
-        },
-        {
-          address: arenaAddress,
-          abi: timeArenaReadAbi,
-          functionName: "podiumInitialTimerSec",
-          args: [catArg],
-        },
-        {
-          address: arenaAddress,
-          abi: timeArenaReadAbi,
-          functionName: "podiumTimerCapSec",
-          args: [catArg],
-        },
-      );
-    }
-    return contracts;
-  }, [arenaAddress]);
-
-  const { data: timerReads } = useReadContracts({
-    contracts: timerContracts,
-    query: { enabled: Boolean(arenaAddress) },
-  });
-
   const rows: ProtocolPodiumAuditRow[] = useMemo(() => {
-    const readTimerSec = (contractCat: number, slot: 0 | 1 | 2): number | undefined => {
-      const idx = contractCat * 3 + slot;
-      const row = timerReads?.[idx];
-      if (row?.status === "success" && row.result !== undefined) {
-        return Number(row.result as bigint);
-      }
-      return undefined;
-    };
+    const readTimerSec = (contractCat: number, slot: 0 | 1 | 2): number | undefined =>
+      readPodiumTimerSecFromMulticall(podiumTimerReads, contractCat, slot);
 
     return PODIUM_LABELS.map((label, uxIndex) => {
       const contractCategoryIndex = PODIUM_CONTRACT_CATEGORY_INDEX[uxIndex]!;
@@ -169,7 +169,7 @@ export function useArenaProtocolPodiumAudit(
         prizesEpochPlus2: apiRow?.future_prize_places_doub_wad,
       };
     });
-  }, [chainNowSec, indexerRows, podiumRows, timerData, timerReads]);
+  }, [chainNowSec, indexerRows, podiumRows, podiumTimerReads, timerData]);
 
   return {
     rows,

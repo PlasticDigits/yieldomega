@@ -33,7 +33,6 @@ import { PROTOCOL_CL8Y_USD_SPOT_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatTotalRaiseHeroDisplayFromWei } from "@/lib/arenaPageHelpers";
 import { useProtocolCl8yUsdSpotPrice } from "@/hooks/useProtocolCl8yUsdSpotPrice";
 import { ProtocolInlineRefreshButton } from "@/pages/arena/ProtocolInlineRefreshButton";
-import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { useArenaProtocolData } from "@/pages/arena/ArenaProtocolDataContext";
 import { ArenaSimplePodiumSection } from "@/pages/arena/ArenaSimplePodiumSection";
 import { usePodiumReads } from "@/pages/arena/usePodiumReads";
@@ -57,7 +56,7 @@ export function ArenaProtocolPage() {
 
   const tc = addresses.timeArena;
   const { address: connectedAddress } = useAccount();
-  const { protocolReading: reading, latchedAcceptedAssetAddr, heroChainNowSec } =
+  const { protocolReading: reading, latchedAcceptedAssetAddr, heroChainNowSec, podiumTimerAuditReads } =
     useArenaProtocolData();
   const podiumReads = usePodiumReads(tc ?? undefined);
   const { levelBigint: playerLevelRaw } = useArenaPlayerLevel(connectedAddress);
@@ -65,12 +64,7 @@ export function ArenaProtocolPage() {
   const cl8yUsd = useProtocolCl8yUsdSpotPrice(latchedAcceptedAssetAddr);
   const get = (i: number) => reading[i];
 
-  const { data: latestBlock } = useLatestBlock();
-  const blockTimestampSec =
-    latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
-  const ledgerSecInt = Math.floor(
-    blockTimestampSec !== undefined ? blockTimestampSec : Date.now() / 1000,
-  );
+  const ledgerSecInt = Math.floor(heroChainNowSec ?? Date.now() / 1000);
 
   const phaseLedgerSecInt = useMemo(
     () =>
@@ -121,6 +115,7 @@ export function ArenaProtocolPage() {
     podiumReads.data,
     podiumReads.indexerRows,
     heroChainNowSec,
+    podiumTimerAuditReads,
   );
   const liveBuysPollLastOk = liveBuys.buys === null ? null : liveBuys.indexerNote === null;
 
@@ -250,9 +245,9 @@ export function ArenaProtocolPage() {
       <PageSection
         title="State deck"
         spotlight
-        badgeLabel="RPC reads"
+        badgeLabel="indexer reads"
         badgeTone="info"
-        actions={<span className="arena-protocol__cadence" title="JSON-RPC multicall cadence while healthy.">~1s</span>}
+        actions={<span className="arena-protocol__cadence" title="Indexer poll cadence while healthy.">~2s</span>}
       >
         <div className="arena-protocol__state-grid">
           <article className="arena-protocol-raise-card" aria-label="Total raised summary">

@@ -20,3 +20,14 @@ export function defaultArenaPayWith(isArenaV2: boolean): PayWithAsset {
 export function directArenaSpendLabel(isArenaV2: boolean): string {
   return isArenaV2 ? "DOUB" : "CL8Y";
 }
+
+/** Onchain USDm uses 6 decimals on MegaETH; DOUB/CL8Y/ETH use 18. */
+export const USDM_PAY_TOKEN_DECIMALS = 6;
+
+/** Fallback when `decimals()` has not resolved yet — avoids USDM wei shown with 18 decimals. */
+export function defaultPayTokenDecimals(payWith: PayWithAsset): number {
+  return payWith === "usdm" ? USDM_PAY_TOKEN_DECIMALS : 18;
+}
+
+/** `10^(18 - 6)` — static USDM fallback rates map DOUB wei to USDM smallest units. */
+export const USDM_FROM_DOUB_DECIMAL_SCALE = 10n ** 12n;

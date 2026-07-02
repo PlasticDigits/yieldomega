@@ -30,7 +30,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 |-------|---------------|------------------|
 | Hero | **Yield Omega** H1; **PLAY TIME ARENA** primary; **AUDIT** verification action | [design §295](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) |
 | Tagline | Current PvP mechanics only (CHARM, timers, podiums, WarBow) | `surfaceContent.ts` |
-| Cards | Time Arena → `/`; Arena AUDIT → `/arena/protocol`; Referrals; Kumbaya; Sir | `HOME_SURFACE_CARDS` |
+| Cards | Time Arena → `/`; Arena AUDIT → `/audit`; Referrals; Kumbaya; Sir | `HOME_SURFACE_CARDS` |
 | Mechanics chips | BUY CHARM · 4 PODIUMS · WARBOW · AUDIT tooltips match TimeArena | `HOME_HERO_SIGNALS` |
 | Forbidden copy | No TimeCurve / sale / PvE / redemption / launchpad / worldbuilding | `surfaceContent.test.ts` |
 
@@ -45,7 +45,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Wordmark | **Yield Omega** H1 | `LaunchCountdownPage.tsx` |
 | Headline | **Time Arena opens in** (access gate, not DOUB sale launch) | [design §295](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) |
 | Chips | PLAY · CRED · PVP · AUDIT compact signals | `LAUNCH_COUNTDOWN_SIGNALS` |
-| Handoff links | `/` play + `/arena/protocol` audit | `LAUNCH_COUNTDOWN_LINKS` (external only; play via countdown CTA) |
+| Handoff links | `/` play + `/audit` audit | `LAUNCH_COUNTDOWN_LINKS` (external only; play via countdown CTA) |
 
 **E2E:** `e2e/launch-countdown.spec.ts` · **Manual:** [manual QA §295](manual-qa-checklists.md#manual-qa-issue-295)
 
@@ -56,7 +56,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
 | Layout | Single **`arena-command-console`** at index **`/`**; no `.arena-final-concept` mock above live stack | [arena-views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) |
-| Header nav | **AUDIT** → `/arena/protocol` and **Referrals** only; **no** `ArenaSubnav` BUY/AUDIT row ([#320](../product/time-arena.md#doc-decision-points-gitlab-320)) | `RootLayout.tsx` |
+| Header nav | **AUDIT** → `/audit` and **Referrals** only; **no** `ArenaSubnav` BUY/AUDIT row ([#320](../product/time-arena.md#doc-decision-points-gitlab-320)) | `RootLayout.tsx` |
 | Last Buy | Largest primary countdown in main column | `ArenaTimerHero.tsx` |
 | Podium UX | `ArenaTimerPodiumCarousel` — one podium at a time; **no** four-card `arena-simple-podiums` grid (AUDIT only) | `ArenaTimerPodiumCarousel.tsx`, `ArenaSimplePage.tsx`, `e2e/arena.spec.ts` |
 | Inline buy | Text field, slider, min/max, pay picker, **Buy CHARM** without modal-first flow | `ArenaSimplePage.tsx` |
@@ -74,7 +74,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 
 ---
 
-## `/arena/protocol` — AUDIT console
+## `/audit` — AUDIT console
 
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
@@ -150,9 +150,10 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Route | Expected |
 |-------|----------|
 | `/arena` | → `/` |
+| `/arena/protocol` | → `/audit` |
 | `/timecurve` | → `/` |
 | `/timecurve/arena` | → `/` |
-| `/timecurve/protocol` | → `/arena/protocol` |
+| `/timecurve/protocol` | → `/audit` |
 | `/timecurve/:segment` | → `/arena/:segment` |
 
 **E2E:** `e2e/arena.spec.ts`, `e2e/navigation.spec.ts`, `e2e/referral-path.spec.ts`

@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { credBurnForCharmWad } from "@/lib/arenaCredBurn";
-import { isDirectArenaSpendPay, payUsesKumbayaRoute } from "@/lib/arenaPayAsset";
+import {
+  USDM_FROM_DOUB_DECIMAL_SCALE,
+  isDirectArenaSpendPay,
+  payUsesKumbayaRoute,
+} from "@/lib/arenaPayAsset";
 import { finalizeCharmSpendForBuy } from "@/lib/timeArenaBuyAmount";
 import { WAD } from "@/lib/timeArenaMath";
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
@@ -137,6 +141,21 @@ export function payTokenWeiAtSliderPermille(band: PayTokenSpendBand, permille: b
   return band.minPayWei + (span * p) / 10000n;
 }
 
+/**
+ * Scale a cached Kumbaya `exactOutput` quote by DOUB spend — keeps YOU PAY in sync with the
+ * slider while a fresh quote loads in the background (USDM band quotes can lag ETH/CL8Y).
+ */
+export function payTokenWeiFromCachedQuoteRate(input: {
+  spendWei: bigint;
+  cl8ySpendBounds: { minS: bigint; maxS: bigint };
+  quotedPayInWei: bigint;
+  quotedForAmountOutWei: bigint;
+}): bigint | undefined {
+  if (input.quotedForAmountOutWei <= 0n) return undefined;
+  const spend = clampBigint(input.spendWei, input.cl8ySpendBounds.minS, input.cl8ySpendBounds.maxS);
+  return (input.quotedPayInWei * spend) / input.quotedForAmountOutWei;
+}
+
 /** Map DOUB spend position to pay-token wei using the active band (same permille as slider). */
 export function payTokenWeiForDoubSpend(input: {
   spendWei: bigint;
@@ -165,7 +184,7 @@ export function estimateKumbayaPayTokenInFromDoubSpend(
     return (doubSpendWei * 419n) / 1_000_000n;
   }
   if (payWith === "usdm") {
-    return (doubSpendWei * 98n) / 100n;
+    return (doubSpendWei * 98n) / (100n * USDM_FROM_DOUB_DECIMAL_SCALE);
   }
   if (payWith === "cl8y") {
     return doubSpendWei;
@@ -180,6 +199,8 @@ export function resolveArenaPayTokenDisplayWei(input: {
   cl8ySpendBounds: { minS: bigint; maxS: bigint };
   payTokenSpendBand: PayTokenSpendBand | null;
   quotedPayInWei: bigint | undefined;
+  /** DOUB `amountOut` the cached `quotedPayInWei` was priced for — enables rate scaling on slider. */
+  quotedForAmountOutWei?: bigint;
   quoteLoading: boolean;
   requiredCredBurnWei: bigint | undefined;
   credPerCharmWad: bigint | undefined;
@@ -222,9 +243,38 @@ export function resolveArenaPayTokenDisplayWei(input: {
       })
     : estimateKumbayaPayTokenInFromDoubSpend(payWith, isArenaV2, spend);
 
-  if (input.quotedPayInWei !== undefined && !input.quoteLoading) {
-    return input.quotedPayInWei;
+  if (input.payTokenSpendBand) {
+    if (
+      payWith === "usdm" &&
+      input.quotedPayInWei !== undefined &&
+      input.quotedForAmountOutWei !== undefined &&
+      input.quotedForAmountOutWei > 0n
+    ) {
+      const scaled = payTokenWeiFromCachedQuoteRate({
+        spendWei: spend,
+        cl8ySpendBounds,
+        quotedPayInWei: input.quotedPayInWei,
+        quotedForAmountOutWei: input.quotedForAmountOutWei,
+      });
+      if (scaled !== undefined) return scaled;
+    }
+    return linearPay ?? undefined;
   }
+
+  if (
+    input.quotedPayInWei !== undefined &&
+    input.quotedForAmountOutWei !== undefined &&
+    input.quotedForAmountOutWei > 0n
+  ) {
+    const scaled = payTokenWeiFromCachedQuoteRate({
+      spendWei: spend,
+      cl8ySpendBounds,
+      quotedPayInWei: input.quotedPayInWei,
+      quotedForAmountOutWei: input.quotedForAmountOutWei,
+    });
+    if (scaled !== undefined) return scaled;
+  }
+
   return linearPay ?? undefined;
 }
 

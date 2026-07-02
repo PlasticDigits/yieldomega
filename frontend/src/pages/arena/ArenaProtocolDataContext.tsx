@@ -11,19 +11,22 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAccount, useReadContract, useReadContracts } from "wagmi";
-import { erc20Abi, timeArenaReadAbi } from "@/lib/abis";
-import { addresses, type HexAddress } from "@/lib/addresses";
-import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
-import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAccount } from "wagmi";
+import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { mergeStickyMulticallRows, type MulticallReadRow } from "@/lib/mergeStickyMulticallRows";
+import { useWalletStats, arenaWalletStatsQueryKey } from "@/hooks/useWalletStats";
 import { useArenaHeroTimer } from "@/pages/arena/useArenaHeroTimer";
 import {
-  arenaV2AdvancedCoreContracts,
-  arenaV2AdvancedWarbowContracts,
-  mapArenaV2AdvancedCoreRows,
-  mapArenaV2AdvancedWarbowRows,
-} from "@/pages/arena/arenaV2AdvancedSessionBridge";
+  acceptedDoubFromTimers,
+  mapArenaV2AdvancedCoreRowsFromArenaTimers,
+  mapArenaV2AdvancedWarbowRowsFromSaleState,
+  userSaleRowsFromWalletStats,
+  warbowPodiumRowFromIndexerRows,
+} from "@/pages/arena/arenaProtocolIndexerBridge";
+import { ARENA_V2_ADVANCED_CORE_ROW_INDICES } from "@/pages/arena/arenaV2AdvancedSessionBridge";
+import { usePodiumReads } from "@/pages/arena/usePodiumReads";
+import { useArenaSaleStateQuery, useArenaTimersQuery } from "@/pages/arena/useArenaSaleState";
 import type { ContractReadRow } from "@/lib/arenaPageHelpers";
 
 /** TimeArena core reads exposed on the protocol page (mapped row labels). */
@@ -66,10 +69,13 @@ export type ArenaProtocolDataContextValue = {
   latchedAcceptedAssetAddr: HexAddress | undefined;
   coreTcDataForAccordion: readonly ContractReadRow[] | undefined;
   userSaleData: readonly ContractReadRow[] | undefined;
+  /** Per-podium on-chain timer params — indexer-first: unavailable without browser RPC ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
+  podiumTimerAuditReads: readonly ContractReadRow[] | undefined;
   heroTimer: ReturnType<typeof useArenaHeroTimer>["heroTimer"];
   heroChainNowSec: number | undefined;
   refreshHeroTimer: () => void;
   refreshHeroTimerSoft: () => void;
+  indexerConfigured: boolean;
 };
 
 const ArenaProtocolDataContext = createContext<ArenaProtocolDataContextValue | null>(null);
@@ -77,60 +83,41 @@ const ArenaProtocolDataContext = createContext<ArenaProtocolDataContextValue | n
 export function ArenaProtocolDataProvider({ children }: { children: ReactNode }) {
   const tc = addresses.timeArena;
   const { address } = useAccount();
+  const queryClient = useQueryClient();
+  const indexerConfigured = Boolean(indexerBaseUrl());
 
   const tcReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
-  const warbowReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
-
   const [latchedAccepted, setLatchedAccepted] = useState<HexAddress | undefined>(undefined);
 
   useEffect(() => {
     tcReadsStickyRef.current = [];
-    warbowReadsStickyRef.current = [];
     setLatchedAccepted(undefined);
   }, [tc]);
 
-  const coreContracts = tc ? [...arenaV2AdvancedCoreContracts(tc)] : [];
-  const warbowContracts = tc ? [...arenaV2AdvancedWarbowContracts(tc)] : [];
+  const timersQuery = useArenaTimersQuery(tc);
+  const saleStateQuery = useArenaSaleStateQuery(tc, { enabled: indexerConfigured });
+  const podiumReads = usePodiumReads(tc ?? undefined);
+  const { data: walletStats } = useWalletStats(indexerConfigured ? address : undefined);
 
-  const coreReads = useReadContracts({
-    contracts: coreContracts as readonly unknown[],
-    query: {
-      enabled: Boolean(tc),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  useRpcQueryHealthForRefetch({
-    isFetched: coreReads.isFetched,
-    isFetching: coreReads.isFetching,
-    isError: coreReads.isError,
-    isSuccess: coreReads.isSuccess,
-    error: coreReads.error,
-  });
-
-  const warbowReads = useReadContracts({
-    contracts: warbowContracts as readonly unknown[],
-    query: {
-      enabled: Boolean(tc),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  useRpcQueryHealthForRefetch({
-    isFetched: warbowReads.isFetched,
-    isFetching: warbowReads.isFetching,
-    isError: warbowReads.isError,
-    isSuccess: warbowReads.isSuccess,
-    error: warbowReads.error,
-  });
-
-  const coreMapped = mapArenaV2AdvancedCoreRows(
-    coreReads.data as readonly { status: string; result?: unknown }[] | undefined,
+  const coreMapped = useMemo(
+    () =>
+      indexerConfigured && timersQuery.data
+        ? mapArenaV2AdvancedCoreRowsFromArenaTimers(timersQuery.data)
+        : undefined,
+    [indexerConfigured, timersQuery.data],
   );
-  const warbowMapped = mapArenaV2AdvancedWarbowRows(
-    warbowReads.data as readonly { status: string; result?: unknown }[] | undefined,
+
+  const warbowMapped = useMemo(() => {
+    if (!indexerConfigured || !saleStateQuery.data) {
+      return undefined;
+    }
+    const warbowPodium = warbowPodiumRowFromIndexerRows(podiumReads.indexerRows);
+    return mapArenaV2AdvancedWarbowRowsFromSaleState(saleStateQuery.data, warbowPodium);
+  }, [indexerConfigured, podiumReads.indexerRows, saleStateQuery.data]);
+
+  const userSaleData = useMemo(
+    () => (indexerConfigured ? userSaleRowsFromWalletStats(walletStats ?? undefined) : undefined),
+    [indexerConfigured, walletStats],
   );
 
   const readingLive = useMemo((): readonly ContractReadRow[] => {
@@ -146,42 +133,17 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
   }, [readingLive]);
 
   useEffect(() => {
-    if (!coreMapped || coreMapped.length <= PROTOCOL_READING_INDICES.doub) {
-      return;
+    const doubFromTimers = acceptedDoubFromTimers(timersQuery.data ?? undefined);
+    const doubRow = coreMapped?.[ARENA_V2_ADVANCED_CORE_ROW_INDICES.doub];
+    const doub =
+      doubFromTimers ??
+      (doubRow?.status === "success" && isNonZeroAddr(doubRow.result)
+        ? (doubRow.result as HexAddress)
+        : undefined);
+    if (!latchedAccepted && doub) {
+      setLatchedAccepted(doub);
     }
-    const doubRow = coreMapped[PROTOCOL_READING_INDICES.doub];
-    if (!latchedAccepted && doubRow?.status === "success" && isNonZeroAddr(doubRow.result)) {
-      setLatchedAccepted(doubRow.result as HexAddress);
-    }
-  }, [coreMapped, latchedAccepted]);
-
-  const userSaleContracts =
-    tc && address
-      ? [
-          { address: tc, abi: timeArenaReadAbi, functionName: "battlePoints" as const, args: [address] },
-          { address: tc, abi: timeArenaReadAbi, functionName: "warbowGuardUntil" as const, args: [address] },
-          { address: tc, abi: timeArenaReadAbi, functionName: "charmWeight" as const, args: [address] },
-          { address: tc, abi: timeArenaReadAbi, functionName: "buyCount" as const, args: [address] },
-          {
-            address: tc,
-            abi: timeArenaReadAbi,
-            functionName: "totalEffectiveTimerSecAdded" as const,
-            args: [address],
-          },
-          { address: tc, abi: timeArenaReadAbi, functionName: "activeDefendedStreak" as const, args: [address] },
-          { address: tc, abi: timeArenaReadAbi, functionName: "bestDefendedStreak" as const, args: [address] },
-        ]
-      : [];
-
-  const { data: userSaleDataRaw } = useReadContracts({
-    contracts: userSaleContracts as readonly unknown[],
-    query: {
-      enabled: Boolean(tc && address),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-  const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
+  }, [coreMapped, latchedAccepted, timersQuery.data]);
 
   const {
     heroTimer,
@@ -196,9 +158,18 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
   );
 
   const refetchProtocolReads = useCallback(() => {
-    void coreReads.refetch();
-    void warbowReads.refetch();
-  }, [coreReads, warbowReads]);
+    if (!indexerConfigured) {
+      return;
+    }
+    void timersQuery.refetch();
+    void saleStateQuery.refetch();
+    void podiumReads.refetch();
+    if (address) {
+      void queryClient.invalidateQueries({
+        queryKey: arenaWalletStatsQueryKey(indexerBaseUrl(), address),
+      });
+    }
+  }, [address, indexerConfigured, podiumReads, queryClient, saleStateQuery, timersQuery]);
 
   const value = useMemo(
     (): ArenaProtocolDataContextValue => ({
@@ -208,10 +179,12 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
       latchedAcceptedAssetAddr: latchedAccepted,
       coreTcDataForAccordion,
       userSaleData,
+      podiumTimerAuditReads: undefined,
       heroTimer,
       heroChainNowSec,
       refreshHeroTimer,
       refreshHeroTimerSoft: refreshHeroTimerSoft,
+      indexerConfigured,
     }),
     [
       tc,
@@ -224,6 +197,7 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
       heroChainNowSec,
       refreshHeroTimer,
       refreshHeroTimerSoft,
+      indexerConfigured,
     ],
   );
 
@@ -240,13 +214,7 @@ export function useArenaProtocolData(): ArenaProtocolDataContextValue {
   return ctx;
 }
 
+/** DOUB is always 18 decimals on Arena v2 — no browser `decimals()` poll ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
 export function useArenaProtocolAccordionTokenDecimals() {
-  const { latchedAcceptedAssetAddr: tokenAddr } = useArenaProtocolData();
-  const { data: tokenDecimals } = useReadContract({
-    address: tokenAddr,
-    abi: erc20Abi,
-    functionName: "decimals",
-    query: { enabled: Boolean(tokenAddr) },
-  });
-  return tokenDecimals !== undefined ? Number(tokenDecimals) : 18;
+  return 18;
 }

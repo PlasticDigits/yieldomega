@@ -3,8 +3,14 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ArenaSimplePodiumSection, type ArenaSimplePodiumSectionProps } from "./ArenaSimplePodiumSection";
+
+const mockWalletStats = vi.fn();
+
+vi.mock("@/hooks/useWalletStats", () => ({
+  useWalletStats: () => mockWalletStats(),
+}));
 
 const ALICE = "0x1111111111111111111111111111111111111111" as const;
 const BOB = "0x2222222222222222222222222222222222222222" as const;
@@ -41,6 +47,11 @@ function renderSimplePodiums(overrides: Partial<ArenaSimplePodiumSectionProps> =
 
 describe("ArenaSimplePodiumSection (issue #113)", () => {
   it("shows live Last Buy seconds from indexer winnerBuySec", () => {
+    mockWalletStats.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+    });
     const html = renderSimplePodiums({
       podiumRows: [
         {
@@ -114,16 +125,21 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("ranking-list__item--you");
   });
 
-  it("does not lock secondary podiums when wallet is not connected (#334)", () => {
+  it("locks secondary podiums when wallet is not connected (#334)", () => {
     const html = renderSimplePodiums({ address: undefined });
     expect(html).not.toContain('data-testid="arena-podium-lock-0"');
-    expect(html).not.toContain('data-testid="arena-podium-lock-1"');
-    expect(html).not.toContain('data-testid="arena-podium-lock-2"');
-    expect(html).not.toContain('data-testid="arena-podium-lock-3"');
-    expect(html).not.toContain("Connect wallet to buy CHARM.");
+    expect(html).toContain('data-testid="arena-podium-lock-3"');
+    expect(html).toContain('data-testid="arena-podium-lock-2"');
+    expect(html).toContain('data-testid="arena-podium-lock-1"');
+    expect(html).toContain("Connect wallet to buy CHARM.");
   });
 
   it("locks only the immediate next unlock tier for connected wallets (#334)", () => {
+    mockWalletStats.mockReturnValue({
+      data: { buy_count: 1, first_buy_at: "1700000000" },
+      isLoading: false,
+      isFetching: false,
+    });
     const html = renderSimplePodiums({ address: ALICE, playerLevel: 1 });
     expect(html).not.toContain('data-testid="arena-podium-lock-0"');
     expect(html).toContain('data-testid="arena-podium-lock-3"');

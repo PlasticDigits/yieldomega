@@ -64,6 +64,21 @@ describe("ArenaCharmCredCard (GitLab #321)", () => {
     expect(html).toContain('data-testid="arena-charm-cred-claim"');
   });
 
+  it("shows lock overlay while wallet stats are loading", () => {
+    mockUseAccount.mockReturnValue({
+      address: "0xdddddddddddddddddddddddddddddddddddddddd",
+      isConnected: true,
+    });
+    mockWalletStats.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isFetching: true,
+    });
+    const html = renderToStaticMarkup(createElement(ArenaCharmCredCard));
+    expect(html).toContain('data-testid="arena-charm-cred-lock"');
+    expect(html).toContain("Loading CHARM");
+  });
+
   it("renders claimable CRED when wallet stats are ready", () => {
     mockUseAccount.mockReturnValue({
       address: "0xdddddddddddddddddddddddddddddddddddddddd",

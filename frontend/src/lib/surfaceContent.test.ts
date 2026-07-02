@@ -24,7 +24,7 @@ describe("HOME_SURFACE_CARDS", () => {
   it("surfaces immediate play, audit, referral, and venue decisions (GitLab #295)", () => {
     expect(HOME_SURFACE_CARDS.map((c) => [c.title, c.to])).toEqual([
       ["Time Arena", "/"],
-      ["Arena AUDIT", "/arena/protocol"],
+      ["Arena AUDIT", "/audit"],
       ["Referrals", "/referrals"],
       ["Kumbaya", "/kumbaya"],
       ["Sir", "/sir"],

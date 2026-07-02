@@ -79,7 +79,7 @@ export function ThirdPartyDexPage({
         <Link to="/" className="btn-secondary">
           Home
         </Link>
-        <Link to="/arena/protocol" className="btn-secondary">
+        <Link to="/audit" className="btn-secondary">
           AUDIT
         </Link>
       </PageHero>

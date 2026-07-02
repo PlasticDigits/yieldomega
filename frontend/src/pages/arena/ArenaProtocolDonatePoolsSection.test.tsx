@@ -11,6 +11,12 @@ vi.mock("./useArenaProtocolDonatePools", () => ({
   useArenaProtocolDonatePools: () => mockHook(),
 }));
 
+vi.mock("@/pages/arena/ArenaProtocolDataContext", () => ({
+  useArenaProtocolData: () => ({
+    latchedAcceptedAssetAddr: "0x" + "d".repeat(40),
+  }),
+}));
+
 vi.mock("@/lib/addresses", () => ({
   indexerBaseUrl: () => "http://127.0.0.1:3100",
   addresses: { timeArena: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318" },

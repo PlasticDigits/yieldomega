@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { indexerBaseUrl } from "@/lib/addresses";
+import { getIndexerBackoffPollMs } from "@/lib/indexerConnectivity";
 import {
   fetchWarbowPendingRevenge,
   type WarbowPendingRevengeItem,
@@ -10,40 +11,61 @@ import {
 
 const REVENGE_POLL_MS = 5_000;
 
+export type UseArenaPendingRevengeOptions = {
+  /** Default 5000 on play surfaces; `false` for audit / read-only (fetch once on connect). */
+  pollMs?: number | false;
+};
+
 /**
  * Open WarBow revenge windows for `victim` via `GET /v1/arena/warbow/pending-revenge` (#135).
+ * Omits client `now_sec` so the indexer uses authoritative head chain time (#301).
  */
 export function useArenaPendingRevengeTargets(
   victim: string | undefined,
-  chainNowSec?: number,
+  options: UseArenaPendingRevengeOptions = {},
 ) {
+  const pollMs = options.pollMs ?? REVENGE_POLL_MS;
   const revengeIndexerConfigured = Boolean(indexerBaseUrl());
   const [response, setResponse] = useState<WarbowPendingRevengeResponse | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     if (!victim || !revengeIndexerConfigured) {
       setResponse(null);
+      setLoadFailed(false);
       return;
     }
 
     let cancelled = false;
+    let timerId = 0;
 
-    const load = () => {
-      void fetchWarbowPendingRevenge(victim, chainNowSec).then((body) => {
-        if (!cancelled) {
+    const schedule = (immediate: boolean) => {
+      const delay =
+        pollMs === false ? (immediate ? 0 : Number.POSITIVE_INFINITY) : getIndexerBackoffPollMs(pollMs);
+      if (!Number.isFinite(delay)) {
+        return;
+      }
+      timerId = window.setTimeout(() => {
+        void fetchWarbowPendingRevenge(victim).then((body) => {
+          if (cancelled) {
+            return;
+          }
           setResponse(body);
-        }
-      });
+          setLoadFailed(body === null);
+          if (pollMs !== false) {
+            schedule(false);
+          }
+        });
+      }, immediate ? 0 : delay);
     };
 
-    load();
-    const timer = setInterval(load, REVENGE_POLL_MS);
+    schedule(true);
 
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      window.clearTimeout(timerId);
     };
-  }, [victim, revengeIndexerConfigured, chainNowSec]);
+  }, [victim, revengeIndexerConfigured, pollMs]);
 
   const pendingRevengeTargets = useMemo(
     (): readonly WarbowPendingRevengeItem[] => response?.items ?? [],
@@ -55,5 +77,6 @@ export function useArenaPendingRevengeTargets(
     hasRevengeOpen: pendingRevengeTargets.length > 0,
     revengeIndexerConfigured,
     revengeWindowSec: response?.revenge_window_sec,
+    pendingRevengeLoadFailed: loadFailed,
   };
 }

@@ -10,6 +10,7 @@ import {
   MAX_PLAYER_LEVEL,
   nextUnlockLevel,
   shouldShowLevelLock,
+  shouldShowPodiumFeatureLock,
   shouldShowPodiumLevelLock,
 } from "./arenaProgression";
 
@@ -66,5 +67,86 @@ describe("arenaProgression", () => {
     expect(shouldShowPodiumLevelLock(true, 1, 3, 2)).toBe(false);
     expect(shouldShowPodiumLevelLock(false, undefined, 2, 1)).toBe(false);
     expect(shouldShowPodiumLevelLock(true, 1, 1, 0)).toBe(false);
+  });
+
+  it("shouldShowPodiumFeatureLock keeps hero Last Buy unlocked while side rail gates (#334)", () => {
+    const gated = {
+      walletConnected: false,
+      viewerLevel: undefined,
+      walletSurfaceUnlocked: false,
+      walletStatsPending: false,
+    };
+    expect(
+      shouldShowPodiumFeatureLock({ ...gated, categoryIndex: 0, requiredLevel: 1 }),
+    ).toEqual({ locked: false, lockedForConnection: false });
+    expect(
+      shouldShowPodiumFeatureLock({ ...gated, categoryIndex: 1, requiredLevel: 2 }),
+    ).toEqual({ locked: true, lockedForConnection: true });
+  });
+
+  it("shouldShowPodiumFeatureLock locks secondary tiers while wallet stats load (#334)", () => {
+    const pending = {
+      walletConnected: true,
+      viewerLevel: 1,
+      walletSurfaceUnlocked: false,
+      walletStatsPending: true,
+    };
+    expect(
+      shouldShowPodiumFeatureLock({ ...pending, categoryIndex: 0, requiredLevel: 1 }),
+    ).toEqual({ locked: false, lockedForConnection: false });
+    expect(
+      shouldShowPodiumFeatureLock({ ...pending, categoryIndex: 1, requiredLevel: 2 }),
+    ).toEqual({ locked: true, lockedForConnection: false });
+    expect(
+      shouldShowPodiumFeatureLock({ ...pending, categoryIndex: 3, requiredLevel: 4 }),
+    ).toEqual({ locked: true, lockedForConnection: false });
+  });
+
+  it("shouldShowPodiumFeatureLock locks secondary tiers before wallet buy (#334)", () => {
+    const preBuy = {
+      walletConnected: true,
+      viewerLevel: 1,
+      walletSurfaceUnlocked: false,
+      walletStatsPending: false,
+    };
+    expect(
+      shouldShowPodiumFeatureLock({ ...preBuy, categoryIndex: 0, requiredLevel: 1 }),
+    ).toEqual({ locked: false, lockedForConnection: false });
+    expect(
+      shouldShowPodiumFeatureLock({ ...preBuy, categoryIndex: 1, requiredLevel: 2 }),
+    ).toEqual({ locked: true, lockedForConnection: false });
+    expect(
+      shouldShowPodiumFeatureLock({ ...preBuy, categoryIndex: 2, requiredLevel: 3 }),
+    ).toEqual({ locked: true, lockedForConnection: false });
+    expect(
+      shouldShowPodiumFeatureLock({ ...preBuy, categoryIndex: 3, requiredLevel: 4 }),
+    ).toEqual({ locked: true, lockedForConnection: false });
+  });
+
+  it("shouldShowPodiumFeatureLock marks disconnected locks for connect copy (#334)", () => {
+    expect(
+      shouldShowPodiumFeatureLock({
+        categoryIndex: 2,
+        requiredLevel: 3,
+        walletConnected: false,
+        viewerLevel: undefined,
+        walletSurfaceUnlocked: false,
+      }),
+    ).toEqual({ locked: true, lockedForConnection: true });
+  });
+
+  it("shouldShowPodiumFeatureLock shows only next tier after wallet buy (#334)", () => {
+    const postBuy = {
+      walletConnected: true,
+      viewerLevel: 1,
+      walletSurfaceUnlocked: true,
+      walletStatsPending: false,
+    };
+    expect(
+      shouldShowPodiumFeatureLock({ ...postBuy, categoryIndex: 1, requiredLevel: 2 }),
+    ).toEqual({ locked: true, lockedForConnection: false });
+    expect(
+      shouldShowPodiumFeatureLock({ ...postBuy, categoryIndex: 2, requiredLevel: 3 }),
+    ).toEqual({ locked: false, lockedForConnection: false });
   });
 });

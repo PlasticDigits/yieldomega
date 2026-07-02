@@ -41,7 +41,7 @@ export function NotFoundPage() {
         <Link to="/" className="btn-primary">
           Home
         </Link>
-        <Link to="/arena/protocol" className="btn-secondary">
+        <Link to="/audit" className="btn-secondary">
           AUDIT
         </Link>
         <Link to={homePath} className="btn-secondary">

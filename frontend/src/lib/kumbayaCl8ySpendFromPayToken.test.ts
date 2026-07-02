@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
+import { WAD } from "@/lib/timeArenaMath";
 import { cl8ySpendWeiFromPayTokenFallback } from "./kumbayaCl8ySpendFromPayToken";
 
 describe("cl8ySpendWeiFromPayTokenFallback", () => {
-  it("inverts USDM fallback rate within bounds", () => {
-    const min = 100n;
-    const max = 10_000n;
-    const pay = 980n;
-    expect(cl8ySpendWeiFromPayTokenFallback(pay, "usdm", min, max)).toBe(1000n);
+  it("inverts USDM fallback at onchain wei scale", () => {
+    const min = 10n * WAD;
+    const max = 100n * WAD;
+    const pay = 98n * 10n ** 6n;
+    expect(cl8ySpendWeiFromPayTokenFallback(pay, "usdm", min, max)).toBe(100n * WAD);
   });
 
   it("clamps to max when pay budget is large", () => {

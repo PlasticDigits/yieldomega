@@ -10,7 +10,7 @@ const AUDIT_DOC = path.join(REPO_ROOT, "docs/testing/frontend-content-audit.md")
 const REQUIRED_ROUTE_SECTIONS = [
   "## `/` and `/home`",
   "## `/` — Time Arena play surface",
-  "## `/arena/protocol`",
+  "## `/audit`",
   "## `/arena/:code`",
   "## `/referrals`",
   "## `/kumbaya` and `/sir`",

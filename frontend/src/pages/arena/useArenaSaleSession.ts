@@ -29,6 +29,7 @@ import {
 } from "@/lib/abis";
 import {
   defaultArenaPayWith,
+  defaultPayTokenDecimals,
   directArenaSpendLabel,
   isDirectArenaSpendPay,
   payUsesKumbayaRoute,
@@ -80,6 +81,8 @@ import {
   doubSpendWeiFromCredPayTarget,
   doubSpendWeiFromPayTokenSliderTarget,
   payTokenWeiAtSliderPermille,
+  payTokenWeiForDoubSpend,
+  payTokenWeiFromCachedQuoteRate,
   resolveArenaPayTokenDisplayWei,
   resolveArenaPayTokenSpendBand,
   sliderPermilleForPayTokenWei,
@@ -195,6 +198,8 @@ export type UseArenaSaleSession = {
   setSpendFromInputFocus: () => void;
   setSpendFromInputBlur: () => void | Promise<void>;
   setSpendFromSliderPermille: (permille: number) => void;
+  /** Call while the spend slider thumb is dragged so quote sync does not fight the control. */
+  setSpendSliderInteracting: (interacting: boolean) => void;
   spendSliderPermille: number;
   charmWadSelected: bigint | undefined;
   estimatedSpendWei: bigint | undefined;
@@ -278,10 +283,9 @@ export type UseArenaSaleSession = {
   quotedPayInWei: bigint | undefined;
   payTokenDecimals: number;
   /**
-   * True while we're waiting on the quoter **before we have any** pay-token quote
-   * for the current slider (`quotedPayInWei` still undefined). Keeps ETH/USDM
-   * buys disabled (#56). Background refetches that keep a prior quote mounted
-   * via `placeholderData` do **not** set this — see {@link swapQuoteDisplayLoading}.
+   * True only before the **first** pay-token quote for the active asset is available.
+   * Background refetches while sliding keep the last quote (hook `placeholderData` + latch)
+   * and do **not** set this — buy stays enabled and the CTA label stays on "Buy".
    */
   swapQuoteLoading: boolean;
   /** Alias of {@link swapQuoteLoading} — same semantics; kept for readability at call sites (GitLab #56). */
@@ -327,12 +331,23 @@ export function useArenaSaleSession(
   const payInputFocusedRef = useRef(false);
   /** When true, YOU PAY uses compact decimals for slider/default (2 for stable tokens, 10 for ETH). */
   const paySpendInputCompactRef = useRef(true);
+  /** Holds user-driven slider permille until pointer-up so quotes cannot jerk the thumb. */
+  const spendSliderPermilleOverrideRef = useRef<number | null>(null);
+  const spendSliderInteractingRef = useRef(false);
+  const [spendSliderInteracting, setSpendSliderInteractingState] = useState(false);
+  const [spendSliderInteractionEpoch, setSpendSliderInteractionEpoch] = useState(0);
   const [useReferral, setUseReferral] = useState(true);
   const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
   const pendingReferralCode = usePendingReferralCode();
   const [buyError, setBuyError] = useState<string | null>(null);
   const [payWith, setPayWithState] = useState<PayWithAsset>("doub");
   const prevPayWithRef = useRef<PayWithAsset>("doub");
+  /** Last successful Kumbaya pay quote per asset — keeps buy CTA stable during slider refetch. */
+  const [kumbayaPayQuoteLatch, setKumbayaPayQuoteLatch] = useState<
+    Partial<Record<PayWithAsset, { payInWei: bigint; amountOutWei: bigint }>>
+  >({});
+  /** Keeps the quoter query warm while `estimatedSpendWei` briefly recomputes during slider drags. */
+  const [quoteAmountOutLatch, setQuoteAmountOutLatch] = useState<bigint | undefined>(undefined);
   const [preemptiveCooldownUntilChainSec, setPreemptiveCooldownUntilChainSec] = useState<number | null>(
     null,
   );
@@ -972,6 +987,17 @@ export function useArenaSaleSession(
   const charmWadSelected = buySizing?.charmWad;
   const estimatedSpendWei = buySizing?.spendWei;
 
+  useEffect(() => {
+    if (estimatedSpendWei !== undefined && estimatedSpendWei > 0n) {
+      setQuoteAmountOutLatch(estimatedSpendWei);
+    }
+  }, [estimatedSpendWei]);
+
+  const quoteAmountOut =
+    estimatedSpendWei !== undefined && estimatedSpendWei > 0n
+      ? estimatedSpendWei
+      : quoteAmountOutLatch;
+
   const {
     playCredAddress: playCredFromArena,
     credPerCharmWad,
@@ -1086,8 +1112,8 @@ export function useArenaSaleSession(
   const quoteEnabled =
     payUsesKumbaya &&
     phase === "saleActive" &&
-    estimatedSpendWei !== undefined &&
-    estimatedSpendWei > 0n &&
+    quoteAmountOut !== undefined &&
+    quoteAmountOut > 0n &&
     swapRoute !== null &&
     swapRoute.ok &&
     kumbayaResolved.ok;
@@ -1104,9 +1130,41 @@ export function useArenaSaleSession(
     payWith,
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
-    amountOut: estimatedSpendWei,
+    amountOut: quoteAmountOut,
     swapOutToken: isArenaV2 ? "doub" : "cl8y",
   });
+
+  useEffect(() => {
+    if (
+      quotedPayInWei !== undefined &&
+      quoteAmountOut !== undefined &&
+      quoteAmountOut > 0n
+    ) {
+      setKumbayaPayQuoteLatch((prev) => {
+        const cur = prev[payWith];
+        if (cur?.payInWei === quotedPayInWei && cur?.amountOutWei === quoteAmountOut) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [payWith]: { payInWei: quotedPayInWei, amountOutWei: quoteAmountOut },
+        };
+      });
+    }
+  }, [quotedPayInWei, quoteAmountOut, payWith]);
+
+  const latchedPayQuote = kumbayaPayQuoteLatch[payWith];
+  const quotedPayInWeiResolved = quotedPayInWei ?? latchedPayQuote?.payInWei;
+  const quotedForAmountOutResolved =
+    quotedPayInWei !== undefined &&
+    quoteAmountOut !== undefined &&
+    quoteAmountOut > 0n
+      ? quoteAmountOut
+      : latchedPayQuote?.amountOutWei;
+
+  /** First quote only — background refetches (slider) must not block buy or show "Refreshing quote". */
+  const payQuoteAwaitingFirst =
+    quoteEnabled && quotedPayInWeiResolved === undefined && quotePending;
 
   const {
     data: quotedPerCharmPayInWei,
@@ -1137,7 +1195,8 @@ export function useArenaSaleSession(
     functionName: "decimals",
     query: { enabled: Boolean(payTokenInAddr && payUsesKumbaya) },
   });
-  const payTokenDecimals = payTokDec !== undefined ? Number(payTokDec) : 18;
+  const payTokenDecimals =
+    payTokDec !== undefined ? Number(payTokDec) : defaultPayTokenDecimals(payWith);
 
   const bandQuoteEnabled =
     payUsesKumbaya &&
@@ -1178,14 +1237,14 @@ export function useArenaSaleSession(
     (bandMinPending || bandMinFetching || bandMaxPending || bandMaxFetching);
 
   const swapQuoteAwaitingFirstResult =
-    quoteEnabled && quotedPayInWei === undefined && (quotePending || quoteFetching);
+    payQuoteAwaitingFirst && !spendSliderInteracting;
 
   const swapQuoteFailed =
     quoteEnabled &&
     quoteIsError &&
     !quoteFetching &&
     !quotePending &&
-    quotedPayInWei === undefined;
+    quotedPayInWeiResolved === undefined;
 
   const buySpendDefaultMin = useMemo(
     () =>
@@ -1357,51 +1416,35 @@ export function useArenaSaleSession(
     prevPayWithRef.current = payWith;
     paySpendInputCompactRef.current = true;
     payInputFocusedRef.current = false;
+    spendSliderPermilleOverrideRef.current = null;
+    spendSliderInteractingRef.current = false;
+    setSpendSliderInteractingState(false);
+    setSpendInputStr("");
     if (cl8ySpendBounds) {
       setSpendWei(cl8ySpendBounds.minS);
     }
   }, [payWith, cl8ySpendBounds]);
 
-  const currentPayTokenWei = useMemo((): bigint | undefined => {
-    if (!cl8ySpendBounds) return undefined;
-    return resolveArenaPayTokenDisplayWei({
-      payWith,
-      isArenaV2,
-      spendWei,
-      cl8ySpendBounds,
-      payTokenSpendBand,
-      quotedPayInWei,
-      quoteLoading: quotePending || quoteFetching,
-      requiredCredBurnWei,
-      credPerCharmWad,
-      pricePerCharmWad,
-      charmBounds: charmBoundsResolved,
-    });
-  }, [
-    payTokenSpendBand,
-    cl8ySpendBounds,
-    payWith,
-    isArenaV2,
-    spendWei,
-    requiredCredBurnWei,
-    quotedPayInWei,
-    quotePending,
-    quoteFetching,
-    credPerCharmWad,
-    pricePerCharmWad,
-    charmBoundsResolved,
-  ]);
+  const setSpendSliderInteracting = useCallback((interacting: boolean) => {
+    spendSliderInteractingRef.current = interacting;
+    setSpendSliderInteractingState(interacting);
+    if (!interacting) {
+      spendSliderPermilleOverrideRef.current = null;
+      setSpendSliderInteractionEpoch((epoch) => epoch + 1);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!cl8ySpendBounds || payInputFocusedRef.current) return;
+    if (!cl8ySpendBounds || payInputFocusedRef.current || spendSliderInteractingRef.current) return;
     const displayWei = resolveArenaPayTokenDisplayWei({
       payWith,
       isArenaV2,
       spendWei,
       cl8ySpendBounds,
       payTokenSpendBand,
-      quotedPayInWei,
-      quoteLoading: quotePending || quoteFetching,
+      quotedPayInWei: quotedPayInWeiResolved,
+      quotedForAmountOutWei: quotedForAmountOutResolved,
+      quoteLoading: payQuoteAwaitingFirst,
       requiredCredBurnWei,
       credPerCharmWad,
       pricePerCharmWad,
@@ -1423,20 +1466,29 @@ export function useArenaSaleSession(
     decimals,
     payWith,
     isArenaV2,
-    quotedPayInWei,
-    quotePending,
-    quoteFetching,
+    quotedPayInWeiResolved,
+    quotedForAmountOutResolved,
+    payQuoteAwaitingFirst,
     requiredCredBurnWei,
     credPerCharmWad,
     pricePerCharmWad,
     charmBoundsResolved,
     payTokenDecimals,
     formatSpendInputDisplay,
+    spendSliderInteractionEpoch,
   ]);
 
   const spendSliderPermille = useMemo(() => {
-    if (payTokenSpendBand && currentPayTokenWei !== undefined) {
-      return sliderPermilleForPayTokenWei(payTokenSpendBand, currentPayTokenWei);
+    if (spendSliderPermilleOverrideRef.current !== null) {
+      return spendSliderPermilleOverrideRef.current;
+    }
+    if (payTokenSpendBand && cl8ySpendBounds) {
+      const payWei = payTokenWeiForDoubSpend({
+        spendWei,
+        cl8ySpendBounds,
+        payTokenSpendBand,
+      });
+      return sliderPermilleForPayTokenWei(payTokenSpendBand, payWei);
     }
     if (!cl8ySpendBounds) return 0;
     const { minS, maxS } = cl8ySpendBounds;
@@ -1444,11 +1496,12 @@ export function useArenaSaleSession(
     if (span <= 0n) return 0;
     const sw = clampBigint(spendWei, minS, maxS);
     return Number(((sw - minS) * 10000n) / span);
-  }, [cl8ySpendBounds, currentPayTokenWei, payTokenSpendBand, spendWei]);
+  }, [cl8ySpendBounds, payTokenSpendBand, spendWei, spendSliderInteractionEpoch]);
 
   const setSpendFromSliderPermille = useCallback(
     (permille: number) => {
       if (!cl8ySpendBounds) return;
+      spendSliderPermilleOverrideRef.current = permille;
       payInputFocusedRef.current = false;
       paySpendInputCompactRef.current = true;
       const { minS, maxS } = cl8ySpendBounds;
@@ -1462,8 +1515,9 @@ export function useArenaSaleSession(
           spendWei: spend,
           cl8ySpendBounds,
           payTokenSpendBand: null,
-          quotedPayInWei,
-          quoteLoading: quotePending || quoteFetching,
+          quotedPayInWei: quotedPayInWeiResolved,
+          quotedForAmountOutWei: quotedForAmountOutResolved,
+          quoteLoading: payQuoteAwaitingFirst,
           requiredCredBurnWei,
           credPerCharmWad,
           pricePerCharmWad,
@@ -1483,7 +1537,11 @@ export function useArenaSaleSession(
       let spend: bigint;
       if (isDirectArenaSpendPay(payWith, isArenaV2)) {
         spend = clampBigint(targetPay, minS, maxS);
-      } else if (payWith === "cl8y" && isArenaV2) {
+      } else if (
+        (payWith === "cl8y" && isArenaV2) ||
+        payWith === "eth" ||
+        payWith === "usdm"
+      ) {
         spend = minS + ((maxS - minS) * p) / 10000n;
       } else {
         spend = doubSpendWeiFromPayTokenSliderTarget({
@@ -1498,7 +1556,22 @@ export function useArenaSaleSession(
         });
       }
       setSpendWei(spend);
-      setSpendInputStr(formatSpendInputDisplay(targetPay, tokenDecimals));
+      let displayPay = targetPay;
+      if (
+        payWith === "usdm" &&
+        quotedPayInWeiResolved !== undefined &&
+        quotedForAmountOutResolved !== undefined &&
+        quotedForAmountOutResolved > 0n
+      ) {
+        const scaled = payTokenWeiFromCachedQuoteRate({
+          spendWei: spend,
+          cl8ySpendBounds: { minS, maxS },
+          quotedPayInWei: quotedPayInWeiResolved,
+          quotedForAmountOutWei: quotedForAmountOutResolved,
+        });
+        if (scaled !== undefined) displayPay = scaled;
+      }
+      setSpendInputStr(formatSpendInputDisplay(displayPay, tokenDecimals));
     },
     [
       charmBoundsResolved,
@@ -1511,9 +1584,9 @@ export function useArenaSaleSession(
       payTokenSpendBand,
       payWith,
       pricePerCharmWad,
-      quotePending,
-      quoteFetching,
-      quotedPayInWei,
+      payQuoteAwaitingFirst,
+      quotedForAmountOutResolved,
+      quotedPayInWeiResolved,
       requiredCredBurnWei,
     ],
   );
@@ -1611,8 +1684,8 @@ export function useArenaSaleSession(
       setSpendWei(spend);
       setSpendInputStr(formatUnits(targetPay, payTokenDecimals));
     } catch {
-      if (quotedPayInWei !== undefined) {
-        setSpendInputStr(formatUnits(quotedPayInWei, payTokenDecimals));
+      if (quotedPayInWeiResolved !== undefined) {
+        setSpendInputStr(formatUnits(quotedPayInWeiResolved, payTokenDecimals));
       } else {
         setSpendInputStr(formatUnits(clampBigint(spendWei, minS, maxS), decimals));
       }
@@ -1630,7 +1703,7 @@ export function useArenaSaleSession(
     payWith,
     payUsesKumbaya,
     pricePerCharmWad,
-    quotedPayInWei,
+    quotedPayInWeiResolved,
     requiredCredBurnWei,
     spendInputStr,
     spendWei,
@@ -2083,6 +2156,7 @@ export function useArenaSaleSession(
     setSpendFromInputFocus,
     setSpendFromInputBlur,
     setSpendFromSliderPermille,
+    setSpendSliderInteracting,
     spendSliderPermille,
     charmWadSelected,
     buyCheckoutCharmWeightWad,
@@ -2131,7 +2205,7 @@ export function useArenaSaleSession(
     requiredCredBurnWei,
     credCheckoutBoundsGate,
     kumbayaRoutingBlocker,
-    quotedPayInWei,
+    quotedPayInWei: quotedPayInWeiResolved,
     payTokenDecimals,
     swapQuoteLoading: swapQuoteAwaitingFirstResult,
     swapQuoteDisplayLoading: swapQuoteAwaitingFirstResult,

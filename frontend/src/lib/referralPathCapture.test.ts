@@ -17,9 +17,10 @@ describe("extractReferralCodeFromPathname", () => {
     expect(extractReferralCodeFromPathname("/arena/test1")).toBe("test1");
   });
 
-  it("returns null for arena and protocol", () => {
+  it("returns null for arena, protocol, and audit", () => {
     expect(extractReferralCodeFromPathname("/arena/arena")).toBeNull();
     expect(extractReferralCodeFromPathname("/arena/protocol")).toBeNull();
+    expect(extractReferralCodeFromPathname("/arena/audit")).toBeNull();
   });
 
   it("returns null when the slug mirrors a reserved top-level segment", () => {

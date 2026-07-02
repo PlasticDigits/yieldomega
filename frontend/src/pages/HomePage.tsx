@@ -71,7 +71,7 @@ export function HomePage() {
               </Link>
             </motion.div>
             <Link
-              to="/arena/protocol"
+              to="/audit"
               className="btn-secondary home-hero__secondary"
               title="Open the AUDIT console for TimeArena state, vault routing, and indexed activity."
             >

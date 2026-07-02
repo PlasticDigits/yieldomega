@@ -4569,6 +4569,44 @@ button.empty-data-placeholder--connect:disabled {
   margin-top: 0;
 }
 
+/* Guide-code panel: center inner content once a wallet is connected (placeholder stays left). */
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .section-heading {
+  justify-content: center;
+}
+
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .section-heading__copy {
+  flex: 1 1 100%;
+  text-align: center;
+}
+
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .referrals-claimed-code-block,
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .referrals-register-write-stack,
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .referrals-share-links-panel {
+  text-align: center;
+}
+
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .referrals-register-write-stack {
+  align-items: center;
+}
+
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .referrals-register-write-stack .form-row,
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .referrals-claimed-code-block .form-row {
+  align-items: center;
+  width: 100%;
+  max-width: 22rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .referrals-register-cost {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.referral-register .chain-write-gate > .data-panel.referrals-register-panel--connected .referrals-share-links-panel > div:not([aria-live]) {
+  justify-content: center;
+}
+
 /* Narrow viewports: full-width register + earnings cards; drop fixed min-width + soften 3D shadow
    so panels + `box-shadow` offsets do not trigger horizontal scroll. */
 @media (max-width: 720px) {

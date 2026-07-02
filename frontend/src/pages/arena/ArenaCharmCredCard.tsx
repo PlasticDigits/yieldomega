@@ -131,15 +131,14 @@ export function ArenaCharmCredCard({
     <ArenaCharmCredHelpButton onClick={() => setWalletHelpOpen(true)} />
   );
 
-  const walletBuyKnown = !isConnected || stats !== undefined || !readPending;
-  const walletSurfaceUnlocked =
-    walletBuyKnown &&
-    isArenaLastBuyWalletSurfaceUnlocked({
-      walletConnected: isConnected,
-      walletStats: stats,
-      arenaUsers: { recentBuys, podiumRows },
-    });
-  const lockWalletSurface = walletBuyKnown && !walletSurfaceUnlocked;
+  const walletStatsPending = isConnected && readPending && !stats;
+  const walletSurfaceUnlocked = isArenaLastBuyWalletSurfaceUnlocked({
+    walletConnected: isConnected,
+    walletStats: stats,
+    arenaUsers: { recentBuys, podiumRows },
+  });
+  const lockWalletSurface =
+    !isConnected || walletStatsPending || !walletSurfaceUnlocked;
 
   const walletBody = (
     <>

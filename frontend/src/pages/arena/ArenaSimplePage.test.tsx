@@ -156,6 +156,7 @@ function baseSession(overrides: Partial<UseArenaSaleSession> = {}): UseArenaSale
     setSpendFromInputFocus: () => {},
     setSpendFromInputBlur: async () => {},
     setSpendFromSliderPermille: () => {},
+    setSpendSliderInteracting: () => {},
     spendSliderPermille: 500,
     charmWadSelected: 1n * 10n ** 18n,
     estimatedSpendWei: 1000n * 10n ** 18n,

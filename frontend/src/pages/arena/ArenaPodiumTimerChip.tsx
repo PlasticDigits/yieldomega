@@ -104,7 +104,11 @@ export function ArenaPodiumTimerChip({
   });
 
   const requiredLevel = feature !== undefined ? FEATURE_UNLOCK_LEVEL[feature] : 1;
-  const sideRailLocked = !walletStatsPending && !lastBuyWalletUnlocked;
+  /** Side-rail only: Last Buy chip locks until connect + indexed buy (hero carousel stays open). */
+  const walletSurfaceLocked =
+    !walletConnected || walletStatsPending || !lastBuyWalletUnlocked;
+  const lastBuyChipLocked = feature === "last_buy" && walletSurfaceLocked;
+  const sideRailLocked = feature !== "last_buy" && walletSurfaceLocked;
   const viewerLevel =
     walletConnected && playerLevel !== undefined ? clampPlayerLevel(playerLevel) : undefined;
   const showProgressionLock =
@@ -112,11 +116,8 @@ export function ArenaPodiumTimerChip({
     feature !== "last_buy" &&
     !sideRailLocked &&
     shouldShowLevelLock(viewerLevel, requiredLevel);
-  const chipLocked = sideRailLocked || showProgressionLock;
-  const chipVisuallyUnlocked =
-    feature === "last_buy"
-      ? walletStatsPending || lastBuyWalletUnlocked
-      : !chipLocked;
+  const chipLocked = lastBuyChipLocked || sideRailLocked || showProgressionLock;
+  const chipVisuallyUnlocked = !chipLocked;
 
   const viewerValueRaw = resolveViewerPodiumValueRaw(categoryIndex, podiumRow, address, {
     activeDefendedStreak,
@@ -235,6 +236,12 @@ export function ArenaPodiumTimerChip({
   const gateTestId = testId ?? `arena-timer-chip-gate-${contractIndex}`;
 
   if (chipLocked && feature !== undefined) {
+    const lockTitle =
+      feature === "last_buy" && !walletConnected ? "Connect wallet" : undefined;
+    const lockDetail =
+      feature === "last_buy" && !walletConnected
+        ? "Connect wallet to buy CHARM."
+        : undefined;
     return (
       <LockedUntilLevel
         requiredLevel={requiredLevel}
@@ -242,6 +249,8 @@ export function ArenaPodiumTimerChip({
         className={`${gateClassName} arena-timer-chips__gate--locked`}
         testId={gateTestId}
         overlayTestId={`arena-timer-chip-lock-${contractIndex}`}
+        title={lockTitle}
+        detail={lockDetail}
       >
         {chipContents}
       </LockedUntilLevel>

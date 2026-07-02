@@ -60,7 +60,7 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
         <Link to="/" className="btn-primary">
           Home
         </Link>
-        <Link to="/arena/protocol" className="btn-secondary">
+        <Link to="/audit" className="btn-secondary">
           AUDIT
         </Link>
       </PageHero>

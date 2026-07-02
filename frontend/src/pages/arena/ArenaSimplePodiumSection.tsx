@@ -6,10 +6,12 @@ import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import {
   clampPlayerLevel,
-  shouldShowPodiumLevelLock,
+  shouldShowPodiumFeatureLock,
   type ArenaFeatureKey,
 } from "@/lib/arenaProgression";
+import { isArenaLastBuyWalletSurfaceUnlocked } from "@/lib/arenaPageHelpers";
 import type { BuyItem } from "@/lib/indexerApi";
+import { useWalletStats } from "@/hooks/useWalletStats";
 import { rankingRowsForPodium, usePodiumScoreClock } from "./arenaSimplePodiumRanking";
 import { PODIUM_LABELS, podiumFeatureForUxIndex } from "./podiumCopy";
 import type { PodiumPayoutPreview, PodiumReadRow } from "./usePodiumReads";
@@ -94,6 +96,8 @@ function SimplePodiumCard({
   walletConnected,
   viewerLevel,
   requiredLevel,
+  walletSurfaceUnlocked,
+  walletStatsPending,
   onOpenWalletProfile,
   onFeatureHelp,
 }: {
@@ -110,6 +114,8 @@ function SimplePodiumCard({
   walletConnected: boolean;
   viewerLevel: number | undefined;
   requiredLevel: number;
+  walletSurfaceUnlocked: boolean;
+  walletStatsPending: boolean;
   onOpenWalletProfile: ArenaSimplePodiumSectionProps["onOpenWalletProfile"];
   onFeatureHelp: ArenaSimplePodiumSectionProps["onFeatureHelp"];
 }) {
@@ -126,13 +132,16 @@ function SimplePodiumCard({
     recentBuys,
     onOpenWalletProfile,
   );
-  const locked = shouldShowPodiumLevelLock(
+  const lockState = shouldShowPodiumFeatureLock({
+    categoryIndex,
+    requiredLevel,
     walletConnected,
     viewerLevel,
-    requiredLevel,
-    categoryIndex,
-  );
-  const lockedForConnection = false;
+    walletSurfaceUnlocked,
+    walletStatsPending,
+  });
+  const locked = lockState.locked;
+  const lockedForConnection = lockState.lockedForConnection;
 
   const cardClassName = [
     "podium-block",
@@ -220,6 +229,16 @@ export function ArenaSimplePodiumSection({
   const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
   const walletConnected = Boolean(address);
   const viewerLevel = walletConnected ? clampPlayerLevel(playerLevel ?? 1) : undefined;
+  const walletStatsQuery = useWalletStats(address);
+  const walletStatsPending =
+    walletConnected &&
+    (walletStatsQuery.isLoading || walletStatsQuery.isFetching) &&
+    !walletStatsQuery.data;
+  const walletSurfaceUnlocked = isArenaLastBuyWalletSurfaceUnlocked({
+    walletConnected,
+    walletStats: walletStatsQuery.data,
+    arenaUsers: { recentBuys, podiumRows },
+  });
 
   return (
     <>
@@ -246,6 +265,8 @@ export function ArenaSimplePodiumSection({
             walletConnected={walletConnected}
             viewerLevel={viewerLevel}
             requiredLevel={SIMPLE_PODIUM_REQUIRED_LEVEL[categoryIndex]}
+            walletSurfaceUnlocked={walletSurfaceUnlocked}
+            walletStatsPending={walletStatsPending}
             onOpenWalletProfile={onOpenWalletProfile}
             onFeatureHelp={onFeatureHelp}
           />

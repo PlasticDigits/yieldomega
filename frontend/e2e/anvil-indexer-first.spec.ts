@@ -21,7 +21,7 @@ test.describe("Anvil indexer-first Arena display", () => {
   test("protocol podiums and play-surface timer epoch load from indexer", async ({ page }) => {
     test.setTimeout(120_000);
 
-    await page.goto("/arena/protocol");
+    await page.goto("/audit");
     await expect(page.getByText("Loading Yield Omega route...")).toBeHidden({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });

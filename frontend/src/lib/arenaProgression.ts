@@ -46,20 +46,67 @@ export function shouldShowLevelLock(
   return next !== null && requiredLevel === next;
 }
 
+export type PodiumFeatureLockState = {
+  locked: boolean;
+  lockedForConnection: boolean;
+};
+
 /**
- * Podium / carousel lock overlay: Last Buy never locked; disconnected wallets skip
- * secondary-tier chrome; connected wallets only lock the next unlock tier (#334).
+ * Podium / carousel lock overlay (#334): Last Buy never locked; disconnected or
+ * pre-buy wallets lock every secondary tier; connected buyers only lock the next
+ * unlock tier. While wallet stats are loading, secondary tiers stay locked
+ * (pessimistic gating — no unlock flash on initial paint).
  */
+export function shouldShowPodiumFeatureLock(opts: {
+  categoryIndex: number;
+  requiredLevel: number;
+  walletConnected: boolean;
+  viewerLevel: number | undefined;
+  walletSurfaceUnlocked: boolean;
+  walletStatsPending?: boolean;
+}): PodiumFeatureLockState {
+  if (opts.categoryIndex === 0) {
+    return { locked: false, lockedForConnection: false };
+  }
+
+  // Pessimistic: secondary tiers stay locked until wallet stats resolve (no unlock flash).
+  if (opts.walletStatsPending) {
+    return { locked: true, lockedForConnection: false };
+  }
+
+  const preBuyLocked = !opts.walletSurfaceUnlocked;
+  if (preBuyLocked) {
+    return {
+      locked: true,
+      lockedForConnection: !opts.walletConnected,
+    };
+  }
+
+  const levelLocked =
+    opts.walletConnected &&
+    opts.viewerLevel !== undefined &&
+    shouldShowLevelLock(opts.viewerLevel, opts.requiredLevel);
+
+  return {
+    locked: levelLocked,
+    lockedForConnection: false,
+  };
+}
+
+/** @deprecated Prefer {@link shouldShowPodiumFeatureLock} with wallet-surface context. */
 export function shouldShowPodiumLevelLock(
   walletConnected: boolean,
   viewerLevel: number | undefined,
   requiredLevel: number,
   categoryIndex = 0,
 ): boolean {
-  if (categoryIndex === 0) return false;
-  if (!walletConnected) return false;
-  if (viewerLevel === undefined) return false;
-  return shouldShowLevelLock(viewerLevel, requiredLevel);
+  return shouldShowPodiumFeatureLock({
+    categoryIndex,
+    requiredLevel,
+    walletConnected,
+    viewerLevel,
+    walletSurfaceUnlocked: true,
+  }).locked;
 }
 
 export function lockedUntilLevelCopy(requiredLevel: number): string {

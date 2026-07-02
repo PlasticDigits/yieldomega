@@ -3,7 +3,7 @@
 /**
  * When `useReadContracts` / multicall rows flip to `failure` during transient
  * JSON-RPC errors, keep rendering the last successful row so operator surfaces
- * (e.g. `/arena/protocol`) do not blank or thrash phase gates.
+ * (e.g. `/audit`) do not blank or thrash phase gates.
  */
 export type MulticallReadRow = {
   status: "success" | "failure";

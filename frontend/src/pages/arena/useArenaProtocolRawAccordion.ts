@@ -16,7 +16,6 @@ import {
   type SaleSessionPhase,
 } from "@/pages/arena/arenaSimplePhase";
 import { serializeContractRead } from "@/lib/serializeContractRead";
-import { useLatestBlock } from "@/providers/LatestBlockContext";
 import {
   useArenaProtocolData,
   useArenaProtocolAccordionTokenDecimals,
@@ -28,11 +27,7 @@ import { useArenaPendingRevengeTargets } from "@/hooks/useArenaPendingRevengeTar
  */
 export function useArenaProtocolRawAccordion() {
   const { address, isConnected } = useAccount();
-  const { data: latestBlock } = useLatestBlock();
-  const blockTimestampSec =
-    latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
-  const blockChainSec = blockTimestampSec !== undefined ? blockTimestampSec : Date.now() / 1000;
-  const ledgerSecInt = Math.floor(blockChainSec);
+  const ledgerSecInt = Math.floor(Date.now() / 1000);
   const ledgerSecIntRef = useRef(ledgerSecInt);
   ledgerSecIntRef.current = ledgerSecInt;
 
@@ -46,10 +41,10 @@ export function useArenaProtocolRawAccordion() {
   const phaseLedgerSecInt = useMemo(
     () =>
       ledgerSecIntForPhase({
-        blockLedgerSecInt: ledgerSecInt,
+        blockLedgerSecInt: Math.floor(heroChainNowSec ?? Date.now() / 1000),
         heroChainNowSec: heroChainNowSec,
       }),
-    [ledgerSecInt, heroChainNowSec],
+    [heroChainNowSec],
   );
 
   const saleStart = coreTcData?.[CORE.arenaStart];
@@ -68,10 +63,8 @@ export function useArenaProtocolRawAccordion() {
 
   const decimals = useArenaProtocolAccordionTokenDecimals();
 
-  const { pendingRevengeTargets, revengeIndexerConfigured } = useArenaPendingRevengeTargets(
-    address,
-    heroChainNowSec ?? ledgerSecInt,
-  );
+  const { pendingRevengeTargets, revengeIndexerConfigured, pendingRevengeLoadFailed } =
+    useArenaPendingRevengeTargets(address, { pollMs: false });
 
   const arenaSaleStartSec =
     saleStart?.status === "success" ? Number(saleStart.result as bigint) : undefined;
@@ -143,6 +136,7 @@ export function useArenaProtocolRawAccordion() {
     bestStreakResult: serializeContractRead(bestStreakR),
     pendingRevengeTargets,
     revengeIndexerConfigured,
+    pendingRevengeLoadFailed,
     buyerStats: indexerBaseUrl() ? buyerStats : null,
     decimals,
     formatWallet,

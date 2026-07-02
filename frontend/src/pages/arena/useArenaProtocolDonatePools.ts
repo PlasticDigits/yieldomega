@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { parseUnits } from "viem";
-import { useAccount, useConfig, useReadContract } from "wagmi";
-import { erc20Abi, timeArenaReadAbi, timeArenaWriteAbi } from "@/lib/abis";
+import { useAccount, useConfig } from "wagmi";
+import { readContract } from "wagmi/actions";
+import { erc20Abi, timeArenaWriteAbi } from "@/lib/abis";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { readArenaDoubUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
 import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
@@ -19,7 +20,10 @@ import { useWriteContract } from "wagmi";
 
 const RECENT_LIMIT = 10;
 
-export function useArenaProtocolDonatePools() {
+/**
+ * Donate-pools sponsorship on AUDIT — indexer for history; wallet RPC only at submit ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
+ */
+export function useArenaProtocolDonatePools(doubAddress: HexAddress | undefined) {
   const timeArena = addresses.timeArena;
   const wagmiConfig = useConfig();
   const { address, isConnected, chainId } = useAccount();
@@ -34,26 +38,35 @@ export function useArenaProtocolDonatePools() {
   const [submitting, setSubmitting] = useState(false);
   const [writeErr, setWriteErr] = useState<string | null>(null);
   const [writeOk, setWriteOk] = useState<string | null>(null);
+  const [doubBalanceWei, setDoubBalanceWei] = useState<bigint | undefined>(undefined);
 
-  const doubTokenQ = useReadContract({
-    address: timeArena,
-    abi: timeArenaReadAbi,
-    functionName: "doub",
-    query: { enabled: Boolean(timeArena) },
-  });
-
-  const doubAddress =
-    doubTokenQ.data && doubTokenQ.data !== "0x0000000000000000000000000000000000000000"
-      ? (doubTokenQ.data as HexAddress)
-      : undefined;
-
-  const balanceQ = useReadContract({
-    address: doubAddress,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: Boolean(doubAddress && address) },
-  });
+  useEffect(() => {
+    if (!doubAddress || !address || !isConnected) {
+      setDoubBalanceWei(undefined);
+      return;
+    }
+    let cancelled = false;
+    void readContract(wagmiConfig, {
+      address: doubAddress,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [address],
+      chainId,
+    })
+      .then((balance: bigint) => {
+        if (!cancelled) {
+          setDoubBalanceWei(balance);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDoubBalanceWei(undefined);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [address, chainId, doubAddress, isConnected, wagmiConfig]);
 
   const loadIndexer = useCallback(async () => {
     setRefreshing(true);
@@ -118,6 +131,21 @@ export function useArenaProtocolDonatePools() {
     }
   })();
 
+  const refreshDoubBalance = useCallback(async (): Promise<bigint | undefined> => {
+    if (!doubAddress || !address || chainId == null) {
+      return undefined;
+    }
+    const balance = await readContract(wagmiConfig, {
+      address: doubAddress,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [address],
+      chainId,
+    });
+    setDoubBalanceWei(balance);
+    return balance;
+  }, [address, chainId, doubAddress, wagmiConfig]);
+
   const donate = useCallback(async () => {
     if (!timeArena || !doubAddress || !address || chainId == null) {
       return;
@@ -126,8 +154,7 @@ export function useArenaProtocolDonatePools() {
       setWriteErr("Enter a valid DOUB amount.");
       return;
     }
-    const balance =
-      balanceQ.data != null && typeof balanceQ.data === "bigint" ? balanceQ.data : 0n;
+    const balance = (await refreshDoubBalance()) ?? doubBalanceWei ?? 0n;
     if (balance < parsedAmountWei) {
       setWriteErr("Insufficient DOUB balance.");
       return;
@@ -161,7 +188,7 @@ export function useArenaProtocolDonatePools() {
       setWriteOk("Donation confirmed onchain.");
       setAmountInput("");
       await loadIndexer();
-      await balanceQ.refetch();
+      await refreshDoubBalance();
     } catch (e) {
       setWriteErr(friendlyRevertFromUnknown(e));
     } finally {
@@ -169,11 +196,12 @@ export function useArenaProtocolDonatePools() {
     }
   }, [
     address,
-    balanceQ,
     chainId,
     doubAddress,
+    doubBalanceWei,
     loadIndexer,
     parsedAmountWei,
+    refreshDoubBalance,
     timeArena,
     wagmiConfig,
     writeContractAsync,
@@ -190,7 +218,7 @@ export function useArenaProtocolDonatePools() {
     amountInput,
     setAmountInput,
     parsedAmountWei,
-    doubBalanceWei: balanceQ.data,
+    doubBalanceWei,
     submitting,
     writeErr,
     writeOk,

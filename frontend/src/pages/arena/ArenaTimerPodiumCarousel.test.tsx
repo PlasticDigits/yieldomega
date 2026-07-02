@@ -63,13 +63,24 @@ describe("timerPodiumCarouselSlots", () => {
 });
 
 describe("isTimerPodiumSlideLocked", () => {
-  it("locks only the immediate next unlock tier (#334)", () => {
-    expect(isTimerPodiumSlideLocked(0, 1, true, 1)).toBe(false);
-    expect(isTimerPodiumSlideLocked(1, 2, true, 1)).toBe(true);
-    expect(isTimerPodiumSlideLocked(2, 3, true, 1)).toBe(false);
-    expect(isTimerPodiumSlideLocked(3, 4, true, 3)).toBe(true);
-    expect(isTimerPodiumSlideLocked(3, 4, true, 4)).toBe(false);
-    expect(isTimerPodiumSlideLocked(3, 4, false, undefined)).toBe(false);
+  it("locks only the immediate next unlock tier after wallet buy (#334)", () => {
+    expect(isTimerPodiumSlideLocked(0, 1, true, 1, true)).toBe(false);
+    expect(isTimerPodiumSlideLocked(1, 2, true, 1, true)).toBe(true);
+    expect(isTimerPodiumSlideLocked(2, 3, true, 1, true)).toBe(false);
+    expect(isTimerPodiumSlideLocked(3, 4, true, 3, true)).toBe(true);
+    expect(isTimerPodiumSlideLocked(3, 4, true, 4, true)).toBe(false);
+  });
+
+  it("locks every secondary tier before wallet buy (#334)", () => {
+    expect(isTimerPodiumSlideLocked(1, 2, true, 1, false)).toBe(true);
+    expect(isTimerPodiumSlideLocked(2, 3, true, 1, false)).toBe(true);
+    expect(isTimerPodiumSlideLocked(3, 4, false, undefined, false)).toBe(true);
+  });
+
+  it("locks secondary tiers while wallet stats are pending (#334)", () => {
+    expect(isTimerPodiumSlideLocked(0, 1, true, 1, false, true)).toBe(false);
+    expect(isTimerPodiumSlideLocked(1, 2, true, 1, false, true)).toBe(true);
+    expect(isTimerPodiumSlideLocked(2, 3, true, 5, true, true)).toBe(true);
   });
 });
 

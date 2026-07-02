@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { indexerBaseUrl } from "./addresses";
-import { reportIndexerRateLimited } from "./indexerConnectivity";
+import { reportIndexerFetchAttempt, reportIndexerRateLimited } from "./indexerConnectivity";
 
 export type BuyItem = {
   block_number: string;
@@ -70,11 +70,15 @@ async function getJson<T>(path: string): Promise<T | null> {
       if (res.status === 429) {
         reportIndexerRateLimited();
       }
+      reportIndexerFetchAttempt(false);
       warnIndexerHttpOnce(res.status, path);
       return null;
     }
-    return (await res.json()) as T;
+    const json = (await res.json()) as T;
+    reportIndexerFetchAttempt(true);
+    return json;
   } catch {
+    reportIndexerFetchAttempt(false);
     return null;
   }
 }
@@ -482,14 +486,15 @@ export type WarbowPendingRevengeResponse = {
 /** GitLab #135: open windows reconciled from indexed steals minus consumed revenges. */
 export function arenaWarbowPendingRevengePath(victim: string, nowSec?: number): string {
   const w = victim.trim().toLowerCase();
-  if (nowSec !== undefined) {
-    return `/v1/arena/warbow/pending-revenge/${w}?now_sec=${nowSec}`;
+  if (nowSec !== undefined && Number.isFinite(nowSec)) {
+    return `/v1/arena/warbow/pending-revenge/${w}?now_sec=${Math.floor(nowSec)}`;
   }
   return `/v1/arena/warbow/pending-revenge/${w}`;
 }
 
-export async function fetchWarbowPendingRevenge(victim: string, nowSec?: number) {
-  return getJson<WarbowPendingRevengeResponse>(arenaWarbowPendingRevengePath(victim, nowSec));
+/** Victim-scoped open revenge windows; omits `now_sec` so the indexer uses head chain time (#135, #301). */
+export async function fetchWarbowPendingRevenge(victim: string) {
+  return getJson<WarbowPendingRevengeResponse>(arenaWarbowPendingRevengePath(victim));
 }
 
 export type ArenaBuyerStats = {

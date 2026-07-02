@@ -94,7 +94,7 @@ export function ArenaWarbowHeroPanel({
   const { address } = useAccount();
   const w = useArenaWarbowHero(phase, { indexerViewerBattlePoints, indexerWarbowHead });
   const { pendingRevengeTargets, hasRevengeOpen, revengeIndexerConfigured } =
-    useArenaPendingRevengeTargets(address, w.chainNowSec);
+    useArenaPendingRevengeTargets(address);
   const viewerBattlePointsDisplay = formatWarbowViewerBattlePointsDisplay(
     parseBp(w.viewerBattlePoints),
   );

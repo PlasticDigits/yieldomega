@@ -47,7 +47,7 @@ export const HOME_HERO_SIGNALS: HomeHeroSignal[] = [
   },
   {
     label: "AUDIT",
-    tooltip: "Verify TimeArena state, vault routing, and indexed activity on /arena/protocol.",
+    tooltip: "Verify TimeArena state, vault routing, and indexed activity on /audit.",
   },
 ];
 
@@ -63,7 +63,7 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
     tooltip: "Primary play surface: buy CHARM, route DOUB to prizes, earn CRED, and compete in PvP TimeArena.",
   },
   {
-    to: "/arena/protocol",
+    to: "/audit",
     title: "Arena AUDIT",
     blurb: "Verify timers, vault routing, and indexed PvP activity.",
     image: "/art/scenes/arena-protocol-command-console.svg",
@@ -123,7 +123,7 @@ export const LAUNCH_COUNTDOWN_SIGNALS: LaunchCountdownSignal[] = [
   },
   {
     label: "AUDIT",
-    tooltip: "After the gate opens, /arena/protocol exposes state and routing verification.",
+    tooltip: "After the gate opens, /audit exposes state and routing verification.",
   },
 ];
 

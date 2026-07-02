@@ -59,7 +59,7 @@ export PATH="$HOME/.foundry/bin:$PATH"
 SKIP_ANVIL_RICH_STATE=1 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 START_BOT_SWARM=0 \\
   bash scripts/start-qa-local-full-stack.sh --live-sale --no-swarm
 
-# Play UI http://127.0.0.1:5173/  ·  AUDIT /arena/protocol  ·  indexer :3100
+# Play UI http://127.0.0.1:5173/  ·  AUDIT /audit  ·  indexer :3100
 curl -sf http://127.0.0.1:3100/v1/status | jq '{schema_version, max_indexed_block, ingestion_alive}'`;
 
 const VERIFY_SCRIPTS_SNIPPET = `# Smallest check per layer (see AGENTS.md) — run from repo root
@@ -169,7 +169,7 @@ export function AgentFooterCard() {
               architecture
             </a>
             ). Primary play route <code className="app-footer-agent__code-inline">/</code>; operator AUDIT{" "}
-            <code className="app-footer-agent__code-inline">/arena/protocol</code>. With{" "}
+            <code className="app-footer-agent__code-inline">/audit</code>. With{" "}
             <code className="app-footer-agent__code-inline">VITE_INDEXER_URL</code> set, timer/podium/sale-head
             display is <strong>indexer-first</strong> (#301) — no browser RPC mirrors for those surfaces.
           </p>

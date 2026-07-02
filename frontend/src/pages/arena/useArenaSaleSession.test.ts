@@ -33,5 +33,7 @@ describe("useArenaSaleSession submit paths (GitLab #321)", () => {
     expect(src).toContain("paySpendInputCompactRef");
     expect(src).toContain("resolveArenaPayTokenSpendBand");
     expect(src).toContain("payTokenSpendBand");
+    expect(src).toContain("payTokenWeiForDoubSpend");
+    expect(src).not.toContain("currentPayTokenWei !== undefined");
   });
 });

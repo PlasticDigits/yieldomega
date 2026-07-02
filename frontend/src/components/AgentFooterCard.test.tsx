@@ -48,7 +48,7 @@ describe("AgentFooterCard", () => {
     expect(html).toContain("buy_routing");
     expect(html).toContain("2.16.0");
     expect(html).toContain("indexer-first");
-    expect(html).toContain("/arena/protocol");
+    expect(html).toContain("/audit");
     expect(html).toContain("VITE_TIME_ARENA_ADDRESS");
     expect(html).toContain("gitlab.com/PlasticDigits/yieldomega");
   });

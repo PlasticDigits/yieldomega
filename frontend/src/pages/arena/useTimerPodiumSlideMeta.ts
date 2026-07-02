@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { addresses } from "@/lib/addresses";
-import { clampPlayerLevel, shouldShowPodiumLevelLock } from "@/lib/arenaProgression";
+import { clampPlayerLevel, shouldShowPodiumFeatureLock } from "@/lib/arenaProgression";
 import {
   formatTimerSectionTitle,
   type SaleSessionPhase,
@@ -26,8 +26,17 @@ export function isTimerPodiumSlideLocked(
   requiredLevel: number,
   walletConnected: boolean,
   viewerLevel: number | undefined,
+  walletSurfaceUnlocked: boolean,
+  walletStatsPending = false,
 ): boolean {
-  return shouldShowPodiumLevelLock(walletConnected, viewerLevel, requiredLevel, categoryIndex);
+  return shouldShowPodiumFeatureLock({
+    categoryIndex,
+    requiredLevel,
+    walletConnected,
+    viewerLevel,
+    walletSurfaceUnlocked,
+    walletStatsPending,
+  }).locked;
 }
 
 export function useTimerPodiumSlideMeta(
@@ -42,6 +51,8 @@ export function useTimerPodiumSlideMeta(
     walletConnected: boolean;
     playerLevel?: bigint | number;
     podiumRows?: readonly PodiumReadRow[] | undefined;
+    walletSurfaceUnlocked: boolean;
+    walletStatsPending?: boolean;
   },
 ) {
   const activeIndex = normalizeTimerPodiumSlideIndex(slideIndex);
@@ -108,13 +119,16 @@ export function useTimerPodiumSlideMeta(
         ? opts.lastBuyCountdownSec
         : transitionMeta?.countdownSec;
 
-  const locked = isTimerPodiumSlideLocked(
-    slot.categoryIndex,
-    slot.requiredLevel,
-    opts.walletConnected,
+  const lockState = shouldShowPodiumFeatureLock({
+    categoryIndex: slot.categoryIndex,
+    requiredLevel: slot.requiredLevel,
+    walletConnected: opts.walletConnected,
     viewerLevel,
-  );
-  const lockedForConnection = locked && !opts.walletConnected;
+    walletSurfaceUnlocked: opts.walletSurfaceUnlocked,
+    walletStatsPending: opts.walletStatsPending,
+  });
+  const locked = lockState.locked;
+  const lockedForConnection = lockState.lockedForConnection;
 
   const countdownPlaceholder =
     opts.phase === "saleActive" && transitionMeta?.transitionState === "unarmed"

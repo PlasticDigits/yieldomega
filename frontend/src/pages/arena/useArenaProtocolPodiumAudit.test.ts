@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
-import { podiumAuditSecondsRemaining } from "@/pages/arena/useArenaProtocolPodiumAudit";
+import {
+  podiumAuditSecondsRemaining,
+  readPodiumTimerSecFromMulticall,
+} from "@/pages/arena/useArenaProtocolPodiumAudit";
 import type { ArenaTimersResponse } from "@/lib/indexerApi";
 
 const timers: ArenaTimersResponse = {
@@ -32,5 +35,17 @@ describe("podiumAuditSecondsRemaining", () => {
 
   it("floors at zero when past deadline", () => {
     expect(podiumAuditSecondsRemaining(1, timers, 3000)).toBe(0);
+  });
+});
+
+describe("readPodiumTimerSecFromMulticall", () => {
+  it("reads extension / initial / cap slots per category", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => ({
+      status: "success" as const,
+      result: BigInt((i + 1) * 60),
+    }));
+    expect(readPodiumTimerSecFromMulticall(rows, 0, 0)).toBe(60);
+    expect(readPodiumTimerSecFromMulticall(rows, 1, 1)).toBe(300);
+    expect(readPodiumTimerSecFromMulticall(rows, 3, 2)).toBe(720);
   });
 });

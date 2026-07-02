@@ -60,6 +60,87 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
     expect(html).toContain("LEVEL 3");
   });
 
+  it("locks Last Buy side-rail chip without buy-hint copy when wallet connected but has not bought", () => {
+    mockWalletStats.mockReturnValue({
+      data: { buy_count: 0, first_buy_at: null },
+      isLoading: false,
+      isFetching: false,
+    });
+    const html = renderToStaticMarkup(
+      createElement(ArenaPodiumTimerChip, {
+        ...baseProps,
+        feature: "last_buy",
+        contractIndex: 0,
+        categoryIndex: 0,
+        podiumName: "Last Buy",
+        address: "0xdddddddddddddddddddddddddddddddddddddddd" as const,
+      }),
+    );
+    expect(html).toContain('data-testid="arena-timer-chip-lock-0"');
+    expect(html).toContain("LEVEL 1");
+    expect(html).not.toContain("Buy CHARM to unlock your Last Buy score on this panel.");
+  });
+
+  it("locks Last Buy side-rail chip when wallet is disconnected", () => {
+    mockWalletStats.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+    });
+    const html = renderToStaticMarkup(
+      createElement(ArenaPodiumTimerChip, {
+        ...baseProps,
+        feature: "last_buy",
+        contractIndex: 0,
+        categoryIndex: 0,
+        podiumName: "Last Buy",
+        address: undefined,
+      }),
+    );
+    expect(html).toContain('data-testid="arena-timer-chip-lock-0"');
+    expect(html).toContain("Connect wallet");
+  });
+
+  it("locks Last Buy side-rail chip while wallet stats load", () => {
+    mockWalletStats.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isFetching: true,
+    });
+    const html = renderToStaticMarkup(
+      createElement(ArenaPodiumTimerChip, {
+        ...baseProps,
+        feature: "last_buy",
+        contractIndex: 0,
+        categoryIndex: 0,
+        podiumName: "Last Buy",
+        address: "0xdddddddddddddddddddddddddddddddddddddddd" as const,
+      }),
+    );
+    expect(html).toContain('data-testid="arena-timer-chip-lock-0"');
+    expect(html).toContain("LEVEL 1");
+  });
+
+  it("unlocks Last Buy side-rail chip after wallet buy", () => {
+    mockWalletStats.mockReturnValue({
+      data: { buy_count: 1, first_buy_at: "1700000000" },
+      isLoading: false,
+      isFetching: false,
+    });
+    const html = renderToStaticMarkup(
+      createElement(ArenaPodiumTimerChip, {
+        ...baseProps,
+        feature: "last_buy",
+        contractIndex: 0,
+        categoryIndex: 0,
+        podiumName: "Last Buy",
+        address: "0xdddddddddddddddddddddddddddddddddddddddd" as const,
+      }),
+    );
+    expect(html).not.toContain('data-testid="arena-timer-chip-lock-0"');
+    expect(html).toContain("EPOCH 0");
+  });
+
   it("shows each feature unlock tier on side-rail pre-buy locks", () => {
     mockWalletStats.mockReturnValue({
       data: undefined,
@@ -88,7 +169,12 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
           address: undefined,
         }),
       );
-      expect(html).toContain(`LEVEL ${chip.level}`);
+      expect(html).toContain(`data-testid="arena-timer-chip-lock-${chip.contractIndex}"`);
+      if (chip.feature === "last_buy") {
+        expect(html).toContain("Connect wallet");
+      } else {
+        expect(html).toContain(`LEVEL ${chip.level}`);
+      }
     }
   });
 

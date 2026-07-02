@@ -59,12 +59,13 @@ export function useKumbayaExactOutputQuote(params: {
             amountOut: amountOut!,
           }),
     enabled: canRun,
+    staleTime: 15_000,
     placeholderData: (previousData, previousQuery) => {
       const prevPayWith = previousQuery?.queryKey[1];
-      const prevAmountOut = previousQuery?.queryKey[3];
-      if (prevPayWith !== payWith || prevAmountOut !== amountOut?.toString()) {
+      if (prevPayWith !== payWith) {
         return undefined;
       }
+      // Keep the last good quote while `amountOut` refetches (slider / sizing).
       return previousData;
     },
   });

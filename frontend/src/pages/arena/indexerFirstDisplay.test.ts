@@ -57,6 +57,7 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("fetchWarbowPendingRevenge");
     expect(src).not.toContain("useReadContracts");
     expect(src).not.toContain("fetchArenaActivity");
+    expect(src).not.toContain("chainNowSec");
   });
 
   it("ArenaSimplePage resolves WarBow card display from indexer when RPC is inactive", () => {
@@ -102,5 +103,39 @@ describe("indexer-first display reads (#301)", () => {
     expect(simple).toContain("chainNowSec: session.chainNowSec");
     expect(readArena("arenaTransitionState.ts")).toContain("derivePodiumTransitionState");
     expect(readArena("useArenaHeroTimer.ts")).toContain("arenaChainNow");
+  });
+
+  it("ArenaProtocolDataContext is indexer-first with no display RPC multicall (#301)", () => {
+    const src = readArena("ArenaProtocolDataContext.tsx");
+    expect(src).toContain("indexerConfigured");
+    expect(src).toContain("mapArenaV2AdvancedCoreRowsFromArenaTimers");
+    expect(src).toContain("useArenaTimersQuery");
+    expect(src).toContain("useWalletStats");
+    expect(src).not.toContain("useReadContracts");
+    expect(src).not.toContain("useReadContract");
+    expect(src).not.toContain("useRpcBackedReadQueryOptions");
+  });
+
+  it("useArenaProtocolPodiumAudit has no browser RPC timer mirror", () => {
+    const src = readArena("useArenaProtocolPodiumAudit.ts");
+    expect(src).not.toContain("useReadContracts");
+    expect(src).toContain("useArenaTimersQuery");
+  });
+
+  it("ArenaProtocolPage avoids useLatestBlock for phase ledger (#301)", () => {
+    const page = readArena("ArenaProtocolPage.tsx");
+    const raw = readArena("useArenaProtocolRawAccordion.ts");
+    expect(page).not.toContain("useLatestBlock");
+    expect(page).toContain("heroChainNowSec");
+    expect(raw).not.toContain("useLatestBlock");
+  });
+
+  it("useArenaProtocolDonatePools avoids recurring balanceOf polls (#301)", () => {
+    const src = readArena("useArenaProtocolDonatePools.ts");
+    expect(src).not.toContain("useReadContract");
+    expect(src).not.toContain("useReadContracts");
+    expect(src).not.toContain("refetchInterval");
+    expect(src).toContain("readContract");
+    expect(src).not.toContain("useReadContract");
   });
 });

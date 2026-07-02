@@ -676,6 +676,8 @@ export function RawDataAccordion(props: {
   /** Per-stealer open windows from indexer ([GitLab #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135)). */
   pendingRevengeTargets: readonly WarbowPendingRevengeItem[];
   revengeIndexerConfigured: boolean;
+  /** True when the latest pending-revenge indexer request failed (HTTP/network). */
+  pendingRevengeLoadFailed?: boolean;
   buyerStats: ArenaBuyerStats | null;
   podiumAuditRows: readonly ProtocolPodiumAuditRow[];
   podiumAuditEpochPlus1: (epoch: string | undefined) => string | undefined;
@@ -700,6 +702,7 @@ export function RawDataAccordion(props: {
     bestStreakResult,
     pendingRevengeTargets,
     revengeIndexerConfigured,
+    pendingRevengeLoadFailed = false,
     buyerStats,
     podiumAuditRows,
     podiumAuditEpochPlus1,
@@ -813,6 +816,11 @@ export function RawDataAccordion(props: {
                     ) : !revengeIndexerConfigured ? (
                       <span className="muted">
                         Indexer URL not set — open revenge windows require{" "}
+                        <span className="mono">GET /v1/arena/warbow/pending-revenge</span>.
+                      </span>
+                    ) : pendingRevengeLoadFailed ? (
+                      <span className="muted">
+                        Indexer revenge lookup failed — retry by refreshing the page or check{" "}
                         <span className="mono">GET /v1/arena/warbow/pending-revenge</span>.
                       </span>
                     ) : pendingRevengeTargets.length === 0 ? (

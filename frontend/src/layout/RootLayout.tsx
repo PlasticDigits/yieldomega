@@ -256,8 +256,7 @@ export function RootLayout() {
     .filter(Boolean)
     .join(" ");
 
-  const showFooter =
-    !isArenaPlayRoute || location.pathname.startsWith("/arena/protocol");
+  const showFooter = !isArenaPlayRoute;
 
   return (
     <div className={shellClassName}>
@@ -272,7 +271,7 @@ export function RootLayout() {
           </div>
           <nav className="app-nav app-nav--dense" aria-label="Primary">
             <NavLink
-              to="/arena/protocol"
+              to="/audit"
               className={navLinkClass}
               aria-label="AUDIT: Inspect Time Arena contract reads, indexer tables, and operator activity."
               title="Inspect Time Arena contract reads, indexer tables, and operator activity."

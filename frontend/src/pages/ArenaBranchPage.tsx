@@ -30,7 +30,7 @@ export function ArenaBranchPage() {
   const { arenaSegment } = useParams<{ arenaSegment: string }>();
   const s = arenaSegment?.toLowerCase() ?? "";
   if (s === "protocol") {
-    return <Navigate to="/arena/protocol" replace />;
+    return <Navigate to="/audit" replace />;
   }
   if (isReferralSlugReservedForRouting(s)) {
     return <Navigate to="/" replace />;

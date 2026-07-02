@@ -75,6 +75,7 @@ import {
   useWarbowPodiumLiveInvalidation,
 } from "@/pages/arena/usePodiumReads";
 import {
+  isArenaLastBuyWalletSurfaceUnlocked,
   mergeBuysNewestFirst,
   parseNonNegativeUnixSec,
   resolveIndexerViewerWarbowBattlePoints,
@@ -354,7 +355,7 @@ export function ArenaSimplePage({
   const queryClient = useQueryClient();
 
   const { address: connectedAddress } = useAccount();
-  const { levelBigint: playerLevelRaw, stats: playerWalletStats } =
+  const { levelBigint: playerLevelRaw, stats: playerWalletStats, isLoading: playerWalletStatsPending } =
     useArenaPlayerLevel(connectedAddress);
   const [featureModal, setFeatureModal] = useState<ArenaFeatureKey | null>(null);
   const [levelUpCelebration, dismissLevelUpCelebration] = useArenaLevelUpCelebration(playerLevelRaw);
@@ -384,6 +385,18 @@ export function ArenaSimplePage({
   const podiumReads = usePodiumReads(tc);
 
   const [podiumCarouselIndex, setPodiumCarouselIndex] = useState(0);
+  const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
+
+  const lastBuyWalletUnlocked = useMemo(
+    () =>
+      isArenaLastBuyWalletSurfaceUnlocked({
+        walletConnected: session.walletConnected,
+        walletStats: playerWalletStats,
+        arenaUsers: { recentBuys, podiumRows: podiumReads.data },
+      }),
+    [playerWalletStats, podiumReads.data, recentBuys, session.walletConnected],
+  );
+  const walletStatsPending = session.walletConnected && playerWalletStatsPending;
 
   const heroSecondsRemaining =
     session.phase === "saleActive"
@@ -402,6 +415,8 @@ export function ArenaSimplePage({
     walletConnected: session.walletConnected,
     playerLevel: playerLevelRaw,
     podiumRows: podiumReads.data,
+    walletSurfaceUnlocked: lastBuyWalletUnlocked,
+    walletStatsPending,
   });
 
   const timerSectionTitle = podiumSlideMeta.title;
@@ -434,7 +449,6 @@ export function ArenaSimplePage({
     session.warbowPendingFlagOwner,
   ]);
 
-  const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
   const [warbowTargetBpByAddress, setWarbowTargetBpByAddress] = useState<
     ReadonlyMap<string, string>
   >(() => new Map());
@@ -709,6 +723,9 @@ export function ArenaSimplePage({
               step={1}
               value={session.spendSliderPermille}
               onChange={(e) => session.setSpendFromSliderPermille(Number(e.target.value))}
+              onPointerDown={() => session.setSpendSliderInteracting(true)}
+              onPointerUp={() => session.setSpendSliderInteracting(false)}
+              onPointerCancel={() => session.setSpendSliderInteracting(false)}
               aria-label={`${paySpendSuffix} spend slider (targets CHARM buy band)`}
               disabled={spendControlsDisabled}
             />
@@ -817,8 +834,7 @@ export function ArenaSimplePage({
     payUsesKumbaya &&
     (session.kumbayaRoutingBlocker !== null ||
       session.swapQuoteFailed ||
-      session.quotedPayInWei === undefined ||
-      session.swapQuoteLoading);
+      (session.quotedPayInWei === undefined && session.swapQuoteLoading));
 
   const buyOnCooldown = session.walletCooldownRemainingSec > 0;
 
@@ -847,7 +863,9 @@ export function ArenaSimplePage({
           ? `Buy CHARM — next move in ${formatMmSsCountdown(session.walletCooldownRemainingSec)}`
           : session.buySubmitBusy || session.isWriting
             ? "Buy CHARM — processing transaction"
-            : payUsesKumbaya && session.swapQuoteLoading
+            : payUsesKumbaya &&
+                session.quotedPayInWei === undefined &&
+                session.swapQuoteLoading
               ? "Buy CHARM — refreshing pay token quote"
               : session.walletBuyCharges !== undefined && session.walletMaxBuyCharges !== undefined
                 ? `Buy CHARM — ${session.walletBuyCharges} of ${session.walletMaxBuyCharges} moves available`
@@ -867,7 +885,9 @@ export function ArenaSimplePage({
       <span className="arena-simple__cta-label">
         {session.buySubmitBusy || session.isWriting
           ? "Processing transaction…"
-            : payUsesKumbaya && session.swapQuoteLoading
+            : payUsesKumbaya &&
+                session.quotedPayInWei === undefined &&
+                session.swapQuoteLoading
               ? "Refreshing quote…"
               : buyOnCooldown
                 ? `Next move ${formatMmSsCountdown(session.walletCooldownRemainingSec)}`

@@ -500,6 +500,9 @@ export function ReferralRegisterSection({ className }: Props) {
     <div className={className ?? ""}>
       <ChainMismatchWriteBarrier testId="referrals-register-chain-write-gate">
         <PageSection
+          className={
+            isConnected ? "referrals-register-panel--connected" : undefined
+          }
           title={
             isConnected && hasRegistered
               ? "Guide code claimed"

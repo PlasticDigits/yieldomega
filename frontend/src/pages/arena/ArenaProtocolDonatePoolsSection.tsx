@@ -13,6 +13,7 @@ import { explorerTxUrl } from "@/lib/explorer";
 import { formatRelativeFreshnessEnglish } from "@/lib/cl8yUsdEquivalentDisplay";
 import { ProtocolInlineRefreshButton } from "@/pages/arena/ProtocolInlineRefreshButton";
 import { useArenaProtocolDonatePools } from "@/pages/arena/useArenaProtocolDonatePools";
+import { useArenaProtocolData } from "@/pages/arena/ArenaProtocolDataContext";
 
 const DONATE_DISCLOSURE =
   "Donating to the pools makes Yield Omega prizes more exciting, but does not provide you with any benefit.";
@@ -45,6 +46,7 @@ function formatDoubWad(raw: string | undefined): ReactNode {
 }
 
 export function ArenaProtocolDonatePoolsSection({ isOffline, onOpenWalletProfile }: Props) {
+  const { latchedAcceptedAssetAddr } = useArenaProtocolData();
   const {
     timeArena,
     data,
@@ -61,7 +63,7 @@ export function ArenaProtocolDonatePoolsSection({ isOffline, onOpenWalletProfile
     writeOk,
     donate,
     isConnected,
-  } = useArenaProtocolDonatePools();
+  } = useArenaProtocolDonatePools(latchedAcceptedAssetAddr);
 
   const indexerUnset = !indexerBaseUrl();
   const showIndexerPlaceholder = indexerUnset || Boolean(indexerErr) || (!initialLoading && !data);

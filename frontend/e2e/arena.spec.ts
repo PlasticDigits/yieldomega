@@ -46,7 +46,7 @@ test("arena simple view omits podium grid; AUDIT shows podiums and dense feed se
   await expect(page.getByTestId("arena-live-buys-activity")).toHaveCount(0);
 
   await page.getByLabel("Primary").getByRole("link", { name: /AUDIT/ }).click();
-  await expect(page).toHaveURL(/\/arena\/protocol$/);
+  await expect(page).toHaveURL(/\/audit$/);
   await expect(page.getByRole("heading", { name: "AUDIT", level: 1 })).toBeVisible();
   if (await page.getByText(/VITE_TIME_ARENA_ADDRESS is not configured/).isVisible()) {
     await expect(page.getByTestId("arena-simple-podiums")).toHaveCount(0);
@@ -59,10 +59,10 @@ test("arena simple view omits podium grid; AUDIT shows podiums and dense feed se
   await expect(page.getByTestId("arena-protocol-donate-pools")).toBeVisible();
 });
 
-test("primary nav routes to /arena/protocol (raw reads)", async ({ page }) => {
+test("primary nav routes to /audit", async ({ page }) => {
   await ensurePostLaunch(page);
   await page.getByLabel("Primary").getByRole("link", { name: /AUDIT/ }).click();
-  await expect(page).toHaveURL(/\/arena\/protocol$/);
+  await expect(page).toHaveURL(/\/audit$/);
   await expect(page.getByRole("heading", { name: "AUDIT", level: 1 })).toBeVisible();
 });
 
@@ -87,10 +87,16 @@ test("legacy /timecurve/arena redirects to / (#266)", async ({ page }) => {
   await expect(page).toHaveURL(/\/$/);
 });
 
-test("legacy /timecurve/protocol redirects to /arena/protocol (#266)", async ({ page }) => {
+test("legacy /arena/protocol redirects to /audit (#266)", async ({ page }) => {
+  await ensurePostLaunch(page);
+  await page.goto("/arena/protocol");
+  await expect(page).toHaveURL(/\/audit$/);
+});
+
+test("legacy /timecurve/protocol redirects to /audit (#266)", async ({ page }) => {
   await ensurePostLaunch(page);
   await page.goto("/timecurve/protocol");
-  await expect(page).toHaveURL(/\/arena\/protocol$/);
+  await expect(page).toHaveURL(/\/audit$/);
 });
 
 test("home product cards reflow without iPad Mini horizontal overflow", async ({ page }) => {
