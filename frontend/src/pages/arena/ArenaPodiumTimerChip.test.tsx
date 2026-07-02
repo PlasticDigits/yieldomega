@@ -141,6 +141,32 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
     expect(html).toContain("EPOCH 0");
   });
 
+  it("marks the connected wallet row in side-rail leader lists", () => {
+    mockWalletStats.mockReturnValue({
+      data: { buy_count: 1, first_buy_at: "1700000000" },
+      isLoading: false,
+      isFetching: false,
+    });
+    const viewer = "0xdddddddddddddddddddddddddddddddddddddddd" as const;
+    const html = renderToStaticMarkup(
+      createElement(ArenaPodiumTimerChip, {
+        ...baseProps,
+        feature: "defended_streak",
+        contractIndex: 2,
+        categoryIndex: 2,
+        podiumName: "Defended Streak",
+        address: viewer,
+        podiumRow: {
+          winners: [OTHER, viewer, OTHER],
+          values: ["0", "0", "0"],
+          epoch: "0",
+        },
+      }),
+    );
+    expect(html).toContain("arena-timer-chips__place--you");
+    expect(html).toMatch(/address-inline__label">dddddd/);
+  });
+
   it("shows each feature unlock tier on side-rail pre-buy locks", () => {
     mockWalletStats.mockReturnValue({
       data: undefined,

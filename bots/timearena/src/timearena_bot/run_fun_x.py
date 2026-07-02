@@ -85,7 +85,7 @@ def run_fun_fleet(*, cfg: BotConfig | None = None) -> None:
 
     if cfg is None:
         cfg = load_config(env_file=None, send=True, allow_anvil_funding=False)
-    if not cfg.can_submit_transactions():
+    if not cfg.fleet_supervisor_send_ok():
         print(
             "run-fun-x: pass --send (or YIELDOMEGA_SEND_TX=1 with YIELDOMEGA_DRY_RUN=0) "
             "and configure RPC / TimeArena addresses.",

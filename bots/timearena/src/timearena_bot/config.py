@@ -36,11 +36,21 @@ class BotConfig:
     charm_wad_fun: int
     charm_wad_shark: int
     send_transactions: bool
+    # True when the CLI passed --send (even if YIELDOMEGA_PRIVATE_KEY is unset; fleet uses KEY_i).
+    send_cli: bool
     # When true, rpc.anvil_dev_bootstrap_funding_if_enabled may use Anvil JSON-RPC (31337 only).
     allow_anvil_funding: bool
 
     def can_submit_transactions(self) -> bool:
         return bool(self.private_key) and self.send_transactions
+
+    def fleet_supervisor_send_ok(self) -> bool:
+        """run-fun-x may start when --send or env send flags are set; workers use KEY_i keys."""
+        if self.send_cli or self.can_submit_transactions():
+            return True
+        env_send = _truthy(os.getenv("YIELDOMEGA_SEND_TX"))
+        dry = _truthy(os.getenv("YIELDOMEGA_DRY_RUN", "1"))
+        return env_send and not dry
 
 
 def _env_int(name: str, default: int) -> int:
@@ -139,5 +149,6 @@ def load_config(
         charm_wad_fun=charm_fun,
         charm_wad_shark=charm_shark,
         send_transactions=send_tx,
+        send_cli=send,
         allow_anvil_funding=allow_funding,
     )

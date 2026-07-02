@@ -29,6 +29,7 @@ def _cfg() -> BotConfig:
         charm_wad_fun=0,
         charm_wad_shark=0,
         send_transactions=True,
+        send_cli=True,
         allow_anvil_funding=False,
     )
 

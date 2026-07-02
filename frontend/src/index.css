@@ -691,6 +691,10 @@ label:has(input[type="radio"]:disabled) {
   color: var(--yo-text);
 }
 
+.app-header--dense .wallet-action--account-dense .wallet-action__addr-tail {
+  color: var(--yo-cyan-soft);
+}
+
 .app-header--dense .wallet-action__blockie canvas {
   border-radius: 0.2rem;
   vertical-align: middle;
@@ -12569,6 +12573,10 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: clamp(0.62rem, 1.55vw, 0.72rem);
 }
 
+.arena-simple__last-buy-podium--you .address-inline__label {
+  color: var(--yo-cyan-soft);
+}
+
 .arena-simple__last-buy-podium--you {
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 74, 157, 0.16), transparent 62%),
@@ -14031,6 +14039,10 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: inherit;
 }
 
+.arena-command-console .arena-timer-chips__place--you .address-inline__label {
+  color: var(--yo-cyan-soft);
+}
+
 .arena-command-console .arena-timer-chips__lock {
   grid-area: chip-epoch;
   display: block;
@@ -14859,6 +14871,13 @@ a.podium-address-explorer:hover .address-inline__label {
 
 :is(.arena-command-console, .arena-protocol-page) .arena-simple__podium-address .address-inline__label {
   color: #eefcff;
+}
+
+:is(.arena-command-console, .arena-protocol-page)
+  .ranking-list__item--you
+  .arena-simple__podium-address
+  .address-inline__label {
+  color: var(--yo-cyan-soft);
 }
 
 :is(.arena-command-console, .arena-protocol-page) .locked-until-level__overlay {

@@ -217,17 +217,34 @@ def fmt_usd(doub_wei, doub_usd_wad=None):
     return f"{doub_wei_to_usd(doub_wei, doub_usd_wad).quantize(Decimal('0.01')):,.2f}"
 
 
-def _sum_active_prize_pools(podiums):
+_POOL_WAD_KEYS = (
+    "active_pool_balance_doub_wad",
+    "seed_pool_balance_doub_wad",
+    "future_pool_balance_doub_wad",
+)
+
+
+def _sum_all_prize_pools(podiums):
+    """Grand total DOUB across current + next + future epoch pools on all four podiums."""
+    tranches = (podiums.get("buy_routing") or {}).get("epoch_tranches") or []
+    if tranches:
+        total = 0
+        for tranche in tranches:
+            wad = _parse_wad(tranche.get("pool_total_doub_wad"))
+            if wad:
+                total += wad
+        return total
     total = 0
     for row in podiums.get("rows", []):
-        wad = _parse_wad(row.get("active_pool_balance_doub_wad"))
-        if wad:
-            total += wad
+        for key in _POOL_WAD_KEYS:
+            wad = _parse_wad(row.get(key))
+            if wad:
+                total += wad
     return total
 
 
 def fetch_market_snapshot():
-    """Cached doub_usd_wad (GET /v1/arena/doub-spot-price) + total active prize pool (podiums)."""
+    """Cached doub_usd_wad (GET /v1/arena/doub-spot-price) + grand total prize pool (podiums)."""
     now = time.monotonic()
     if now - _market_cache["at"] < INDEXER_CACHE_SEC:
         return _market_cache
@@ -237,7 +254,7 @@ def fetch_market_snapshot():
         spot = _indexer_get("/v1/arena/doub-spot-price")
         doub_usd_wad = _parse_wad(spot.get("doub_usd_wad"))
         podiums = _indexer_get("/v1/arena/podiums")
-        total_prize_pool_doub_wad = _sum_active_prize_pools(podiums)
+        total_prize_pool_doub_wad = _sum_all_prize_pools(podiums)
     except Exception as e:  # noqa: BLE001
         LOG.warning("Indexer market snapshot failed (%s): %s", INDEXER_URL, e)
         if _market_cache["at"] > 0:

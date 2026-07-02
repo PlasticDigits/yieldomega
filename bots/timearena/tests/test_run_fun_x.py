@@ -10,6 +10,7 @@ from timearena_bot.fleet_env import FleetWallet
 def _cfg(*, can_send: bool = True) -> MagicMock:
     cfg = MagicMock()
     cfg.can_submit_transactions.return_value = can_send
+    cfg.fleet_supervisor_send_ok.return_value = can_send
     return cfg
 
 

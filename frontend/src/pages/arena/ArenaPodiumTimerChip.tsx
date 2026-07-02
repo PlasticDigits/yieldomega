@@ -22,6 +22,7 @@ import {
   compactPodiumScoreNode,
   hasPodiumWinner,
   PODIUM_PLACE_LABELS,
+  samePodiumAddress,
   usePodiumScoreClock,
 } from "@/pages/arena/arenaSimplePodiumRanking";
 import { formatPodiumChipCountdown } from "@/pages/arena/formatTimer";
@@ -194,10 +195,16 @@ export function ArenaPodiumTimerChip({
             const prizeRaw = podiumPayoutPreview?.[categoryIndex]?.places[placeIndex];
             const valueRaw = podiumRow?.values?.[placeIndex] ?? "0";
             const winnerBuySec = podiumRow?.winnerBuySec?.[placeIndex];
+            const isViewer = winnerReady && samePodiumAddress(winner, address);
             return (
               <li
                 key={`${contractIndex}-${placeIndex}`}
-                className="arena-timer-chips__place"
+                className={[
+                  "arena-timer-chips__place",
+                  isViewer ? "arena-timer-chips__place--you" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 data-testid={`arena-timer-chip-place-${contractIndex}-${placeIndex + 1}`}
               >
                 <span className="arena-timer-chips__place-rank">{placeLabel}</span>

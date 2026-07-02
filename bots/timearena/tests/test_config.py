@@ -35,6 +35,22 @@ def test_send_with_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     cfg = load_config(send=True, allow_anvil_funding=False)
     assert cfg.send_transactions is True
+    assert cfg.send_cli is True
+
+
+def test_send_cli_without_private_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Coolify run-fun-x: --send with KEY_i workers, no YIELDOMEGA_PRIVATE_KEY on supervisor."""
+    monkeypatch.delenv("YIELDOMEGA_PRIVATE_KEY", raising=False)
+    monkeypatch.setenv("YIELDOMEGA_RPC_URL", "http://127.0.0.1:8545")
+    monkeypatch.setenv("YIELDOMEGA_CHAIN_ID", "4326")
+    monkeypatch.setenv(
+        "YIELDOMEGA_TIME_ARENA_ADDRESS",
+        "0xba39cea0e5ef6808d8cb926c722877480049e0ee",
+    )
+    cfg = load_config(send=True, allow_anvil_funding=False)
+    assert cfg.send_transactions is False
+    assert cfg.send_cli is True
+    assert cfg.fleet_supervisor_send_ok() is True
 
 
 def test_send_blocked_by_dry_env(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -69,14 +69,40 @@ def test_doub_wei_to_usd_indexed_and_fallback():
     assert announce.doub_wei_to_usd(100 * 10**18, None) == announce.Decimal("98")
 
 
-def test_sum_active_prize_pools():
-    podiums = {"rows": [
-        {"active_pool_balance_doub_wad": "100"},
-        {"active_pool_balance_doub_wad": "200"},
-        {"active_pool_balance_doub_wad": "0"},
-        {},
-    ]}
-    assert announce._sum_active_prize_pools(podiums) == 300
+def test_sum_all_prize_pools():
+    podiums = {
+        "rows": [
+            {
+                "active_pool_balance_doub_wad": "700",
+                "seed_pool_balance_doub_wad": "200",
+                "future_pool_balance_doub_wad": "100",
+            },
+            {
+                "active_pool_balance_doub_wad": "0",
+                "seed_pool_balance_doub_wad": "0",
+                "future_pool_balance_doub_wad": "0",
+            },
+            {
+                "active_pool_balance_doub_wad": "1400",
+                "seed_pool_balance_doub_wad": "400",
+                "future_pool_balance_doub_wad": "200",
+            },
+            {
+                "active_pool_balance_doub_wad": "350",
+                "seed_pool_balance_doub_wad": "100",
+                "future_pool_balance_doub_wad": "50",
+            },
+        ],
+        "buy_routing": {
+            "epoch_tranches": [
+                {"slot": "current", "pool_total_doub_wad": "2450"},
+                {"slot": "next", "pool_total_doub_wad": "700"},
+                {"slot": "future", "pool_total_doub_wad": "350"},
+            ],
+        },
+    }
+    assert announce._sum_all_prize_pools(podiums) == 3500
+    assert announce._sum_all_prize_pools({"rows": podiums["rows"]}) == 3500
 
 
 def test_fetch_market_snapshot_parses_spot_price(monkeypatch):
@@ -87,7 +113,14 @@ def test_fetch_market_snapshot_parses_spot_price(monkeypatch):
         if path == "/v1/arena/doub-spot-price":
             return {"doub_usd_wad": str(10**18), "usdm_per_doub_wad": "1000000"}
         if path == "/v1/arena/podiums":
-            return {"rows": [{"active_pool_balance_doub_wad": "300"}]}
+            return {
+                "rows": [{
+                    "active_pool_balance_doub_wad": "200",
+                    "seed_pool_balance_doub_wad": "80",
+                    "future_pool_balance_doub_wad": "20",
+                }],
+                "buy_routing": {"epoch_tranches": [{"pool_total_doub_wad": "300"}]},
+            }
         raise AssertionError(path)
 
     monkeypatch.setattr(announce, "_indexer_get", fake_get)
