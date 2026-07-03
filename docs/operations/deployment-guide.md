@@ -136,6 +136,76 @@ Example Arena v2 registry:
 
 Publish the written JSON as the canonical artifact; use it as the source of truth for indexer and frontend wiring.
 
+<a id="timearena-uups-upgrade"></a>
+
+## TimeArena UUPS upgrade
+
+**`TimeArena`** is an ERC1967 proxy. Upgrade the **implementation** only — never redeploy the proxy. Storage (timers, scores, vault wiring) lives on the proxy.
+
+### 1. Deploy new implementation
+
+`TimeArena` links the external library **`ArenaCharmPriceTwap`**. Prefer **`forge script`** (auto-links) over bare **`forge create`**:
+
+```bash
+cd contracts
+export PRIVATE_KEY='…'   # funded key; implementation deploy does not need to be owner
+
+forge script script/DeployTimeArenaImpl.s.sol:DeployTimeArenaImpl \
+  --rpc-url https://mainnet.megaeth.com/rpc \
+  --chain 4326 \
+  --broadcast \
+  --code-size-limit 524288 \
+  --verify \
+  --verifier etherscan \
+  --verifier-url "https://api.etherscan.io/v2/api?chainid=4326" \
+  --etherscan-api-key "$ETHERSCAN_API_KEY" \
+  --interactive
+```
+
+Record the **`TimeArena`** implementation address from the broadcast log as **`NEW_IMPL`**.
+
+**Manual `forge create` alternative** — deploy the library first, then link:
+
+```bash
+forge create src/oracle/ArenaCharmPriceTwap.sol:ArenaCharmPriceTwap … --interactive
+# LIB_ADDR from output
+
+forge create src/arena/TimeArena.sol:TimeArena \
+  --libraries src/oracle/ArenaCharmPriceTwap.sol:ArenaCharmPriceTwap:$LIB_ADDR \
+  … --interactive
+```
+
+On MegaETH mainnet you may reuse the library already linked by the current implementation (e.g. `0xDbe78065A39C28fD2E4A77ec3dd6a650A082070e`) when **`ArenaCharmPriceTwap.sol`** is unchanged.
+
+### 2. Upgrade proxy (`owner()` signer)
+
+```bash
+export TIME_ARENA_PROXY="$(jq -r '.contracts.TimeArena' indexer/address-registry.megaeth-mainnet.json)"
+
+scripts/uups-upgrade-timearena-mainnet.sh "$NEW_IMPL"
+```
+
+Manual equivalent: `cast send "$TIME_ARENA_PROXY" "upgradeToAndCall(address,bytes)" "$NEW_IMPL" 0x … --interactive`
+
+Confirm ERC1967 implementation slot (last 20 bytes = **`NEW_IMPL`**) and smoke-read a new selector if applicable.
+
+### 3. Optional — retune per-category settlement timers
+
+After an upgrade that adds **`setPodiumTimerConfig`**, owner can adjust prize-settlement bands without another upgrade:
+
+```bash
+# Defended Streak (cat 2): +8m/buy, 22m→30m reset, 4d cap, 1d initial
+cast send "$TIME_ARENA_PROXY" \
+  "setPodiumTimerConfig(uint8,uint256,uint256,uint256,uint256,uint256)" \
+  2 480 86400 345600 1320 1800 \
+  --rpc-url https://mainnet.megaeth.com/rpc \
+  --interactive
+```
+
+**Scoring unchanged:** Defended Streak **score** still uses Last Buy remaining **< 15 min** (`DEFENDED_STREAK_WINDOW_SEC = 900`). Per-category timers govern **prize epoch deadlines** only ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
+
+Forge: `TimeArena.t.sol::test_setPodiumTimerConfig_*` · Invariant: **`INV-TIME-ARENA-PODIUM-TIMER-SETTER`**.
+
 ## Related operations docs
 
 - [Deployment stages](deployment-stages.md) — sequencing across environments.

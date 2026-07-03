@@ -48,6 +48,8 @@ describe("ArenaPodiumTimerChip", () => {
     const scoreIdx = placeRowBlock.indexOf("compactPodiumScoreNode");
     expect(prizeIdx).toBeGreaterThan(0);
     expect(scoreIdx).toBeGreaterThan(prizeIdx);
+    expect(src).toContain("podiumPayoutPreview?.[contractIndex]");
+    expect(src).not.toMatch(/podiumPayoutPreview\?\.\[categoryIndex\]/);
     expect(identityIdx).toBeGreaterThan(scoreIdx);
     expect(src).toContain("arena-timer-chips__aside");
     expect(src).toContain("chipVisuallyUnlocked ? helpButton : null");

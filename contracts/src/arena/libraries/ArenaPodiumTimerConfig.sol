@@ -19,11 +19,25 @@ library ArenaPodiumTimerConfig {
             uint256[4] memory resetToRemainingSec
         )
     {
-        extensionSec = [uint256(120), 60, 90, 300];
-        initialTimerSec = [uint256(86_400), 43_200, 64_800, 172_800];
-        timerCapSec = [uint256(4 * 86_400), 4 * 43_200, 4 * 64_800, 4 * 172_800];
-        resetBelowRemainingSec = [uint256(780), 240, 510, 3300];
-        resetToRemainingSec = [uint256(900), 300, 600, 3600];
+        extensionSec = [uint256(120), 60, 480, 300];
+        initialTimerSec = [uint256(86_400), 43_200, 86_400, 172_800];
+        timerCapSec = [uint256(4 * 86_400), 4 * 43_200, 4 * 86_400, 4 * 172_800];
+        resetBelowRemainingSec = [uint256(780), 240, 1320, 3300];
+        resetToRemainingSec = [uint256(900), 300, 1800, 3600];
+    }
+
+    function validateOne(
+        uint256 extensionSec,
+        uint256 initialTimerSec,
+        uint256 timerCapSec,
+        uint256 resetBelowRemainingSec,
+        uint256 resetToRemainingSec
+    ) internal pure {
+        require(extensionSec > 0, "ArenaPodiumTimerConfig: zero extension");
+        require(initialTimerSec > 0, "ArenaPodiumTimerConfig: zero initial");
+        require(timerCapSec >= initialTimerSec, "ArenaPodiumTimerConfig: cap < initial");
+        require(resetBelowRemainingSec < resetToRemainingSec, "ArenaPodiumTimerConfig: reset band");
+        require(resetToRemainingSec <= timerCapSec, "ArenaPodiumTimerConfig: reset > cap");
     }
 
     function validate(
@@ -34,14 +48,13 @@ library ArenaPodiumTimerConfig {
         uint256[4] calldata resetToRemainingSec
     ) internal pure {
         for (uint8 i; i < NUM_CATEGORIES; ++i) {
-            require(extensionSec[i] > 0, "ArenaPodiumTimerConfig: zero extension");
-            require(initialTimerSec[i] > 0, "ArenaPodiumTimerConfig: zero initial");
-            require(timerCapSec[i] >= initialTimerSec[i], "ArenaPodiumTimerConfig: cap < initial");
-            require(
-                resetBelowRemainingSec[i] < resetToRemainingSec[i],
-                "ArenaPodiumTimerConfig: reset band"
+            validateOne(
+                extensionSec[i],
+                initialTimerSec[i],
+                timerCapSec[i],
+                resetBelowRemainingSec[i],
+                resetToRemainingSec[i]
             );
-            require(resetToRemainingSec[i] <= timerCapSec[i], "ArenaPodiumTimerConfig: reset > cap");
         }
     }
 }

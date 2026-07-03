@@ -13,12 +13,17 @@ Built for an always-on edge box (e.g. a Jetson): **pure Python stdlib**, no `web
 
 - **TimeArena** proxy `0xba39cea0e5ef6808d8cb926c722877480049e0ee`, chain **4326** — from
   [`indexer/address-registry.megaeth-mainnet.json`](../../indexer/address-registry.megaeth-mainnet.json).
-- Events: `Buy`, `LevelUp`, `FirstBuyCredScheduled` (level-up banner on buys), and optional `ArenaStarted`.
+- Events: `Buy`, `LevelUp`, `FirstBuyCredScheduled` (level-up banner on buys), optional `ArenaStarted`,
+  and `PodiumEpochRolled` (podium settlement with 1st/2nd/3rd + settlement tx link).
   `Buy(address indexed buyer, uint256 charmWad, uint256 doubPaid, uint256 newDeadline,
   uint256 totalDoubRaisedAfter, uint256 buyIndex, uint256 actualSecondsAdded, bool timerHardReset,
   bool paidWithCred)` and `ArenaStarted(uint256,uint256)`.
   Level-up line: `LevelUp` in the same tx → **LEVEL UP! Now level N**; wallet first buy
   (`FirstBuyCredScheduled`, no `LevelUp`) → **Now level 1**.
+- `PodiumEpochRolled(uint8 indexed category, uint256 indexed epoch, address first, address second,
+  address third, uint256 poolPaid)` — posted when a podium epoch settles (autoroll or permissionless
+  `rollPodiumEpoch`). Message shows settled epoch number, top-3 addresses, 4∶2∶1 DOUB prizes, and
+  **settlement tx** link. Toggle with `ANNOUNCE_PODIUM_SETTLED=0`.
 - Source: `eth_getLogs` polling (topic-filtered), block-range splitting for RPC caps, and a
   persisted cursor (`announce-cursor.json`) for restart safety.
 
@@ -38,6 +43,7 @@ Copy `.env.example` to `.env` (gitignored) and set at least:
 | `TIME_ARENA_ADDRESS` | TimeArena proxy (defaults to the mainnet registry address) |
 | `ANNOUNCE_START_BLOCK` | Optional: first-run start block; otherwise starts at current head |
 | `MIN_DOUB` | Optional: skip buys under this DOUB amount |
+| `ANNOUNCE_PODIUM_SETTLED` | Post on `PodiumEpochRolled` with top-3 + settlement tx (default on) |
 | `INDEXER_URL` | Yieldomega indexer base URL — `GET /v1/arena/doub-spot-price` for DOUB→USD and `GET /v1/arena/podiums` for grand-total prize pools (current + next + future epochs across all podiums; default `https://indexer.yieldomega.com`) |
 | `INDEXER_CACHE_SEC` | Cache indexer market snapshot TTL in seconds (default `30`) |
 

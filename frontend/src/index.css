@@ -14039,8 +14039,19 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: inherit;
 }
 
-.arena-command-console .arena-timer-chips__place--you .address-inline__label {
-  color: var(--yo-cyan-soft);
+.arena-command-console .arena-timer-chips__place--you .address-inline__label,
+.arena-command-console .arena-timer-chips__place-identity-label--you {
+  color: var(--yo-magenta);
+}
+
+.arena-command-console .arena-timer-chips__place--you .address-inline__profile-btn {
+  color: var(--yo-magenta);
+  background: rgba(255, 94, 196, 0.08);
+}
+
+.arena-command-console .arena-timer-chips__place--you .address-inline__profile-btn:hover .address-inline__label,
+.arena-command-console .arena-timer-chips__place-identity-label--you:hover {
+  color: var(--yo-magenta);
 }
 
 .arena-command-console .arena-timer-chips__lock {

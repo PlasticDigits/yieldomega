@@ -192,7 +192,7 @@ export function ArenaPodiumTimerChip({
           {PODIUM_PLACE_LABELS.map((placeLabel, placeIndex) => {
             const winner = winners[placeIndex] ?? ZERO_ADDR;
             const winnerReady = hasPodiumWinner(winner);
-            const prizeRaw = podiumPayoutPreview?.[categoryIndex]?.places[placeIndex];
+            const prizeRaw = podiumPayoutPreview?.[contractIndex]?.places[placeIndex];
             const valueRaw = podiumRow?.values?.[placeIndex] ?? "0";
             const winnerBuySec = podiumRow?.winnerBuySec?.[placeIndex];
             const isViewer = winnerReady && samePodiumAddress(winner, address);
@@ -223,6 +223,9 @@ export function ArenaPodiumTimerChip({
                   tailHexDigits={6}
                   size={14}
                   className="arena-timer-chips__place-identity"
+                  labelClassName={
+                    isViewer ? "arena-timer-chips__place-identity-label--you" : undefined
+                  }
                   onOpenProfile={onOpenWalletProfile}
                 />
               </li>

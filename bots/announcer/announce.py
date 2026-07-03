@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # TimeArena buy-announcement bot (yieldomega) — pure stdlib, READ-ONLY.
 #
-# Watches the TimeArena `Buy` (and optional `ArenaStarted`) events on MegaETH and
-# posts a message to a Telegram chat for each buy. No private key, signs nothing,
+# Watches TimeArena `Buy`, optional `ArenaStarted`, and `PodiumEpochRolled` on MegaETH
+# and posts a Telegram message for each. No private key, signs nothing,
 # cannot spend. Only needs OUTBOUND https to the RPC and api.telegram.org.
 #
 # Run:   set -a; source announce.env; set +a; python3 announce.py
@@ -28,7 +28,16 @@ TOPIC_BUY = "0xbaf9a64575edd1ebb4308874e8680288c787f6741d8edc4d66ce61418bad169b"
 TOPIC_ARENA_STARTED = "0x33789300e7043c21750457cc66f0c68d69dda90fedc0c70b1b6dcc38d16c94c5"
 TOPIC_LEVEL_UP = "0x91e51c29e7e87a74ad3b8ccba98538970f50a4309242735467f41e27c6b0fbac"
 TOPIC_FIRST_BUY_CRED_SCHEDULED = "0x135d669544c1a460dd7b5f82c47189c86898c39919d3f604f6d023b68c9849fd"
-WATCH_TOPICS = [TOPIC_BUY, TOPIC_ARENA_STARTED, TOPIC_LEVEL_UP, TOPIC_FIRST_BUY_CRED_SCHEDULED]
+TOPIC_PODIUM_EPOCH_ROLLED = "0xa9b78eda30de684ae7f5f429efecdec822db196180c202cf5450da29f84776db"
+WATCH_TOPICS = [
+    TOPIC_BUY,
+    TOPIC_ARENA_STARTED,
+    TOPIC_LEVEL_UP,
+    TOPIC_FIRST_BUY_CRED_SCHEDULED,
+    TOPIC_PODIUM_EPOCH_ROLLED,
+]
+ZERO_ADDR = "0x0000000000000000000000000000000000000000"
+PODIUM_LABELS = {0: "Last Buy", 1: "Time Booster", 2: "Defended Streak", 3: "WarBow"}
 
 
 # ------------------------- env helpers -------------------------
@@ -73,6 +82,7 @@ DOUB_DECIMALS = env_int("DOUB_DECIMALS", 18)
 CHARM_DECIMALS = env_int("CHARM_DECIMALS", 18)
 MIN_DOUB = Decimal(env("MIN_DOUB", "0"))
 ANNOUNCE_ARENA_STARTED = env_bool("ANNOUNCE_ARENA_STARTED", True)
+ANNOUNCE_PODIUM_SETTLED = env_bool("ANNOUNCE_PODIUM_SETTLED", True)
 START_BLOCK_ENV = env("ANNOUNCE_START_BLOCK")
 DRY_RUN = env_bool("DRY_RUN", False)
 SEND_TEST_ON_START = env_bool("SEND_TEST_ON_START", False)
@@ -178,6 +188,33 @@ def decode_level_up(log):
 
 def decode_first_buy_cred_scheduled(log):
     return {"buyer": _topic_addr(log["topics"], 1)}
+
+
+def _data_addr(data_hex, i):
+    return ("0x" + data_hex[i * 64 + 24:(i + 1) * 64]).lower()
+
+
+def decode_podium_epoch_rolled(log):
+    d = log["data"][2:]
+    epoch = hexint(log["topics"][2])
+    return {
+        "category": hexint(log["topics"][1]),
+        "epoch": epoch,
+        "settledEpoch": max(epoch - 1, 0),
+        "first": _data_addr(d, 0),
+        "second": _data_addr(d, 1),
+        "third": _data_addr(d, 2),
+        "poolPaid": _word(d, 3),
+    }
+
+
+def payout_shares(pool):
+    """4:2:1 split — mirrors ArenaPodiumSettlement.payoutShares."""
+    if pool <= 0:
+        return 0, 0, 0
+    first = pool * 4 // 7
+    second = pool * 2 // 7
+    return first, second, pool - first - second
 
 
 def build_tx_level_hints(logs):
@@ -342,6 +379,36 @@ def build_arena_started_message(_a):
             f"\U0001F517 <a href=\"{EXPLORER_ADDR}{TIME_ARENA}\">contract</a>")
 
 
+def _fmt_podium_place_line(rank_emoji, addr, prize_wei, doub_usd_wad):
+    if addr == ZERO_ADDR:
+        return f"{rank_emoji} —"
+    line = f'{rank_emoji} <a href="{EXPLORER_ADDR}{addr}">{short_addr(addr)}</a>'
+    if prize_wei > 0:
+        line += f" — <b>{fmt_units(prize_wei, DOUB_DECIMALS)} DOUB</b>"
+        if doub_usd_wad:
+            line += f" (${fmt_usd(prize_wei, doub_usd_wad)})"
+    return line
+
+
+def build_podium_settled_message(e, txhash, market=None):
+    label = PODIUM_LABELS.get(e["category"], f"Podium {e['category']}")
+    doub_usd_wad = market.get("doub_usd_wad") if market else None
+    p1, p2, p3 = payout_shares(e["poolPaid"])
+    lines = [
+        f"\U0001F3C6 <b>{label} epoch {e['settledEpoch']} settled</b>",
+        "",
+        _fmt_podium_place_line("\U0001F947", e["first"], p1, doub_usd_wad),
+        _fmt_podium_place_line("\U0001F948", e["second"], p2, doub_usd_wad),
+        _fmt_podium_place_line("\U0001F949", e["third"], p3, doub_usd_wad),
+    ]
+    if e["poolPaid"] > 0:
+        lines.append(f"\n\U0001F4B0 Pool paid: <b>{fmt_units(e['poolPaid'], DOUB_DECIMALS)} DOUB</b>")
+        if doub_usd_wad:
+            lines.append(f"(${fmt_usd(e['poolPaid'], doub_usd_wad)} USD)")
+    lines.append(f"\n\U0001F517 <a href=\"{EXPLORER_TX}{txhash}\">settlement tx</a>")
+    return "\n".join(lines)
+
+
 # ------------------------- telegram -------------------------
 _last_send = [0.0]
 
@@ -420,6 +487,17 @@ def selftest():
     print(build_buy_message(sample, "0x" + "cd" * 32, market, new_level=1))
     print("\n---- sample arena-started message ----")
     print(build_arena_started_message(None))
+    podium = {
+        "category": 1,
+        "epoch": 1,
+        "settledEpoch": 0,
+        "first": "0xeff850382506d409baefb6511b1f975f4d277a06",
+        "second": "0xc46b15f4b56489a16f561c22d5f0ba8bdca80650",
+        "third": "0x3fe42f1a6ff5d30a70d15a45663d907c3ab8a42e",
+        "poolPaid": 5_093_514 * 10**18,
+    }
+    print("\n---- sample podium-settled message ----")
+    print(build_podium_settled_message(podium, "0x" + "ef" * 32, market))
     # round-trip: encode sample into a synthetic log and decode it back
     words = [sample["charmWad"], sample["doubPaid"], sample["newDeadline"], sample["totalDoubRaisedAfter"],
              sample["buyIndex"], sample["actualSecondsAdded"], 1, 0]
@@ -500,6 +578,12 @@ def main():
                             ))
                     elif topic0 == TOPIC_ARENA_STARTED and ANNOUNCE_ARENA_STARTED:
                         tg_send(build_arena_started_message(decode_arena_started(log)))
+                    elif topic0 == TOPIC_PODIUM_EPOCH_ROLLED and ANNOUNCE_PODIUM_SETTLED:
+                        tg_send(build_podium_settled_message(
+                            decode_podium_epoch_rolled(log),
+                            log["transactionHash"],
+                            fetch_market_snapshot(),
+                        ))
                 except Exception as e:  # noqa: BLE001
                     LOG.error("handle log %s failed: %s", lid, e)
                 recent_ids.add(lid)

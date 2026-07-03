@@ -412,8 +412,8 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] **`FOUNDRY_PROFILE=ci forge test --match-contract TimeArenaTest`** — includes `test_start_arena_initial_deadlines_differ_by_category`, `test_multi_podium_deadline_extend`, `test_time_booster_hard_reset_band_240_to_300`, scoring hook tests.
 - [ ] Fresh arena (no buys): play `/` and `/arena/protocol` show **awaiting first buy** on timer chips / hero (not counting down from `startArena`) ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)).
 - [ ] **`bash scripts/verify-podium-timers-anvil.sh`** — unarmed at start; arm on first buy; per-category extensions; Time Booster hard-reset band.
-- [ ] After `startArena`, four `podiumDeadline[i]` differ (24h / 12h / 18h / 48h offsets from `arenaStart`).
-- [ ] One buy extends cats by +120 / +60 / +90 / +300 respectively (`test_multi_podium_deadline_extend`).
+- [ ] After first qualifying buys arm timers, per-category **initial** bands match product table (Last Buy / Time Booster / Defended Streak / WarBow: 24h / 12h / 24h / 48h when read from chain or defaults).
+- [ ] One buy extends cats by +120 / +60 / +480 / +300 respectively (`test_multi_podium_deadline_extend`).
 - [ ] Time Booster: remaining &lt; 240s → snap to 300s from `block.timestamp`, not +60s extension.
 - [ ] WarBow BP reset bonus requires **Last Buy** hard reset, not WarBow timer band alone.
 - [ ] Defended streak window uses Last Buy remaining, not other podium timers.

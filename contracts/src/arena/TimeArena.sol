@@ -211,6 +211,14 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     event WarbowPodiumFinalized(uint256 indexed epoch, address first, address second, address third);
     event PodiumPoolsToppedUp(address indexed donor, uint256 amountDoubWad);
     event PodiumTimerArmed(uint8 indexed category, uint256 indexed epoch);
+    event PodiumTimerConfigUpdated(
+        uint8 indexed category,
+        uint256 extensionSec,
+        uint256 initialTimerSec,
+        uint256 timerCapSec,
+        uint256 resetBelowRemainingSec,
+        uint256 resetToRemainingSec
+    );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -303,6 +311,42 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     function setTimeArenaBuyRouter(address router) external onlyOwner {
         timeArenaBuyRouter = router;
+    }
+
+    /// @dev Owner retune per-category prize-settlement timers (#271). Scoring hooks still use Last Buy only.
+    function setPodiumTimerConfig(
+        uint8 category,
+        uint256 _extensionSec,
+        uint256 _initialTimerSec,
+        uint256 _timerCapSec,
+        uint256 _resetBelowRemainingSec,
+        uint256 _resetToRemainingSec
+    ) external onlyOwner {
+        require(category < NUM_PODIUM_CATEGORIES, "TimeArena: bad cat");
+        ArenaPodiumTimerConfig.validateOne(
+            _extensionSec, _initialTimerSec, _timerCapSec, _resetBelowRemainingSec, _resetToRemainingSec
+        );
+
+        podiumTimerExtensionSec[category] = _extensionSec;
+        podiumInitialTimerSec[category] = _initialTimerSec;
+        podiumTimerCapSec[category] = _timerCapSec;
+        podiumResetBelowRemainingSec[category] = _resetBelowRemainingSec;
+        podiumResetToRemainingSec[category] = _resetToRemainingSec;
+
+        if (category == CAT_LAST_BUYERS) {
+            timerExtensionSec = _extensionSec;
+            initialTimerSec = _initialTimerSec;
+            timerCapSec = _timerCapSec;
+        }
+
+        emit PodiumTimerConfigUpdated(
+            category,
+            _extensionSec,
+            _initialTimerSec,
+            _timerCapSec,
+            _resetBelowRemainingSec,
+            _resetToRemainingSec
+        );
     }
 
     function startArena() external onlyOwner {

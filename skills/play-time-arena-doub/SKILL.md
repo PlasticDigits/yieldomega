@@ -43,7 +43,7 @@ Per-category **prize settlement** deadlines (`podiumDeadline[cat]`, `podiumEpoch
 |-----|--------|-----------|------------|---------|
 | 0 | Last Buy | +120s | 780s → 900s | 24h |
 | 1 | Time Booster | +60s | 240s → 300s | 12h |
-| 2 | Defended Streak | +90s | 510s → 600s | 18h |
+| 2 | Defended Streak | +480s | 1320s → 1800s | 24h |
 | 3 | WarBow | +300s | 3300s → 3600s | 48h |
 
 Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol). **Scoring** (Time Booster totals, Defended Streak, WarBow BP clutch/reset) uses **Last Buy (cat 0)** timer only — not other podium bands ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) comment). Verify: `bash scripts/verify-podium-timers-anvil.sh` · [invariants §271](../../docs/testing/invariants-and-business-logic.md#timearena-podium-timers-gitlab-271) · [manual QA §271](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-271).

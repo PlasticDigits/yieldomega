@@ -32,7 +32,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 | Podium | Cat | Initial timer | Extension on buy | Hard-reset if remaining below | Reset to |
 |--------|-----|---------------|------------------|-------------------------------|----------|
 | **Last Buy** (primary) | 0 | 24h | +120s (+2m) | 13m (780s) | 15m (900s) |
-| **Defended Streak** | 2 | 18h | +90s (+1.5m) | 8.5m (510s) | 10m (600s) |
+| **Defended Streak** | 2 | 24h | +480s (+8m) | 22m (1320s) | 30m (1800s) |
 | **Time Booster** | 1 | 12h | +60s (+1m) | 4m (240s) | 5m (300s) |
 | **WarBow** | 3 | 48h | +300s (+5m) | 55m (3300s) | 1h (3600s) |
 
@@ -40,7 +40,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 **Podium epoch roll:** permissionless **`rollPodiumEpoch(category)`** when `block.timestamp > podiumDeadline[category]` ([#240 open decision #4](#resolved-open-decisions-gitlab-240), implementation [#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)). On roll: snapshot top-3, pay **4∶2∶1** from active pool, roll seed → active, increment `podiumEpoch[cat]`, clear that category’s live scores, emit **`PodiumEpochRolled`**.
 
-**Timer cap:** per category **`timerCapSec[cat] = 4 × initialTimerSec[cat]`** (WarBow cap = 192h). Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol) ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
+**Timer cap:** per category **`timerCapSec[cat] = 4 × initialTimerSec[cat]`** (WarBow cap = 192h). Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol) ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)). **Owner retune (live proxy):** `setPodiumTimerConfig(category, …)` after a UUPS upgrade — see [deployment guide § TimeArena UUPS upgrade](../operations/deployment-guide.md#timearena-uups-upgrade).
 
 **Scoring vs settlement:** Time Booster, Defended Streak, and WarBow BP bonuses use **Last Buy (cat 0)** timer deltas / remaining / hard-reset. Per-category timers govern **prize epoch deadlines** only ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) comment).
 

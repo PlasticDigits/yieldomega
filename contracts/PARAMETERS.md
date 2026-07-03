@@ -44,13 +44,13 @@ Forge: `PodiumVaultsNonCommingled.t.sol` · invariant **`INV-PODIUM-VAULTS-348-N
 | CHARM band | `99e16` – `10e18` | Fixed envelope; not bonding curve ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
 | Parameter | Cat 0 Last Buy | Cat 1 Time Booster | Cat 2 Defended Streak | Cat 3 WarBow | Notes |
 |-----------|----------------|--------------------|-----------------------|--------------|-------|
-| `podiumTimerExtensionSec` | `120` | `60` | `90` | `300` | Per buy when not in hard-reset band ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) |
-| `podiumInitialTimerSec` | `86_400` (24 h) | `43_200` (12 h) | `64_800` (18 h) | `172_800` (48 h) | Applied on **first qualifying buy** that arms the epoch ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)); not at `startArena` / roll |
-| `podiumTimerCapSec` | `345_600` (96 h) | `172_800` (48 h) | `259_200` (72 h) | `691_200` (192 h) | `4 × initialTimerSec[cat]` |
-| Hard-reset band | `< 780s` → `900s` | `< 240s` → `300s` | `< 510s` → `600s` | `< 3300s` → `3600s` | `podiumResetBelowRemainingSec` / `podiumResetToRemainingSec` |
+| `podiumTimerExtensionSec` | `120` | `60` | `480` | `300` | Per buy when not in hard-reset band ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) |
+| `podiumInitialTimerSec` | `86_400` (24 h) | `43_200` (12 h) | `86_400` (24 h) | `172_800` (48 h) | Applied on **first qualifying buy** that arms the epoch ([#330](https://gitlab.com/PlasticDigits/yieldomega/-/issues/330)); not at `startArena` / roll |
+| `podiumTimerCapSec` | `345_600` (96 h) | `172_800` (48 h) | `345_600` (96 h) | `691_200` (192 h) | `4 × initialTimerSec[cat]` |
+| Hard-reset band | `< 780s` → `900s` | `< 240s` → `300s` | `< 1320s` → `1800s` | `< 3300s` → `3600s` | `podiumResetBelowRemainingSec` / `podiumResetToRemainingSec` |
 | Legacy shims | `timerExtensionSec` / `initialTimerSec` / `timerCapSec` mirror cat 0 | — | — | — | ABI compat |
 
-Canonical table: [`ArenaPodiumTimerConfig.sol`](src/arena/libraries/ArenaPodiumTimerConfig.sol). **Scoring** (Time Booster totals, Defended Streak, WarBow BP clutch/reset) uses **Last Buy (cat 0)** timer only; per-category timers govern **prize settlement** deadlines ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) comment).
+Canonical table: [`ArenaPodiumTimerConfig.sol`](src/arena/libraries/ArenaPodiumTimerConfig.sol). **Live retune:** owner **`setPodiumTimerConfig(category, …)`** on the TimeArena proxy (UUPS upgrade required on pre-2026-07 builds) — [deployment guide § TimeArena UUPS upgrade](../docs/operations/deployment-guide.md#timearena-uups-upgrade). **Scoring** (Time Booster totals, Defended Streak, WarBow BP clutch/reset) uses **Last Buy (cat 0)** timer only; per-category timers govern **prize settlement** deadlines ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) comment).
 | `buyChargeIntervalSec` | `300` (5 min prod; Anvil may shorten) | One charge earned per interval; legacy `buyCooldownSec` mirrors this value (#332) |
 | `maxBuyCharges` | `5` | Stored buy-energy cap per wallet (#332) |
 | `burstBuyCooldownSec` | `15` | Minimum gap between charged buys; must be > 0 (#332) |

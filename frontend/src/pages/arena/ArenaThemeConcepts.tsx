@@ -199,7 +199,7 @@ export function ArenaThemeConcepts() {
           <div className="arena-final-concept__rival-stack" aria-label="PvP decision deltas">
             {[
               ["Last Buy", "+120s", "next buy", "primary"],
-              ["Defended", "+90s", "next buy", "podium"],
+              ["Defended", "+8m", "next buy", "podium"],
               ["Time Booster", "+60s", "next buy", "podium"],
               ["WarBow", "+300s", "next buy", "podium"],
             ].map(([label, address, value, delta]) => (

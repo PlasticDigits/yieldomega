@@ -20,7 +20,7 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 |----------|-------|---------------|-------------------|
 | Last Buy | 0 | `deadline` (= `podiumDeadline[0]`) | **+120s**, **780s → 900s**, **24h** initial, **96h** cap |
 | Time Booster | 1 | `podiumDeadline[1]` | **+60s**, **240s → 300s**, **12h** initial, **48h** cap |
-| Defended Streak | 2 | `podiumDeadline[2]` | **+90s**, **510s → 600s**, **18h** initial, **72h** cap |
+| Defended Streak | 2 | `podiumDeadline[2]` | **+480s**, **1320s → 1800s**, **24h** initial, **96h** cap |
 | WarBow | 3 | `podiumDeadline[3]` | **+300s**, **3300s → 3600s**, **48h** initial, **192h** cap |
 
 Onchain table: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol) ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)). **Scoring hooks** (Time Booster totals, Defended Streak, WarBow BP) use **Last Buy** timer only; per-category params govern prize settlement deadlines.

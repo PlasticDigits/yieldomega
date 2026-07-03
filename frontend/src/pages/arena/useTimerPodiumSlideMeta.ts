@@ -73,11 +73,11 @@ export function useTimerPodiumSlideMeta(
   const title = useMemo(
     () =>
       formatTimerSectionTitle(opts.phase, {
-        firstPrizeDoubWad: opts.podiumPayoutPreview?.[slot.categoryIndex]?.places[0],
+        firstPrizeDoubWad: opts.podiumPayoutPreview?.[slot.contractIndex]?.places[0],
         decimals: opts.decimals,
         payoutPreview,
       }),
-    [opts.decimals, opts.phase, opts.podiumPayoutPreview, payoutPreview, slot.categoryIndex],
+    [opts.decimals, opts.phase, opts.podiumPayoutPreview, payoutPreview, slot.contractIndex],
   );
 
   const currentEpoch = opts.podiumRows?.[slot.categoryIndex]?.epoch;

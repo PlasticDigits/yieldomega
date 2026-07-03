@@ -29,7 +29,7 @@ Indexer + AUDIT UI for donation history: [#262](https://gitlab.com/PlasticDigits
 
 ## Governance
 
-- **`TimeArena`**: `onlyOwner` — `setCharmPriceWad`, `setPaused`, UUPS upgrade, `startArena`.
+- **`TimeArena`**: `onlyOwner` — `setCharmPriceWad`, `setPaused`, `setPodiumTimerConfig`, UUPS upgrade, `startArena`.
 - **`PodiumVaults` / `AdminSellVault`**: `onlyOwner` — pool address overrides, `rescueDoub` on admin vault.
 - **`Doubloon`**: `MINTER_ROLE` for governance / protocol minter only (retired v1 player reserve removed — [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)).
 

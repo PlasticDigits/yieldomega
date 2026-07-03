@@ -2406,4 +2406,98 @@ contract TimeArenaTest is Test {
         vm.expectRevert();
         arena.upgradeToAndCall(address(impl2), "");
     }
+
+    uint256 internal constant DS_EXT = 480;
+    uint256 internal constant DS_INIT = 86_400;
+    uint256 internal constant DS_CAP = 345_600;
+    uint256 internal constant DS_BELOW = 1320;
+    uint256 internal constant DS_TO = 1800;
+
+    function _setDefendedStreakPodiumConfig() internal {
+        arena.setPodiumTimerConfig(2, DS_EXT, DS_INIT, DS_CAP, DS_BELOW, DS_TO);
+    }
+
+    function test_setPodiumTimerConfig_owner_only() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        arena.setPodiumTimerConfig(2, DS_EXT, DS_INIT, DS_CAP, DS_BELOW, DS_TO);
+
+        vm.expectEmit(true, false, false, true);
+        emit TimeArena.PodiumTimerConfigUpdated(2, DS_EXT, DS_INIT, DS_CAP, DS_BELOW, DS_TO);
+        _setDefendedStreakPodiumConfig();
+
+        assertEq(arena.podiumTimerExtensionSec(2), DS_EXT);
+        assertEq(arena.podiumInitialTimerSec(2), DS_INIT);
+        assertEq(arena.podiumTimerCapSec(2), DS_CAP);
+        assertEq(arena.podiumResetBelowRemainingSec(2), DS_BELOW);
+        assertEq(arena.podiumResetToRemainingSec(2), DS_TO);
+    }
+
+    function test_setPodiumTimerConfig_validates() public {
+        vm.expectRevert("TimeArena: bad cat");
+        arena.setPodiumTimerConfig(4, DS_EXT, DS_INIT, DS_CAP, DS_BELOW, DS_TO);
+
+        vm.expectRevert("ArenaPodiumTimerConfig: zero extension");
+        arena.setPodiumTimerConfig(2, 0, DS_INIT, DS_CAP, DS_BELOW, DS_TO);
+
+        vm.expectRevert("ArenaPodiumTimerConfig: cap < initial");
+        arena.setPodiumTimerConfig(2, DS_EXT, DS_INIT, DS_INIT - 1, DS_BELOW, DS_TO);
+
+        vm.expectRevert("ArenaPodiumTimerConfig: reset band");
+        arena.setPodiumTimerConfig(2, DS_EXT, DS_INIT, DS_CAP, DS_TO, DS_BELOW);
+    }
+
+    function test_setPodiumTimerConfig_cat0_syncs_legacy_shims() public {
+        uint256 ext = 111;
+        uint256 init = 222_222;
+        uint256 cap = 888_888;
+        arena.setPodiumTimerConfig(0, ext, init, cap, 100, 200);
+        assertEq(arena.timerExtensionSec(), ext);
+        assertEq(arena.initialTimerSec(), init);
+        assertEq(arena.timerCapSec(), cap);
+    }
+
+    function test_setPodiumTimerConfig_defended_streak_hard_reset_mid_epoch() public {
+        _ensureLevel(alice, 3);
+        _armPodiumTimer(2);
+        vm.warp(arena.podiumDeadline(2) - 600);
+        assertGt(uint256(600), uint256(510), "still above pre-retune reset band");
+        assertLt(uint256(600), DS_BELOW, "inside new reset band");
+
+        _setDefendedStreakPodiumConfig();
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.podiumDeadline(2), block.timestamp + DS_TO);
+    }
+
+    function test_setPodiumTimerConfig_defended_streak_extension_mid_epoch() public {
+        _ensureLevel(alice, 3);
+        _armPodiumTimer(2);
+        vm.warp(arena.podiumDeadline(2) - 5000);
+        assertGt(arena.podiumDeadline(2) - block.timestamp, DS_BELOW);
+
+        _setDefendedStreakPodiumConfig();
+        uint256 before = arena.podiumDeadline(2);
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.podiumDeadline(2), before + DS_EXT);
+    }
+
+    function test_setPodiumTimerConfig_initial_applies_next_arm() public {
+        _ensureLevel(alice, 3);
+        _armPodiumTimer(2);
+        vm.warp(arena.podiumDeadline(2) + 1);
+        arena.rollPodiumEpoch(2);
+        assertFalse(arena.podiumTimerArmed(2));
+
+        uint256 customInit = 100_000;
+        arena.setPodiumTimerConfig(2, DS_EXT, customInit, DS_CAP, DS_BELOW, DS_TO);
+
+        uint256 t0 = block.timestamp;
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.podiumDeadline(2), t0 + customInit + DS_EXT);
+    }
 }

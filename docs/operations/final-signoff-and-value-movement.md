@@ -23,7 +23,7 @@ Authoritative onchain gate for user-facing arena value movement: **`TimeArena.pa
 
 ## Upgrade notes (UUPS)
 
-**`TimeArena`**, **`ReferralRegistry`**, **`PodiumVaults`**, and **`AdminSellVault`** are UUPS proxies. After upgrading, confirm **`paused`**, timer params, and **`PodiumVaults.setArena`** wiring still match the runbook.
+**`TimeArena`**, **`ReferralRegistry`**, **`PodiumVaults`**, and **`AdminSellVault`** are UUPS proxies. After upgrading, confirm **`paused`**, timer params, and **`PodiumVaults.setArena`** wiring still match the runbook. Per-category settlement timers can be retuned on a live proxy via owner **`setPodiumTimerConfig`** (requires implementation with that setter — see [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade)). Per-category prize timers can be retuned on a live proxy via **`setPodiumTimerConfig`** (owner) — see [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade). Per-category prize timers can be retuned on a live proxy via **`setPodiumTimerConfig`** (owner) — see [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade).
 
 ## Verification
 

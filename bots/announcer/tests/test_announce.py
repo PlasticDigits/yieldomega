@@ -192,3 +192,66 @@ def test_tg_payload_no_topic(monkeypatch):
     monkeypatch.setattr(announce, "TG_THREAD", None)
     payload = announce.tg_payload("hello")
     assert "message_thread_id" not in payload
+
+
+def _synth_podium_epoch_rolled_log():
+    first = "0xeff850382506d409baefb6511b1f975f4d277a06"
+    second = "0xc46b15f4b56489a16f561c22d5f0ba8bdca80650"
+    third = "0x3fe42f1a6ff5d30a70d15a45663d907c3ab8a42e"
+    pool = 7 * 10**18
+    words = [int(first, 16), int(second, 16), int(third, 16), pool]
+    data = "0x" + "".join(f"{w:064x}" for w in words)
+    return {
+        "topics": [
+            announce.TOPIC_PODIUM_EPOCH_ROLLED,
+            "0x" + f"{1:064x}",
+            "0x" + f"{1:064x}",
+        ],
+        "data": data,
+        "transactionHash": "0x" + "ef" * 32,
+    }
+
+
+def test_decode_podium_epoch_rolled_roundtrip():
+    log = _synth_podium_epoch_rolled_log()
+    d = announce.decode_podium_epoch_rolled(log)
+    assert d["category"] == 1
+    assert d["epoch"] == 1
+    assert d["settledEpoch"] == 0
+    assert d["first"] == "0xeff850382506d409baefb6511b1f975f4d277a06"
+    assert d["second"] == "0xc46b15f4b56489a16f561c22d5f0ba8bdca80650"
+    assert d["third"] == "0x3fe42f1a6ff5d30a70d15a45663d907c3ab8a42e"
+    assert d["poolPaid"] == 7 * 10**18
+
+
+def test_payout_shares_matches_contract_math():
+    pool = 5_093_514_288_876_076_050_555_741
+    first, second, third = announce.payout_shares(pool)
+    assert first == pool * 4 // 7
+    assert second == pool * 2 // 7
+    assert third == pool - first - second
+    assert first + second + third == pool
+
+
+def test_build_podium_settled_message_contains_places_and_tx():
+    market = {"doub_usd_wad": 10**18, "total_prize_pool_doub_wad": 0}
+    msg = announce.build_podium_settled_message(
+        announce.decode_podium_epoch_rolled(_synth_podium_epoch_rolled_log()),
+        "0x" + "ef" * 32,
+        market,
+    )
+    assert "Time Booster epoch 0 settled" in msg
+    assert "0xeff8…7a06" in msg
+    assert "0xc46b…0650" in msg
+    assert "0x3fe4…a42e" in msg
+    assert "settlement tx" in msg
+    assert "ef" * 32 in msg
+
+
+def test_build_podium_settled_message_empty_slots():
+    log = _synth_podium_epoch_rolled_log()
+    d = announce.decode_podium_epoch_rolled(log)
+    d = {**d, "second": announce.ZERO_ADDR, "third": announce.ZERO_ADDR, "poolPaid": 0}
+    msg = announce.build_podium_settled_message(d, "0x" + "aa" * 32, None)
+    assert "—" in msg
+    assert "Pool paid:" not in msg

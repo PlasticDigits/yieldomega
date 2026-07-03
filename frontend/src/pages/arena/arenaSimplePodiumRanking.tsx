@@ -10,6 +10,7 @@ import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberF
 import { podiumPrizeUsdWeiForDisplay } from "@/lib/doubSpotUsdPrice";
 import type { BuyItem } from "@/lib/indexerApi";
 import { formatSimplePodiumScoreLine } from "./arenaSimplePodiumScore";
+import { podiumPayoutPreviewIndex } from "./podiumCopy";
 import type { RankingRow } from "./arenaUi";
 import type { PodiumPayoutPreview, PodiumReadRow } from "./usePodiumReads";
 
@@ -62,10 +63,12 @@ export function rankingRowsForPodium(
   const winners = row?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
   const values = row?.values ?? ["0", "0", "0"];
 
+  const prizePreviewIndex = podiumPayoutPreviewIndex(categoryIndex);
+
   return PODIUM_PLACE_LABELS.map((placeLabel, placeIndex) => {
     const winner = winners[placeIndex] ?? ZERO_ADDR;
     const winnerReady = hasPodiumWinner(winner);
-    const prizeRaw = podiumPayoutPreview?.[categoryIndex]?.places[placeIndex];
+    const prizeRaw = podiumPayoutPreview?.[prizePreviewIndex]?.places[placeIndex];
     const prizeLabel =
       prizeRaw !== undefined ? (
         formatCompactFromRaw(prizeRaw, decimals, { sigfigs: 3 })

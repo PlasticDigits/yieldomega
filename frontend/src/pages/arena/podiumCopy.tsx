@@ -37,11 +37,11 @@ export const PODIUM_TIMER_BY_UX_SLOT: readonly [
     resetToRemainingSec: 3600,
   },
   {
-    extensionSec: 90,
-    initialTimerSec: 64_800,
-    timerCapSec: 259_200,
-    resetBelowRemainingSec: 510,
-    resetToRemainingSec: 600,
+    extensionSec: 480,
+    initialTimerSec: 86_400,
+    timerCapSec: 345_600,
+    resetBelowRemainingSec: 1320,
+    resetToRemainingSec: 1800,
   },
   {
     extensionSec: 60,
@@ -100,6 +100,11 @@ const PODIUM_SCORING_LINES: readonly string[] = [
 
 /** Maps each {@link PODIUM_LABELS} slot to `TimeArena.podium(category)` index. */
 export const PODIUM_CONTRACT_CATEGORY_INDEX: readonly number[] = [0, 3, 2, 1];
+
+/** UX podium slot → onchain category index for {@link PodiumPayoutPreview} (indexer `category_index`). */
+export function podiumPayoutPreviewIndex(uxCategoryIndex: number): number {
+  return PODIUM_CONTRACT_CATEGORY_INDEX[uxCategoryIndex] ?? uxCategoryIndex;
+}
 
 const PODIUM_FEATURE_BY_UX_INDEX: Record<number, ArenaFeatureKey> = {
   0: "last_buy",

@@ -164,7 +164,8 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
       }),
     );
     expect(html).toContain("arena-timer-chips__place--you");
-    expect(html).toMatch(/address-inline__label">dddddd/);
+    expect(html).toContain("arena-timer-chips__place-identity-label--you");
+    expect(html).toMatch(/address-inline__label arena-timer-chips__place-identity-label--you">dddddd/);
   });
 
   it("shows each feature unlock tier on side-rail pre-buy locks", () => {

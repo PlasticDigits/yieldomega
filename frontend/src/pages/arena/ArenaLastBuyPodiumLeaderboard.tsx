@@ -6,6 +6,7 @@ import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { podiumPrizeUsdWeiForDisplay } from "@/lib/doubSpotUsdPrice";
 import type { BuyItem } from "@/lib/indexerApi";
+import { podiumPayoutPreviewIndex } from "@/pages/arena/podiumCopy";
 import { PODIUM_RANK_TROPHY_SRC } from "@/pages/arena/arenaUi";
 import { formatSimplePodiumScoreLine } from "@/pages/arena/arenaSimplePodiumScore";
 import {
@@ -78,7 +79,8 @@ export function ArenaLastBuyPodiumLeaderboard({
         const winner = winners[placeIndex] ?? ZERO_ADDR;
         const winnerReady = hasPodiumWinner(winner);
         const row = rankingRows[placeIndex]!;
-        const prizeRaw = podiumPayoutPreview?.[categoryIndex]?.places[placeIndex];
+        const prizeRaw =
+          podiumPayoutPreview?.[podiumPayoutPreviewIndex(categoryIndex)]?.places[placeIndex];
         const prizeLabel =
           prizeRaw !== undefined ? (
             formatCompactFromRaw(prizeRaw, decimals, { sigfigs: 3 })

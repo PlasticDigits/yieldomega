@@ -130,6 +130,17 @@ ABIs live in `out/` after `forge build`. Registry templates and **ABI hash expor
 See [`PARAMETERS.md`](./PARAMETERS.md) for testnet defaults and `TODO`s that
 need human decisions before mainnet.
 
+## TimeArena UUPS upgrade (implementation only)
+
+See [deployment guide § TimeArena UUPS upgrade](../docs/operations/deployment-guide.md#timearena-uups-upgrade). Quick path:
+
+```bash
+cd contracts && forge script script/DeployTimeArenaImpl.s.sol:DeployTimeArenaImpl --broadcast …
+scripts/uups-upgrade-timearena-mainnet.sh "$NEW_IMPL"
+```
+
+Owner may then call **`setPodiumTimerConfig`** on the proxy to retune per-category prize-settlement timers.
+
 ## Contract map
 
 | Contract | Purpose |
