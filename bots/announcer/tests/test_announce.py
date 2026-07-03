@@ -315,9 +315,44 @@ def test_check_podium_countdowns_fires_once(monkeypatch):
     announce.check_podium_countdowns(announced, {"doub_usd_wad": None})
     assert len(sent) == 1
     assert "10 Minutes Left On Last Buy!" in sent[0]
-    assert "0:3:600" in announced
+    assert "0:3:1550:600" in announced
     announce.check_podium_countdowns(announced, {"doub_usd_wad": None})
     assert len(sent) == 1
+
+
+def test_check_podium_countdowns_refires_after_timer_reset(monkeypatch):
+    sent = []
+    timers = {
+        "block_timestamp_sec": "1000",
+        "podium_deadlines_sec": ["1550", "0", "0", "0"],
+        "podium_timer_armed": [True, False, False, False],
+        "podium_epochs": ["3", "0", "0", "0"],
+    }
+    podiums = {
+        "sale_ended": False,
+        "rows": [{
+            "category": "Last Buy",
+            "category_index": 0,
+            "winners": ["0xeff850382506d409baefb6511b1f975f4d277a06"],
+            "prize_places_doub_wad": [str(10**18), "0", "0"],
+            "active_pool_balance_doub_wad": str(3 * 10**18),
+        }],
+    }
+    monkeypatch.setattr(announce, "tg_send", lambda m: sent.append(m))
+    monkeypatch.setattr(announce, "fetch_arena_timers", lambda: timers)
+    monkeypatch.setattr(announce, "fetch_podiums_rows", lambda: podiums)
+    announced = set()
+    announce.check_podium_countdowns(announced, {"doub_usd_wad": None})
+    assert len(sent) == 1
+    assert "0:3:1550:600" in announced
+    # Buy hard-resets timer: same epoch, new deadline, back in the 10m band.
+    timers["podium_deadlines_sec"] = ["2200", "0", "0", "0"]
+    timers["block_timestamp_sec"] = "1650"  # 550s left → 10 Minutes band again
+    announce.check_podium_countdowns(announced, {"doub_usd_wad": None})
+    assert len(sent) == 2
+    assert "10 Minutes Left On Last Buy!" in sent[1]
+    assert "0:3:2200:600" in announced
+    assert "0:3:1550:600" not in announced
 
 
 def test_load_cursor_includes_countdown_keys(tmp_path, monkeypatch):
@@ -325,10 +360,10 @@ def test_load_cursor_includes_countdown_keys(tmp_path, monkeypatch):
     path.write_text(json.dumps({
         "last_scanned_block": 99,
         "recent_ids": ["a"],
-        "podium_countdown_announced": ["0:1:60"],
+        "podium_countdown_announced": ["0:1:1700:60"],
     }))
     monkeypatch.setattr(announce, "CURSOR_FILE", path)
     block, recent, countdown = announce.load_cursor()
     assert block == 99
     assert recent == {"a"}
-    assert countdown == {"0:1:60"}
+    assert countdown == {"0:1:1700:60"}

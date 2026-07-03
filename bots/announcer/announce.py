@@ -366,8 +366,17 @@ def _countdown_header_emojis(threshold_sec):
     return "\u23F0"
 
 
-def _countdown_announced_key(category, epoch, threshold_sec):
-    return f"{category}:{epoch}:{threshold_sec}"
+def _countdown_announced_key(category, epoch, deadline_sec, threshold_sec):
+    """Unique per timer run — deadline in key so buy extensions / hard resets re-arm alerts."""
+    return f"{category}:{epoch}:{deadline_sec}:{threshold_sec}"
+
+
+def _prune_stale_countdown_keys(announced_keys, category, epoch, deadline_sec):
+    """Drop announced keys from prior deadlines in the same epoch (timer reset / extension)."""
+    prefix = f"{category}:{epoch}:"
+    deadline_prefix = f"{category}:{epoch}:{deadline_sec}:"
+    stale = {k for k in announced_keys if k.startswith(prefix) and not k.startswith(deadline_prefix)}
+    announced_keys -= stale
 
 
 def build_podium_countdown_message(label, threshold_sec, row, market=None):
@@ -404,7 +413,7 @@ def _countdown_threshold_for_remaining(remaining_sec, thresholds):
 
 
 def check_podium_countdowns(announced_keys, market=None):
-    """Poll indexer; post countdown alerts at configured thresholds (once per epoch each)."""
+    """Poll indexer; post countdown alerts at configured thresholds (once per deadline run each)."""
     if not ANNOUNCE_PODIUM_COUNTDOWN or not PODIUM_COUNTDOWN_THRESHOLDS_SEC:
         return
     try:
@@ -440,17 +449,21 @@ def check_podium_countdowns(announced_keys, market=None):
             continue
         remaining = deadline - chain_now
         epoch = _parse_int(epochs[cat] if cat < len(epochs) else 0)
+        _prune_stale_countdown_keys(announced_keys, cat, epoch, deadline)
         row = rows_by_cat.get(cat, {})
         label = row.get("category") or PODIUM_LABELS.get(cat, f"Podium {cat}")
         threshold = _countdown_threshold_for_remaining(remaining, thresholds)
         if threshold is None:
             continue
-        key = _countdown_announced_key(cat, epoch, threshold)
+        key = _countdown_announced_key(cat, epoch, deadline, threshold)
         if key in announced_keys:
             continue
         tg_send(build_podium_countdown_message(label, threshold, row, market))
         announced_keys.add(key)
-        LOG.info("Podium countdown: %s epoch %s at <=%ss (%ss left)", label, epoch, threshold, remaining)
+        LOG.info(
+            "Podium countdown: %s epoch %s deadline %s at <=%ss (%ss left)",
+            label, epoch, deadline, threshold, remaining,
+        )
 
 
 def fetch_market_snapshot():

@@ -26,7 +26,8 @@ Built for an always-on edge box (e.g. a Jetson): **pure Python stdlib**, no `web
   **settlement tx** link. Toggle with `ANNOUNCE_PODIUM_SETTLED=0`.
 - **Podium countdown alerts** — polls `GET /v1/arena/timers` + `GET /v1/arena/podiums` each loop and
   posts when a armed podium timer crosses below **10m · 5m · 1m · 30s · 10s** (configurable via
-  `PODIUM_COUNTDOWN_THRESHOLDS_SEC`). Each threshold fires once per podium epoch; keys persist in
+  `PODIUM_COUNTDOWN_THRESHOLDS_SEC`). Each threshold fires once per **deadline run** (buy extensions
+  and hard resets bump `podiumDeadline` → alerts can fire again); keys persist in
   `announce-cursor.json`. Header escalates ⏰ → 🚨 → 🔥 as time runs out; body shows 1st/2nd/3rd +
   DOUB prize preview. Toggle with `ANNOUNCE_PODIUM_COUNTDOWN=0`.
 - Source: `eth_getLogs` polling (topic-filtered), block-range splitting for RPC caps, and a
