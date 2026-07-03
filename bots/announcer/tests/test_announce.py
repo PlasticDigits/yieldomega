@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Offline decode/format tests — no network, no env required."""
+import json
 import sys
 from pathlib import Path
 
@@ -255,3 +256,79 @@ def test_build_podium_settled_message_empty_slots():
     msg = announce.build_podium_settled_message(d, "0x" + "aa" * 32, None)
     assert "—" in msg
     assert "Pool paid:" not in msg
+
+
+def test_countdown_threshold_for_remaining():
+    thresholds = [10, 30, 60, 300, 600]
+    assert announce._countdown_threshold_for_remaining(597, thresholds) == 600
+    assert announce._countdown_threshold_for_remaining(298, thresholds) == 300
+    assert announce._countdown_threshold_for_remaining(55, thresholds) == 60
+    assert announce._countdown_threshold_for_remaining(25, thresholds) == 30
+    assert announce._countdown_threshold_for_remaining(8, thresholds) == 10
+    assert announce._countdown_threshold_for_remaining(601, thresholds) is None
+
+
+def test_countdown_header_emojis_escalate():
+    assert "\U0001F6A8" in announce._countdown_header_emojis(10)
+    assert "\U0001F525" in announce._countdown_header_emojis(30)
+    assert announce._countdown_header_emojis(600) == "\u23F0"
+
+
+def test_build_podium_countdown_message():
+    row = {
+        "winners": [
+            "0xeff850382506d409baefb6511b1f975f4d277a06",
+            "0xc46b15f4b56489a16f561c22d5f0ba8bdca80650",
+            announce.ZERO_ADDR,
+        ],
+        "prize_places_doub_wad": [str(4 * 10**18), str(2 * 10**18), "0"],
+        "active_pool_balance_doub_wad": str(7 * 10**18),
+    }
+    market = {"doub_usd_wad": 10**18}
+    msg = announce.build_podium_countdown_message("Last Buy", 10, row, market)
+    assert "10s Left On Last Buy!" in msg
+    assert "0xeff8…7a06" in msg
+    assert "4.00 DOUB" in msg
+    assert "Prize pool:" in msg
+
+
+def test_check_podium_countdowns_fires_once(monkeypatch):
+    sent = []
+    monkeypatch.setattr(announce, "tg_send", lambda m: sent.append(m))
+    monkeypatch.setattr(announce, "fetch_arena_timers", lambda: {
+        "block_timestamp_sec": "1000",
+        "podium_deadlines_sec": ["1550", "0", "0", "0"],
+        "podium_timer_armed": [True, False, False, False],
+        "podium_epochs": ["3", "0", "0", "0"],
+    })
+    monkeypatch.setattr(announce, "fetch_podiums_rows", lambda: {
+        "sale_ended": False,
+        "rows": [{
+            "category": "Last Buy",
+            "category_index": 0,
+            "winners": ["0xeff850382506d409baefb6511b1f975f4d277a06"],
+            "prize_places_doub_wad": [str(10**18), "0", "0"],
+            "active_pool_balance_doub_wad": str(3 * 10**18),
+        }],
+    })
+    announced = set()
+    announce.check_podium_countdowns(announced, {"doub_usd_wad": None})
+    assert len(sent) == 1
+    assert "10 Minutes Left On Last Buy!" in sent[0]
+    assert "0:3:600" in announced
+    announce.check_podium_countdowns(announced, {"doub_usd_wad": None})
+    assert len(sent) == 1
+
+
+def test_load_cursor_includes_countdown_keys(tmp_path, monkeypatch):
+    path = tmp_path / "cursor.json"
+    path.write_text(json.dumps({
+        "last_scanned_block": 99,
+        "recent_ids": ["a"],
+        "podium_countdown_announced": ["0:1:60"],
+    }))
+    monkeypatch.setattr(announce, "CURSOR_FILE", path)
+    block, recent, countdown = announce.load_cursor()
+    assert block == 99
+    assert recent == {"a"}
+    assert countdown == {"0:1:60"}

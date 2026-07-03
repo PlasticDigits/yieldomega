@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # TimeArena buy-announcement bot (yieldomega) — pure stdlib, READ-ONLY.
 #
-# Watches TimeArena `Buy`, optional `ArenaStarted`, and `PodiumEpochRolled` on MegaETH
-# and posts a Telegram message for each. No private key, signs nothing,
+# Watches TimeArena `Buy`, optional `ArenaStarted`, `PodiumEpochRolled`, and podium countdown
+# thresholds on MegaETH and posts a Telegram message for each. No private key, signs nothing,
 # cannot spend. Only needs OUTBOUND https to the RPC and api.telegram.org.
 #
 # Run:   set -a; source announce.env; set +a; python3 announce.py
@@ -83,6 +83,13 @@ CHARM_DECIMALS = env_int("CHARM_DECIMALS", 18)
 MIN_DOUB = Decimal(env("MIN_DOUB", "0"))
 ANNOUNCE_ARENA_STARTED = env_bool("ANNOUNCE_ARENA_STARTED", True)
 ANNOUNCE_PODIUM_SETTLED = env_bool("ANNOUNCE_PODIUM_SETTLED", True)
+ANNOUNCE_PODIUM_COUNTDOWN = env_bool("ANNOUNCE_PODIUM_COUNTDOWN", True)
+# Fire once per epoch when remaining sec crosses below each threshold (descending).
+PODIUM_COUNTDOWN_THRESHOLDS_SEC = tuple(
+    int(x.strip())
+    for x in env("PODIUM_COUNTDOWN_THRESHOLDS_SEC", "600,300,60,30,10").split(",")
+    if x.strip()
+)
 START_BLOCK_ENV = env("ANNOUNCE_START_BLOCK")
 DRY_RUN = env_bool("DRY_RUN", False)
 SEND_TEST_ON_START = env_bool("SEND_TEST_ON_START", False)
@@ -321,6 +328,131 @@ def _sum_all_prize_pools(podiums):
     return total
 
 
+def fetch_arena_timers():
+    """GET /v1/arena/timers — chain head deadlines and epochs."""
+    return _indexer_get("/v1/arena/timers")
+
+
+def fetch_podiums_rows():
+    """GET /v1/arena/podiums — live leaders and prize previews."""
+    return _indexer_get("/v1/arena/podiums")
+
+
+def _parse_int(raw, default=0):
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw, 0)
+    except (TypeError, ValueError):
+        return default
+
+
+def _countdown_threshold_label(threshold_sec):
+    if threshold_sec >= 60 and threshold_sec % 60 == 0:
+        mins = threshold_sec // 60
+        return f"{mins} Minute{'s' if mins != 1 else ''}"
+    return f"{threshold_sec}s"
+
+
+def _countdown_header_emojis(threshold_sec):
+    if threshold_sec <= 10:
+        return "\U0001F6A8\U0001F6A8\U0001F525\U0001F525"
+    if threshold_sec <= 30:
+        return "\U0001F6A8\U0001F525"
+    if threshold_sec <= 60:
+        return "\U0001F6A8"
+    if threshold_sec <= 300:
+        return "\u23F0\u23F0"
+    return "\u23F0"
+
+
+def _countdown_announced_key(category, epoch, threshold_sec):
+    return f"{category}:{epoch}:{threshold_sec}"
+
+
+def build_podium_countdown_message(label, threshold_sec, row, market=None):
+    doub_usd_wad = market.get("doub_usd_wad") if market else None
+    emojis = _countdown_header_emojis(threshold_sec)
+    time_label = _countdown_threshold_label(threshold_sec)
+    lines = [
+        f"{emojis} <b>{time_label} Left On {label}!</b>",
+        "",
+    ]
+    winners = row.get("winners") or []
+    prizes = row.get("prize_places_doub_wad") or ["0", "0", "0"]
+    rank_emojis = ["\U0001F947", "\U0001F948", "\U0001F949"]
+    for i in range(3):
+        addr = winners[i].lower() if i < len(winners) and winners[i] else ZERO_ADDR
+        prize_wei = _parse_wad(prizes[i]) if i < len(prizes) else 0
+        lines.append(_fmt_podium_place_line(rank_emojis[i], addr, prize_wei or 0, doub_usd_wad))
+    pool_wad = _parse_wad(row.get("active_pool_balance_doub_wad"))
+    if pool_wad and pool_wad > 0:
+        lines.append(f"\n\U0001F4B0 Prize pool: <b>{fmt_units(pool_wad, DOUB_DECIMALS)} DOUB</b>")
+        if doub_usd_wad:
+            lines.append(f"(${fmt_usd(pool_wad, doub_usd_wad)} USD)")
+    return "\n".join(lines)
+
+
+def _countdown_threshold_for_remaining(remaining_sec, thresholds):
+    """Map remaining seconds to the active countdown band (largest threshold still above floor)."""
+    ordered = sorted(thresholds)
+    for i in range(len(ordered) - 1, -1, -1):
+        floor = ordered[i - 1] if i > 0 else 0
+        if remaining_sec <= ordered[i] and remaining_sec > floor:
+            return ordered[i]
+    return None
+
+
+def check_podium_countdowns(announced_keys, market=None):
+    """Poll indexer; post countdown alerts at configured thresholds (once per epoch each)."""
+    if not ANNOUNCE_PODIUM_COUNTDOWN or not PODIUM_COUNTDOWN_THRESHOLDS_SEC:
+        return
+    try:
+        timers = fetch_arena_timers()
+        podiums = fetch_podiums_rows()
+    except Exception as e:  # noqa: BLE001
+        LOG.warning("Podium countdown indexer poll failed (%s): %s", INDEXER_URL, e)
+        return
+    if podiums.get("sale_ended"):
+        return
+    chain_now = _parse_int(timers.get("block_timestamp_sec"))
+    if chain_now <= 0:
+        return
+    deadlines = timers.get("podium_deadlines_sec") or []
+    armed_flags = timers.get("podium_timer_armed") or []
+    epochs = timers.get("podium_epochs") or []
+    rows_by_cat = {}
+    for row in podiums.get("rows") or []:
+        cat = row.get("category_index")
+        if cat is not None:
+            rows_by_cat[int(cat)] = row
+    if market is None:
+        market = fetch_market_snapshot()
+    thresholds = sorted(PODIUM_COUNTDOWN_THRESHOLDS_SEC)
+    for cat in range(4):
+        if cat >= len(deadlines):
+            continue
+        armed = armed_flags[cat] if cat < len(armed_flags) else False
+        if not armed:
+            continue
+        deadline = _parse_int(deadlines[cat])
+        if deadline <= chain_now:
+            continue
+        remaining = deadline - chain_now
+        epoch = _parse_int(epochs[cat] if cat < len(epochs) else 0)
+        row = rows_by_cat.get(cat, {})
+        label = row.get("category") or PODIUM_LABELS.get(cat, f"Podium {cat}")
+        threshold = _countdown_threshold_for_remaining(remaining, thresholds)
+        if threshold is None:
+            continue
+        key = _countdown_announced_key(cat, epoch, threshold)
+        if key in announced_keys:
+            continue
+        tg_send(build_podium_countdown_message(label, threshold, row, market))
+        announced_keys.add(key)
+        LOG.info("Podium countdown: %s epoch %s at <=%ss (%ss left)", label, epoch, threshold, remaining)
+
+
 def fetch_market_snapshot():
     """Cached doub_usd_wad (GET /v1/arena/doub-spot-price) + grand total prize pool (podiums)."""
     now = time.monotonic()
@@ -461,15 +593,19 @@ def load_cursor():
     if CURSOR_FILE.is_file():
         try:
             d = json.loads(CURSOR_FILE.read_text())
-            return int(d.get("last_scanned_block")), set(d.get("recent_ids", []))
+            announced = set(d.get("podium_countdown_announced", []))
+            return int(d.get("last_scanned_block")), set(d.get("recent_ids", [])), announced
         except Exception as e:  # noqa: BLE001
             LOG.warning("cursor read failed: %s", e)
-    return None, set()
+    return None, set(), set()
 
 
-def save_cursor(last_block, recent_ids):
+def save_cursor(last_block, recent_ids, announced_keys=None):
     tmp = CURSOR_FILE.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"last_scanned_block": last_block, "recent_ids": list(recent_ids)[-4000:]}))
+    payload = {"last_scanned_block": last_block, "recent_ids": list(recent_ids)[-4000:]}
+    if announced_keys is not None:
+        payload["podium_countdown_announced"] = sorted(announced_keys)[-2000:]
+    tmp.write_text(json.dumps(payload))
     tmp.replace(CURSOR_FILE)
 
 
@@ -498,6 +634,21 @@ def selftest():
     }
     print("\n---- sample podium-settled message ----")
     print(build_podium_settled_message(podium, "0x" + "ef" * 32, market))
+    countdown_row = {
+        "category": "Last Buy",
+        "category_index": 0,
+        "winners": [
+            "0xeff850382506d409baefb6511b1f975f4d277a06",
+            "0xc46b15f4b56489a16f561c22d5f0ba8bdca80650",
+            "0x3fe42f1a6ff5d30a70d15a45663d907c3ab8a42e",
+        ],
+        "prize_places_doub_wad": [str(4 * 10**18), str(2 * 10**18), str(10**18)],
+        "active_pool_balance_doub_wad": str(7 * 10**18),
+    }
+    print("\n---- sample podium countdown (10s) ----")
+    print(build_podium_countdown_message("Last Buy", 10, countdown_row, market))
+    print("\n---- sample podium countdown (10 min) ----")
+    print(build_podium_countdown_message("Time Booster", 600, countdown_row, market))
     # round-trip: encode sample into a synthetic log and decode it back
     words = [sample["charmWad"], sample["doubPaid"], sample["newDeadline"], sample["totalDoubRaisedAfter"],
              sample["buyIndex"], sample["actualSecondsAdded"], 1, 0]
@@ -530,7 +681,7 @@ def main():
         LOG.error("Chain id mismatch: RPC reports %s, expected %s. Refusing to run.", cid, CHAIN_ID)
         sys.exit(2)
 
-    last_scanned, recent_ids = load_cursor()
+    last_scanned, recent_ids, countdown_announced = load_cursor()
     head = block_number()
     if last_scanned is None:
         last_scanned = (int(START_BLOCK_ENV, 0) - 1) if START_BLOCK_ENV else head
@@ -590,9 +741,15 @@ def main():
             last_scanned = safe_head
             if len(recent_ids) > 8000:
                 recent_ids = set(list(recent_ids)[-4000:])
-            save_cursor(last_scanned, recent_ids)
+            save_cursor(last_scanned, recent_ids, countdown_announced)
         except Exception as e:  # noqa: BLE001
             LOG.error("loop error: %s", e)
+        try:
+            check_podium_countdowns(countdown_announced, fetch_market_snapshot())
+            if countdown_announced:
+                save_cursor(last_scanned, recent_ids, countdown_announced)
+        except Exception as e:  # noqa: BLE001
+            LOG.error("podium countdown error: %s", e)
         time.sleep(POLL_SEC)
 
 

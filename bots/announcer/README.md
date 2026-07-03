@@ -24,6 +24,11 @@ Built for an always-on edge box (e.g. a Jetson): **pure Python stdlib**, no `web
   address third, uint256 poolPaid)` — posted when a podium epoch settles (autoroll or permissionless
   `rollPodiumEpoch`). Message shows settled epoch number, top-3 addresses, 4∶2∶1 DOUB prizes, and
   **settlement tx** link. Toggle with `ANNOUNCE_PODIUM_SETTLED=0`.
+- **Podium countdown alerts** — polls `GET /v1/arena/timers` + `GET /v1/arena/podiums` each loop and
+  posts when a armed podium timer crosses below **10m · 5m · 1m · 30s · 10s** (configurable via
+  `PODIUM_COUNTDOWN_THRESHOLDS_SEC`). Each threshold fires once per podium epoch; keys persist in
+  `announce-cursor.json`. Header escalates ⏰ → 🚨 → 🔥 as time runs out; body shows 1st/2nd/3rd +
+  DOUB prize preview. Toggle with `ANNOUNCE_PODIUM_COUNTDOWN=0`.
 - Source: `eth_getLogs` polling (topic-filtered), block-range splitting for RPC caps, and a
   persisted cursor (`announce-cursor.json`) for restart safety.
 
@@ -44,6 +49,8 @@ Copy `.env.example` to `.env` (gitignored) and set at least:
 | `ANNOUNCE_START_BLOCK` | Optional: first-run start block; otherwise starts at current head |
 | `MIN_DOUB` | Optional: skip buys under this DOUB amount |
 | `ANNOUNCE_PODIUM_SETTLED` | Post on `PodiumEpochRolled` with top-3 + settlement tx (default on) |
+| `ANNOUNCE_PODIUM_COUNTDOWN` | Post countdown alerts at 10m/5m/1m/30s/10s before podium expiry (default on) |
+| `PODIUM_COUNTDOWN_THRESHOLDS_SEC` | Comma-separated second thresholds (default `600,300,60,30,10`) |
 | `INDEXER_URL` | Yieldomega indexer base URL — `GET /v1/arena/doub-spot-price` for DOUB→USD and `GET /v1/arena/podiums` for grand-total prize pools (current + next + future epochs across all podiums; default `https://indexer.yieldomega.com`) |
 | `INDEXER_CACHE_SEC` | Cache indexer market snapshot TTL in seconds (default `30`) |
 
