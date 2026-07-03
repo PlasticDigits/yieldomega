@@ -317,6 +317,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "podium_win_rate",
         "prizes_won",
         "highest_scores",
+        "current_scores",
     ] {
         assert!(
             wallet_stats.get(key).is_some(),
@@ -1606,6 +1607,12 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
         .and_then(|v| v.as_array())
         .expect("highest_scores");
     assert_eq!(highest.len(), 4);
+
+    let current = j
+        .get("current_scores")
+        .and_then(|v| v.as_array())
+        .expect("current_scores");
+    assert_eq!(current.len(), 4);
 
     let rank_dist = j.get("rank_distribution").expect("rank_distribution");
     assert_eq!(rank_dist.get("1").and_then(|v| v.as_str()), Some("1"));

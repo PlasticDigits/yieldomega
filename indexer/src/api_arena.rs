@@ -1088,7 +1088,15 @@ async fn arena_wallet_stats(
             .into_response();
     }
 
-    let body = match arena_wallet_stats::fetch_wallet_stats(&state.pool, &w).await {
+    let head_epochs = state.chain_timer.read().await.as_ref().map(|h| {
+        [
+            h.timer.last_buy_epoch.clone(),
+            h.timer.podium_epochs[1].clone(),
+            h.timer.podium_epochs[2].clone(),
+            h.timer.podium_epochs[3].clone(),
+        ]
+    });
+    let body = match arena_wallet_stats::fetch_wallet_stats(&state.pool, &w, head_epochs).await {
         Ok(body) => body,
         Err(e) => return internal_db_error_response("GET /v1/arena/wallet/stats", e),
     };

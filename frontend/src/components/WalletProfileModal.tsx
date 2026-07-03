@@ -8,6 +8,7 @@ import { useWalletStats } from "@/hooks/useWalletStats";
 import { AddressInline } from "@/components/AddressInline";
 import {
   WalletProfileBalancesSection,
+  WalletProfileCurrentScoresSection,
   WalletProfileErrorState,
   WalletProfileLoadingState,
   WalletProfileStatsBody,
@@ -86,6 +87,7 @@ export function WalletProfileModal({ address, onClose }: Props) {
 
         <div className="wallet-profile-modal__sections wallet-profile-modal__sections--balances-only">
           <WalletProfileBalancesSection balances={balances} />
+          <WalletProfileCurrentScoresSection data={data ?? undefined} isLoading={isLoading} />
         </div>
 
         {isLoading ? <WalletProfileLoadingState /> : null}

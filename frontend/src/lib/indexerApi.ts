@@ -911,6 +911,8 @@ export type ArenaWalletStats = {
   prizes_won: ArenaWalletPrizeWon[];
   total_won_doub: string;
   highest_scores: ArenaWalletHighestScore[];
+  /** Per-podium scores in the active epoch head (schema ≥ 2.20.0). */
+  current_scores?: ArenaWalletHighestScore[];
   /** Current WarBow BP — latest indexed snapshot or simulated timeline (#301). */
   warbow_battle_points?: string;
   /** Latest indexed `warbowGuardUntil` unix sec, when the wallet activated guard (#301). */

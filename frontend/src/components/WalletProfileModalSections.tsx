@@ -8,6 +8,8 @@ import { formatLocaleInteger } from "@/lib/formatAmount";
 import { CredTokenIcon } from "@/components/CredTokenIcon";
 import { TokenLogo } from "@/components/TokenLogo";
 import type { WalletProfileBalancesSnapshot } from "@/hooks/useWalletProfileBalances";
+import { formatTimeBoosterPodiumSec } from "@/pages/arena/timeBoosterPodiumFormat";
+import { usePodiumScoreClock } from "@/pages/arena/arenaSimplePodiumRanking";
 import {
   CHARM_TOKEN_LOGO,
   CRED_TOKEN_LOGO,
@@ -99,6 +101,112 @@ export function WalletProfileBalancesSection({
               <TokenBalanceValue logo={USDM_TOKEN_LOGO} raw={balances.usdmWei} decimals={18} symbol="USDM" />
             </StatRow>
           ) : null}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function parseScoreUnixSec(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "0") {
+    return null;
+  }
+  try {
+    const t = Number(BigInt(trimmed.split(".")[0]!));
+    return Number.isFinite(t) ? t : null;
+  } catch {
+    const t = Math.floor(Number(trimmed));
+    return Number.isFinite(t) ? t : null;
+  }
+}
+
+function formatCurrentScoreValue(
+  podium: string,
+  score: string,
+  nowUnixSec: number,
+): ReactNode {
+  switch (podium) {
+    case "last_buy": {
+      const buySec = parseScoreUnixSec(score);
+      if (buySec === null) {
+        return <EmptyDataPlaceholder>—</EmptyDataPlaceholder>;
+      }
+      const delta = Math.max(0, Math.floor(nowUnixSec) - buySec);
+      return <>{formatLocaleInteger(String(delta))}s ago</>;
+    }
+    case "time_booster":
+      if (!score.trim() || score === "0") {
+        return <EmptyDataPlaceholder>—</EmptyDataPlaceholder>;
+      }
+      return <>+{formatTimeBoosterPodiumSec(BigInt(score))}</>;
+    case "defended_streak":
+      if (!score.trim() || score === "0") {
+        return <EmptyDataPlaceholder>—</EmptyDataPlaceholder>;
+      }
+      return <>{formatLocaleInteger(score)} sequential buys</>;
+    case "warbow":
+      if (!score.trim() || score === "0") {
+        return <EmptyDataPlaceholder>—</EmptyDataPlaceholder>;
+      }
+      return <>{formatLocaleInteger(score)} BP</>;
+    default:
+      return formatLocaleInteger(score);
+  }
+}
+
+const CURRENT_SCORE_PODIUM_ORDER = [
+  "last_buy",
+  "warbow",
+  "defended_streak",
+  "time_booster",
+] as const;
+
+export function WalletProfileCurrentScoresSection({
+  data,
+  isLoading,
+}: {
+  data: ArenaWalletStats | undefined;
+  isLoading: boolean;
+}) {
+  const nowUnixSec = usePodiumScoreClock(undefined);
+  const rows = data?.current_scores ?? [];
+  const rowsByPodium = new Map(rows.map((row) => [row.podium, row]));
+
+  return (
+    <section
+      className="wallet-profile-modal__section"
+      data-testid="wallet-profile-current-scores"
+    >
+      <h3 id="wallet-profile-current-scores">Current scores</h3>
+      {isLoading ? (
+        <p className="wallet-profile-modal__empty">
+          <EmptyDataPlaceholder>Loading scores…</EmptyDataPlaceholder>
+        </p>
+      ) : (
+        <ul className="wallet-profile-modal__score-list">
+          {CURRENT_SCORE_PODIUM_ORDER.map((podiumKey) => {
+            const row = rowsByPodium.get(podiumKey);
+            if (!row) {
+              return (
+                <li key={podiumKey}>
+                  {walletProfilePodiumLabel(podiumKey)} · <EmptyDataPlaceholder>—</EmptyDataPlaceholder>
+                </li>
+              );
+            }
+            return (
+              <li key={podiumKey}>
+                {walletProfilePodiumLabel(row.podium)} ·{" "}
+                {formatCurrentScoreValue(row.podium, row.score, nowUnixSec)}
+                {row.rank != null ? (
+                  <>
+                    {" "}
+                    · {formatWalletProfileRankLabel(row.rank)}
+                  </>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

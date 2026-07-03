@@ -37,6 +37,7 @@ export function emptyArenaWalletStats(address: string): ArenaWalletStats {
     prizes_won: [],
     total_won_doub: "0",
     highest_scores: [],
+    current_scores: [],
     warbow_battle_points: "0",
     warbow_guard_until: "0",
     warbow_steals: 0,

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { ArenaWalletStats } from "@/lib/indexerApi";
 import {
   WalletProfileBalancesSection,
+  WalletProfileCurrentScoresSection,
   WalletProfileFunFactsSection,
   WalletProfileLevelHistorySection,
   WalletProfileOverviewSection,
@@ -34,6 +35,12 @@ const mockStats: ArenaWalletStats = {
   total_won_doub: "4000000000000000000",
   highest_scores: [
     { podium: "warbow", epoch: "1", score: "750", rank: 2 },
+  ],
+  current_scores: [
+    { podium: "last_buy", epoch: "2", score: "1700000100", rank: 1 },
+    { podium: "warbow", epoch: "1", score: "750", rank: 2 },
+    { podium: "defended_streak", epoch: "2", score: "4", rank: null },
+    { podium: "time_booster", epoch: "0", score: "360", rank: null },
   ],
   warbow_steals: 3,
   warbow_guards: 1,
@@ -72,6 +79,29 @@ describe("WalletProfileModalSections (GitLab #258)", () => {
     expect(html).toContain("DOUB");
     expect(html).toContain("ETH");
     expect(html).toContain("USDM");
+  });
+
+  it("renders current epoch scores with rank only when placed", () => {
+    const html = renderToStaticMarkup(
+      createElement(WalletProfileCurrentScoresSection, { data: mockStats, isLoading: false }),
+    );
+    expect(html).toContain("Current scores");
+    expect(html).toContain("Last Buy");
+    expect(html).toContain("WarBow");
+    expect(html).toContain("Defended Streak");
+    expect(html).toContain("Time Booster");
+    expect(html).toContain("1st");
+    expect(html).toContain("2nd");
+    expect(html).toContain("750 BP");
+    expect(html).toContain("4 sequential buys");
+    expect(html).not.toContain("3rd");
+  });
+
+  it("renders current scores loading state", () => {
+    const html = renderToStaticMarkup(
+      createElement(WalletProfileCurrentScoresSection, { data: undefined, isLoading: true }),
+    );
+    expect(html).toContain("Loading scores");
   });
 
   it("renders all required section headings", () => {

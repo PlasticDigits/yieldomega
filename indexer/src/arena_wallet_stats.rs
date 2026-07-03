@@ -310,7 +310,12 @@ struct TimelineEvent {
     steal: Option<StealRow>,
 }
 
-pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sqlx::Error> {
+/// Head `lastBuyEpoch` + `podiumEpoch[1..3]` from chain timer (contract category order).
+pub async fn fetch_wallet_stats(
+    pool: &PgPool,
+    wallet: &str,
+    head_epochs: Option<[String; 4]>,
+) -> Result<Value, sqlx::Error> {
     let buy_agg = sqlx::query(
         r#"SELECT COUNT(*)::bigint AS buy_count,
                   COALESCE(SUM(doub_paid), 0)::text AS total_spent,
@@ -415,6 +420,18 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
         &placements,
     );
 
+    let current_epochs = fetch_current_epochs(pool, head_epochs).await?;
+    let current_scores = compute_current_scores(
+        pool,
+        wallet,
+        &wallet_buys,
+        &global_buys,
+        &steals,
+        &warbow_resets,
+        &current_epochs,
+    )
+    .await?;
+
     let level_cap = level.parse::<u64>().unwrap_or(1).min(5);
     let level_s = level_cap.to_string();
 
@@ -471,6 +488,7 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
         "prizes_won": prizes_won,
         "total_won_doub": total_won_doub,
         "highest_scores": highest_scores,
+        "current_scores": current_scores,
         "warbow_battle_points": warbow_battle_points,
         "warbow_guard_until": warbow_guard_until,
         "warbow_steals": warbow_steals,
@@ -848,6 +866,109 @@ fn podium_win_rate(epochs_participated: i64, placements: &[PodiumPlacement]) -> 
     format!("{rate:.4}")
 }
 
+fn is_real_podium_address(w: &str) -> bool {
+    let w = w.trim().to_ascii_lowercase();
+    w.len() == 42 && w.starts_with("0x") && w != "0x0000000000000000000000000000000000000000"
+}
+
+fn wallet_rank_in_live_row(
+    wallet: &str,
+    row: &crate::arena_podium_live::LivePodiumRow,
+) -> Option<u8> {
+    for (i, w) in row.winners.iter().enumerate() {
+        if is_real_podium_address(w) && w.eq_ignore_ascii_case(wallet) {
+            return Some((i + 1) as u8);
+        }
+    }
+    None
+}
+
+fn sum_time_booster_seconds(wallet_buys: &[BuyRow]) -> u128 {
+    wallet_buys
+        .iter()
+        .map(|b| b.actual_seconds_added)
+        .fold(0u128, |a, b| a.saturating_add(b))
+}
+
+fn latest_buy_sec_in_epoch(wallet_buys: &[BuyRow], epoch: &str) -> String {
+    let epoch_n: u64 = epoch.parse().unwrap_or(0);
+    wallet_buys
+        .iter()
+        .filter(|b| b.last_buy_epoch == epoch_n)
+        .filter_map(|b| b.block_timestamp_sec)
+        .max()
+        .map(|t| t.to_string())
+        .unwrap_or_else(|| "0".into())
+}
+
+async fn fetch_current_epochs(
+    pool: &PgPool,
+    head_epochs: Option<[String; 4]>,
+) -> Result<[String; 4], sqlx::Error> {
+    if let Some(epochs) = head_epochs {
+        return Ok(epochs);
+    }
+    let lb = fetch_global_last_buy_epoch(pool).await?.to_string();
+    let mut epochs = [lb, "0".into(), "0".into(), "0".into()];
+    for cat in 1i16..=3 {
+        let ep: Option<String> = sqlx::query_scalar(
+            r#"SELECT epoch::text
+               FROM idx_arena_podium_live
+               WHERE category = $1
+               ORDER BY block_number DESC, log_index DESC
+               LIMIT 1"#,
+        )
+        .bind(cat)
+        .fetch_optional(pool)
+        .await?;
+        if let Some(e) = ep {
+            epochs[cat as usize] = e;
+        }
+    }
+    Ok(epochs)
+}
+
+async fn compute_current_scores(
+    pool: &PgPool,
+    wallet: &str,
+    wallet_buys: &[BuyRow],
+    global_buys: &[BuyRow],
+    steals: &[StealRow],
+    warbow_resets: &[u64],
+    epochs: &[String; 4],
+) -> Result<Vec<Value>, sqlx::Error> {
+    use crate::arena_podium_live::{
+        fetch_live_podium_conn, PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
+    };
+
+    let mut conn = pool.acquire().await?;
+    let defended_best = simulate_longest_defended_streak(global_buys, wallet);
+    let time_booster_total = sum_time_booster_seconds(wallet_buys);
+    let (warbow_current, _, _) = simulate_warbow_bp(wallet, global_buys, steals, warbow_resets);
+
+    let mut scores = Vec::with_capacity(4);
+    for (ux_i, &cat) in PODIUM_UX_CATEGORY_ORDER.iter().enumerate() {
+        let epoch = epochs[cat as usize].clone();
+        let podium = PODIUM_CATEGORY_LABELS[ux_i];
+        let live = fetch_live_podium_conn(&mut conn, cat, &epoch).await?;
+        let rank = live.as_ref().and_then(|r| wallet_rank_in_live_row(wallet, r));
+        let score = match cat {
+            0 => latest_buy_sec_in_epoch(wallet_buys, &epoch),
+            1 => time_booster_total.to_string(),
+            2 => defended_best.to_string(),
+            3 => warbow_current.to_string(),
+            _ => "0".into(),
+        };
+        scores.push(json!({
+            "podium": podium,
+            "epoch": epoch,
+            "score": score,
+            "rank": rank,
+        }));
+    }
+    Ok(scores)
+}
+
 fn compute_highest_scores(
     wallet: &str,
     wallet_buys: &[BuyRow],
@@ -1011,6 +1132,55 @@ mod tests {
         let (current, peak, _) = simulate_warbow_bp(wallet, &buys, &steals, &[]);
         assert_eq!(current, WARBOW_BASE_BUY_BP + 100);
         assert_eq!(peak, WARBOW_BASE_BUY_BP + 100);
+    }
+
+    #[test]
+    fn wallet_rank_in_live_row_finds_slot() {
+        use crate::arena_podium_live::LivePodiumRow;
+        let row = LivePodiumRow {
+            winners: [
+                "0x0000000000000000000000000000000000000001".into(),
+                "0x0000000000000000000000000000000000000002".into(),
+                "0x0000000000000000000000000000000000000000".into(),
+            ],
+            values: ["1".into(), "2".into(), "0".into()],
+        };
+        assert_eq!(
+            wallet_rank_in_live_row("0x0000000000000000000000000000000000000002", &row),
+            Some(2)
+        );
+        assert_eq!(
+            wallet_rank_in_live_row("0x0000000000000000000000000000000000000003", &row),
+            None
+        );
+    }
+
+    #[test]
+    fn latest_buy_sec_in_epoch_uses_newest_timestamp() {
+        let buys = vec![
+            BuyRow {
+                buyer: "0x1".into(),
+                charm_wad: 1,
+                actual_seconds_added: 10,
+                new_deadline: 100,
+                block_timestamp_sec: Some(100),
+                timer_hard_reset: false,
+                last_buy_epoch: 2,
+                order_key: 1,
+            },
+            BuyRow {
+                buyer: "0x1".into(),
+                charm_wad: 1,
+                actual_seconds_added: 10,
+                new_deadline: 200,
+                block_timestamp_sec: Some(250),
+                timer_hard_reset: false,
+                last_buy_epoch: 2,
+                order_key: 2,
+            },
+        ];
+        assert_eq!(latest_buy_sec_in_epoch(&buys, "2"), "250");
+        assert_eq!(latest_buy_sec_in_epoch(&buys, "1"), "0");
     }
 
     #[test]
