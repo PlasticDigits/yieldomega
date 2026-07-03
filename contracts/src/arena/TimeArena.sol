@@ -161,6 +161,16 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     mapping(address => BuyEnergy) internal _buyEnergy;
 
+    /// @dev Per-epoch Time Booster scores; stale rows read as zero (append-only UUPS).
+    uint256 public timeBoosterGeneration;
+    mapping(address => uint256) public timeBoosterScoreGeneration;
+    mapping(address => uint256) public epochTimerSecAdded;
+
+    /// @dev Per-epoch Defended Streak best; stale rows read as zero (append-only UUPS).
+    uint256 public defendedStreakGeneration;
+    mapping(address => uint256) public defendedStreakScoreGeneration;
+    mapping(address => uint256) public epochBestDefendedStreak;
+
     event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
     event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
     event LastBuyEpochCharmAnchored(
@@ -511,7 +521,11 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
         _clearPodium(category);
 
-        if (category == CAT_WARBOW) {
+        if (category == CAT_TIME_BOOSTER) {
+            timeBoosterGeneration += 1;
+        } else if (category == CAT_DEFENDED_STREAK) {
+            defendedStreakGeneration += 1;
+        } else if (category == CAT_WARBOW) {
             warbowEpochFinalized[epochBefore] = true;
             emit WarbowPodiumFinalized(epochBefore, winners[0], winners[1], winners[2]);
             _clearAllBattlePoints();
@@ -729,7 +743,8 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
             _extendPodiumTimer(CAT_TIME_BOOSTER);
             if (actualSecondsAdded > 0) {
                 totalEffectiveTimerSecAdded[buyer] += actualSecondsAdded;
-                _updateTopThree(CAT_TIME_BOOSTER, buyer, totalEffectiveTimerSecAdded[buyer]);
+                uint256 epochTimer = _addEpochTimerSec(buyer, actualSecondsAdded);
+                _updateTopThree(CAT_TIME_BOOSTER, buyer, epochTimer);
             }
         }
         address prevDsBuyer = _dsLastUnderWindowBuyer;
@@ -908,6 +923,20 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     function battlePoints(address user) external view returns (uint256) {
         return _effectiveBattlePoints(user);
+    }
+
+    function effectiveEpochTimerSecAdded(address user) external view returns (uint256) {
+        return _effectiveEpochTimerSecAdded(user);
+    }
+
+    function effectiveEpochBestDefendedStreak(address user) external view returns (uint256) {
+        return _effectiveEpochBestDefendedStreak(user);
+    }
+
+    /// @dev One-shot UUPS migration: seed current Time Booster / Defended Streak slot scores for the in-flight epoch.
+    function migrateEpochPodiumScores() external reinitializer(2) {
+        _seedEpochPodiumScores(CAT_TIME_BOOSTER);
+        _seedEpochPodiumScores(CAT_DEFENDED_STREAK);
     }
 
     /// @dev Default PodiumVaults maps every pool slot to `address(podiumVaults)` — one ERC-20 xfer
@@ -1104,7 +1133,8 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
             if (activeDefendedStreak[buyer] > bestDefendedStreak[buyer]) {
                 bestDefendedStreak[buyer] = activeDefendedStreak[buyer];
             }
-            _updateTopThree(CAT_DEFENDED_STREAK, buyer, bestDefendedStreak[buyer]);
+            _maybeBumpEpochDefendedStreak(buyer);
+            _updateTopThree(CAT_DEFENDED_STREAK, buyer, _effectiveEpochBestDefendedStreak(buyer));
         } else if (remainingBefore >= DEFENDED_STREAK_WINDOW_SEC) {
             if (_dsLastUnderWindowBuyer != address(0)) {
                 activeDefendedStreak[_dsLastUnderWindowBuyer] = 0;
@@ -1278,10 +1308,55 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     function _podiumMetric(uint8 cat, address entrant) private view returns (uint256) {
         if (cat == CAT_WARBOW) return _effectiveBattlePoints(entrant);
-        if (cat == CAT_TIME_BOOSTER) return totalEffectiveTimerSecAdded[entrant];
-        if (cat == CAT_DEFENDED_STREAK) return bestDefendedStreak[entrant];
+        if (cat == CAT_TIME_BOOSTER) return _effectiveEpochTimerSecAdded(entrant);
+        if (cat == CAT_DEFENDED_STREAK) return _effectiveEpochBestDefendedStreak(entrant);
         if (cat == CAT_LAST_BUYERS) return buyCount[entrant];
         return 0;
+    }
+
+    function _effectiveEpochTimerSecAdded(address user) private view returns (uint256) {
+        if (timeBoosterScoreGeneration[user] != timeBoosterGeneration) return 0;
+        return epochTimerSecAdded[user];
+    }
+
+    function _effectiveEpochBestDefendedStreak(address user) private view returns (uint256) {
+        if (defendedStreakScoreGeneration[user] != defendedStreakGeneration) return 0;
+        return epochBestDefendedStreak[user];
+    }
+
+    function _addEpochTimerSec(address buyer, uint256 sec) private returns (uint256) {
+        if (timeBoosterScoreGeneration[buyer] != timeBoosterGeneration) {
+            epochTimerSecAdded[buyer] = 0;
+            timeBoosterScoreGeneration[buyer] = timeBoosterGeneration;
+        }
+        epochTimerSecAdded[buyer] += sec;
+        return epochTimerSecAdded[buyer];
+    }
+
+    function _maybeBumpEpochDefendedStreak(address buyer) private {
+        if (defendedStreakScoreGeneration[buyer] != defendedStreakGeneration) {
+            epochBestDefendedStreak[buyer] = 0;
+            defendedStreakScoreGeneration[buyer] = defendedStreakGeneration;
+        }
+        if (activeDefendedStreak[buyer] > epochBestDefendedStreak[buyer]) {
+            epochBestDefendedStreak[buyer] = activeDefendedStreak[buyer];
+        }
+    }
+
+    function _seedEpochPodiumScores(uint8 cat) private {
+        Podium storage p = _podiums[cat];
+        for (uint8 r; r < 3; ++r) {
+            address w = p.winners[r];
+            if (w == address(0)) continue;
+            uint256 v = p.values[r];
+            if (cat == CAT_TIME_BOOSTER) {
+                epochTimerSecAdded[w] = v;
+                timeBoosterScoreGeneration[w] = timeBoosterGeneration;
+            } else if (cat == CAT_DEFENDED_STREAK) {
+                epochBestDefendedStreak[w] = v;
+                defendedStreakScoreGeneration[w] = defendedStreakGeneration;
+            }
+        }
     }
 
     function _sortPodium(uint8 cat) private {

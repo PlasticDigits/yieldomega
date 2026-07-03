@@ -464,6 +464,11 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             epoch: u1,
             amount: u2,
         }),
+        next(DecodedEvent::PlayCredTransfer {
+            from: Address::ZERO,
+            to: alice,
+            amount: U256::from(1_750_000_000_000_000_000_000u128),
+        }),
         next(DecodedEvent::ArenaFirstBuyCredScheduled {
             buyer: alice,
             target_epoch: u2,
@@ -584,6 +589,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_arena_referral_cred", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_player_xp", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_play_cred_claim", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_play_cred_transfer", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_arena_first_buy_cred_scheduled", 100).await,
         1
@@ -1616,6 +1622,67 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
 
     let rank_dist = j.get("rank_distribution").expect("rank_distribution");
     assert_eq!(rank_dist.get("1").and_then(|v| v.as_str()), Some("1"));
+}
+
+/// Ops `PlayCred.mint` Transfer rows drive `cred_balance_wad` (schema ≥ 2.23.0).
+#[tokio::test]
+async fn arena_wallet_stats_play_cred_ops_mint_transfer() {
+    let Some(url) = pg_url() else {
+        eprintln!("skip arena_wallet_stats_play_cred_ops_mint: set YIELDOMEGA_PG_TEST_URL");
+        return;
+    };
+
+    let _pg = pg_integration_lock().await;
+
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
+        .await
+        .expect("connect_and_migrate");
+
+    clear_arena_index_for_test(&pool).await;
+
+    let alice = addr_byte(0xa5);
+    let alice_hex = format!("{alice:#x}");
+    let ops_mint = U256::from(1_750_000_000_000_000_000_000u128);
+
+    let mint_log = sample_log_tx(
+        700,
+        1,
+        1,
+        DecodedEvent::PlayCredTransfer {
+            from: Address::ZERO,
+            to: alice,
+            amount: ops_mint,
+        },
+    );
+    persist_decoded_log_autocommit(&pool, &mint_log)
+        .await
+        .expect("persist ops mint");
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
+    });
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/wallet/{alice_hex}/stats"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert_eq!(
+        j.get("cred_balance_wad").and_then(|v| v.as_str()),
+        Some("1750000000000000000000")
+    );
 }
 
 /// Wallet stats `level_history` from first buy + `ArenaLevelUp` rows ([#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)).

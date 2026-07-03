@@ -1156,6 +1156,128 @@ contract TimeArenaTest is Test {
         assertEq(arena.podiumEpoch(cat), 1);
     }
 
+    /// Per-epoch Time Booster scores reset on roll; lifetime `totalEffectiveTimerSecAdded` persists.
+    function test_time_booster_score_resets_on_epoch_roll() public {
+        _ensureLevel(alice, 2);
+        _ensureLevel(bob, 2);
+
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(1e18);
+
+        uint256 aliceEpochBefore = arena.effectiveEpochTimerSecAdded(alice);
+        uint256 bobEpochBefore = arena.effectiveEpochTimerSecAdded(bob);
+        uint256 aliceLifetimeBefore = arena.totalEffectiveTimerSecAdded(alice);
+        assertGt(aliceEpochBefore, 0);
+        assertGt(bobEpochBefore, 0);
+
+        uint8 cat = arena.CAT_TIME_BOOSTER();
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
+
+        assertEq(arena.effectiveEpochTimerSecAdded(alice), 0);
+        assertEq(arena.effectiveEpochTimerSecAdded(bob), 0);
+        assertEq(arena.totalEffectiveTimerSecAdded(alice), aliceLifetimeBefore);
+
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(1e18);
+        assertGt(arena.effectiveEpochTimerSecAdded(bob), 0);
+        assertEq(arena.effectiveEpochTimerSecAdded(alice), 0);
+        assertEq(arena.timeBoosterGeneration(), 1);
+    }
+
+    /// Post-roll ranking uses epoch scores only (lifetime carryover does not dominate).
+    function test_time_booster_displaced_reinsert_uses_epoch_metric() public {
+        _ensureLevel(alice, 2);
+        _ensureLevel(bob, 2);
+
+        for (uint256 i; i < 3; ++i) {
+            _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(1e18);
+        }
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(1e18);
+
+        vm.warp(arena.podiumDeadline(arena.CAT_TIME_BOOSTER()) + 1);
+        arena.rollPodiumEpoch(arena.CAT_TIME_BOOSTER());
+
+        assertGt(arena.totalEffectiveTimerSecAdded(alice), arena.totalEffectiveTimerSecAdded(bob));
+
+        for (uint256 i; i < 3; ++i) {
+            _warpPastBuyCooldown();
+            vm.prank(bob);
+            arena.buy(1e18);
+        }
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(1e18);
+
+        (address[3] memory winners,) = arena.podium(arena.CAT_TIME_BOOSTER());
+        assertEq(winners[0], bob);
+    }
+
+    /// Per-epoch Defended Streak best resets on roll; lifetime `bestDefendedStreak` persists.
+    function test_defended_streak_best_resets_on_epoch_roll() public {
+        _ensureLevel(alice, 3);
+
+        for (uint256 i; i < 2; ++i) {
+            _warpUnderDefendedStreakWindowNoHardReset();
+            _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(1e18);
+        }
+
+        assertGt(arena.effectiveEpochBestDefendedStreak(alice), 0);
+        assertGt(arena.bestDefendedStreak(alice), 0);
+        uint256 lifetimeBest = arena.bestDefendedStreak(alice);
+
+        uint8 cat = arena.CAT_DEFENDED_STREAK();
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
+
+        assertEq(arena.effectiveEpochBestDefendedStreak(alice), 0);
+        assertEq(arena.bestDefendedStreak(alice), lifetimeBest);
+        assertEq(arena.defendedStreakGeneration(), 1);
+    }
+
+    /// UUPS migration seeds in-flight epoch podium slot scores for Time Booster / Defended Streak.
+    function test_migration_seeds_slot_holders() public {
+        _ensureLevel(alice, 2);
+        _ensureLevel(bob, 2);
+
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(1e18);
+
+        (address[3] memory tbWinners, uint256[3] memory tbValues) = arena.podium(arena.CAT_TIME_BOOSTER());
+        assertGt(tbValues[0], 0);
+
+        uint256 genBefore = arena.timeBoosterGeneration();
+
+        TimeArena newImpl = new TimeArena();
+        vm.prank(admin);
+        arena.upgradeToAndCall(address(newImpl), abi.encodeCall(TimeArena.migrateEpochPodiumScores, ()));
+
+        assertEq(arena.effectiveEpochTimerSecAdded(tbWinners[0]), tbValues[0]);
+        assertEq(arena.timeBoosterGeneration(), genBefore);
+
+        vm.expectRevert();
+        arena.migrateEpochPodiumScores();
+    }
+
     /// GitLab #355: zero active ledger at roll skips payout; seed/future still promote per [time-arena.md](../docs/product/time-arena.md) epoch tranches.
     /// Issue note: timer stays disarmed after roll until the next qualifying buy (no restart while pool empty).
     function test_roll_empty_pool_tranche_promotion() public {

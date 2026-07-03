@@ -10,7 +10,22 @@ MegaETH-oriented monorepo for onchain gamefi: **Time Arena** (Arena v2) — **`T
 
 ## MegaETH mainnet production contracts
 
-**Network:** MegaETH mainnet (**chain id 4326**). The table below is the **legacy v1** deployment snapshot until Arena v2 mainnet redeploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). For new work, use your **registry JSON** from **`DeployDev`** / **`DeployProduction`** — **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`PlayCred`**. Deploy docs: [`docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259`](docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259).
+**Network:** MegaETH mainnet (**chain id 4326**). Arena v2 (**Time Arena**) proxy addresses live in [`indexer/address-registry.megaeth-mainnet.json`](indexer/address-registry.megaeth-mainnet.json). The table below is the **legacy v1** launchpad snapshot. Deploy docs: [`docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259`](docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259).
+
+### Arena v2 (Time Arena, chain 4326)
+
+| Contract | Address |
+|----------|---------|
+| **TimeArena** (proxy) | `0xba39cea0e5ef6808d8cb926c722877480049e0ee` |
+| PodiumVaults (proxy) | `0x7abb3c243a938d1b809b07b8b3f1d60044b46698` |
+| ReferralRegistry (proxy) | `0xc729ee049b18669e3c4ebfebcac676da7992a246` |
+| PlayCred | `0x998fb7989425ed0c14545ce27a5cc3a9d9349ac1` |
+| TimeArenaBuyRouter | `0x3151c335224f5bbfde174b15dba9523a0694d582` |
+| Doubloon | `0xc3654B4f879937B767aFBB64B7C230FF436d2342` |
+
+**Verified `TimeArena` implementation** (latest deployed logic contract; the **TimeArena proxy** must receive **`upgradeToAndCall`** from **`owner()`** to point EIP-1967 at this address — after upgrading, confirm the live slot with `cast storage 0xba39cea0e5ef6808d8cb926c722877480049e0ee 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc --rpc-url https://mainnet.megaeth.com/rpc`; last 20 bytes should match this address): [`0x8Eb1c7619ffE4ca8471177D0A8601E6b341FD557`](https://megascan.com/address/0x8eb1c7619ffe4ca8471177d0a8601e6b341fd557#code). **Per-epoch Time Booster / Defended Streak score reset** (2026-07-03): block **20287165**, tx [`0xbdb5e78dcbb777f149b8e526953faa414eeb0a239e2fcb3bd57aa10c18a6435d`](https://megascan.com/tx/0xbdb5e78dcbb777f149b8e526953faa414eeb0a239e2fcb3bd57aa10c18a6435d) — includes **`migrateEpochPodiumScores()`** reinitializer; [deployment guide § TimeArena UUPS upgrade](docs/operations/deployment-guide.md#timearena-uups-upgrade).
+
+### Legacy v1 (TimeCurve launchpad)
 
 | Contract | Address |
 |----------|---------|

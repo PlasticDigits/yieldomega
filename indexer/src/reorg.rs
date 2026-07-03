@@ -121,6 +121,7 @@ pub const ARENA_INDEX_TABLES: &[&str] = &[
     "idx_arena_podium_epoch",
     "idx_arena_podium_timer_armed",
     "idx_play_cred_claim",
+    "idx_play_cred_transfer",
     "idx_player_xp",
     "idx_arena_referral_cred",
     "idx_arena_referral_applied",

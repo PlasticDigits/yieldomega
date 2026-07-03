@@ -565,6 +565,22 @@ pub async fn persist_decoded_log_conn(
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::PlayCredTransfer { from, to, amount } => {
+            sqlx::query(
+                r#"INSERT INTO idx_play_cred_transfer (
+                    block_number, tx_hash, log_index, from_address, to_address, amount
+                ) VALUES ($1, $2, $3, $4, $5, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*from))
+            .bind(addr_hex(*to))
+            .bind(u256_dec(*amount))
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::Unknown { .. } => {}
     }
     Ok(())

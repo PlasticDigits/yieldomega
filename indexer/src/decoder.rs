@@ -10,6 +10,12 @@ mod contracts {
     use alloy_sol_types::sol;
 
     sol! {
+        contract Erc20Events {
+            event Transfer(address indexed from, address indexed to, uint256 value);
+        }
+    }
+
+    sol! {
         contract ReferralRegistryEvents {
             event ReferralCodeRegistered(address indexed owner, bytes32 indexed codeHash, string normalizedCode);
         }
@@ -103,8 +109,8 @@ mod contracts {
 }
 
 use contracts::{
-    AdminSellVaultEvents, PodiumVaultsEvents, ReferralRegistryEvents, TimeArenaBuyRouterEvents,
-    TimeArenaEvents,
+    AdminSellVaultEvents, Erc20Events, PodiumVaultsEvents, ReferralRegistryEvents,
+    TimeArenaBuyRouterEvents, TimeArenaEvents,
 };
 
 /// Buy-sourced DOUB prize routing row kind (maps to `idx_arena_vault_funding.kind`).
@@ -273,6 +279,11 @@ pub enum DecodedEvent {
         charm_wad: U256,
         gross_doub: U256,
         pay_kind: u8,
+    },
+    PlayCredTransfer {
+        from: Address,
+        to: Address,
+        amount: U256,
     },
     Unknown {
         #[allow(dead_code)]
@@ -547,6 +558,15 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 charm_wad: e.charmWad,
                 gross_doub: e.grossDoub,
                 pay_kind: e.payKind,
+            };
+        }
+    }
+    if topic0 == Erc20Events::Transfer::SIGNATURE_HASH {
+        if let Ok(e) = Erc20Events::Transfer::decode_log(log, true) {
+            return DecodedEvent::PlayCredTransfer {
+                from: e.from,
+                to: e.to,
+                amount: e.value,
             };
         }
     }

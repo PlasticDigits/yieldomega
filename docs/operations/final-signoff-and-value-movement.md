@@ -23,7 +23,15 @@ Authoritative onchain gate for user-facing arena value movement: **`TimeArena.pa
 
 ## Upgrade notes (UUPS)
 
-**`TimeArena`**, **`ReferralRegistry`**, **`PodiumVaults`**, and **`AdminSellVault`** are UUPS proxies. After upgrading, confirm **`paused`**, timer params, and **`PodiumVaults.setArena`** wiring still match the runbook. Per-category settlement timers can be retuned on a live proxy via owner **`setPodiumTimerConfig`** (requires implementation with that setter — see [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade)). Per-category prize timers can be retuned on a live proxy via **`setPodiumTimerConfig`** (owner) — see [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade). Per-category prize timers can be retuned on a live proxy via **`setPodiumTimerConfig`** (owner) — see [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade).
+**`TimeArena`**, **`ReferralRegistry`**, **`PodiumVaults`**, and **`AdminSellVault`** are UUPS proxies. After upgrading, confirm **`paused`**, timer params, and **`PodiumVaults.setArena`** wiring still match the runbook. Per-category settlement timers can be retuned on a live proxy via owner **`setPodiumTimerConfig`** (requires implementation with that setter — see [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade)).
+
+<a id="timearena-epoch-score-reset-upgrade-2026-07-03"></a>
+
+### TimeArena per-epoch score reset upgrade (2026-07-03)
+
+**Proxy:** `0xba39cea0e5ef6808d8cb926c722877480049e0ee` · **New implementation:** [`0x8Eb1c7619ffE4ca8471177D0A8601E6b341FD557`](https://megascan.com/address/0x8eb1c7619ffe4ca8471177d0a8601e6b341fd557#code) · **Block:** 20287165 · **Tx:** [`0xbdb5e78dcbb777f149b8e526953faa414eeb0a239e2fcb3bd57aa10c18a6435d`](https://megascan.com/tx/0xbdb5e78dcbb777f149b8e526953faa414eeb0a239e2fcb3bd57aa10c18a6435d)
+
+Upgrade used **`upgradeToAndCall`** with **`migrateEpochPodiumScores()`** (`reinitializer(2)`) to seed in-flight Time Booster / Defended Streak slot scores into per-epoch counters. Post-upgrade smoke reads: **`effectiveEpochTimerSecAdded`**, **`timeBoosterGeneration`**, **`defendedStreakGeneration`**. Invariant: **`INV-TIME-ARENA-PODIUM-EPOCH-SCORE-RESET`**. Runbook: [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade).
 
 ## Verification
 

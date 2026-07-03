@@ -906,7 +906,7 @@ export type ArenaWalletStats = {
   claimable_cred_epoch?: string | null;
   /** Claimable CRED in `claimable_cred_epoch` (schema ≥ 2.10.0). */
   claimable_cred?: string;
-  /** Derived Play CRED balance from referral mints, claims, and CRED buys (schema ≥ 2.10.0). */
+  /** Play CRED balance: Transfer ledger when indexed, else referrals + claims − CRED buys (schema ≥ 2.23.0). */
   cred_balance_wad?: string;
   prizes_won: ArenaWalletPrizeWon[];
   total_won_doub: string;

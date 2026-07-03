@@ -129,6 +129,8 @@ pub struct RegistryContracts {
     pub referral_registry: String,
     #[serde(rename = "CL8Y_reserve", default)]
     pub cl8y_reserve: String,
+    #[serde(rename = "PlayCred", default)]
+    pub play_cred: String,
 }
 
 impl RegistryContracts {
@@ -151,6 +153,7 @@ impl AddressRegistry {
             self.contracts.podium_vaults.trim(),
             self.contracts.admin_sell_vault.trim(),
             self.contracts.referral_registry.trim(),
+            self.contracts.play_cred.trim(),
             self.contracts.buy_router_address(),
         ] {
             if s.is_empty() {
@@ -547,6 +550,7 @@ mod production_registry_validation_tests {
             admin_sell_vault: ADDR_A.into(),
             referral_registry: ADDR_A.into(),
             cl8y_reserve: String::new(),
+            play_cred: ADDR_A.into(),
         }
     }
 
@@ -616,6 +620,7 @@ mod production_registry_validation_tests {
             admin_sell_vault: String::new(),
             referral_registry: String::new(),
             cl8y_reserve: String::new(),
+            play_cred: String::new(),
         };
         let r = reg(1, 1, c);
         assert!(validate_address_registry_for_production(&r, 1, true, false).is_err());
@@ -631,6 +636,7 @@ mod production_registry_validation_tests {
             admin_sell_vault: String::new(),
             referral_registry: String::new(),
             cl8y_reserve: String::new(),
+            play_cred: String::new(),
         };
         c.time_arena = "bogus".into();
         let r = reg(5, 0, c);
@@ -651,7 +657,7 @@ mod production_registry_validation_tests {
     fn index_addresses_includes_nonzero_buy_router() {
         let r = reg(1, 1, filled_contracts(ADDR_A));
         let addrs = r.index_addresses();
-        assert_eq!(addrs.len(), 5);
+        assert_eq!(addrs.len(), 6);
     }
 }
 

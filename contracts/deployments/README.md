@@ -17,6 +17,6 @@ Publish **SHA-256** of the compact JSON `.abi` array so agents pin the same inte
 cd contracts && ./script/export_abi_hashes.sh
 ```
 
-Merge the printed JSON object into your published registry under `abiHashesSha256`. The indexer ignores unknown keys; frontends may use the map for integrity checks.
+Merge the printed JSON object into your published registry under `abiHashesSha256`. Optional **`implementations`** map (e.g. **`TimeArena`** logic contract) is metadata for operators — the indexer ingests **proxy** addresses from **`contracts`** only ([#61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
 
 Operator steps: [`docs/operations/stage3-mainnet-operator-runbook.md`](../../docs/operations/stage3-mainnet-operator-runbook.md) · Arena v2 deploy: [`docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259`](../../docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259).

@@ -148,21 +148,31 @@ Publish the written JSON as the canonical artifact; use it as the source of trut
 
 ```bash
 cd contracts
-export PRIVATE_KEY='…'   # funded key; implementation deploy does not need to be owner
+export RPC=https://mainnet.megaeth.com/rpc
 
 forge script script/DeployTimeArenaImpl.s.sol:DeployTimeArenaImpl \
-  --rpc-url https://mainnet.megaeth.com/rpc \
+  --rpc-url "$RPC" \
   --chain 4326 \
   --broadcast \
   --code-size-limit 524288 \
-  --verify \
-  --verifier etherscan \
-  --verifier-url "https://api.etherscan.io/v2/api?chainid=4326" \
-  --etherscan-api-key "$ETHERSCAN_API_KEY" \
   --interactive
 ```
 
+Verify separately (Megascan / Etherscan v2 API):
+
+```bash
+forge verify-contract "$NEW_IMPL" \
+  src/arena/TimeArena.sol:TimeArena \
+  --rpc-url "$RPC" \
+  --chain 4326 \
+  --verifier etherscan \
+  --verifier-url "https://api.etherscan.io/v2/api?chainid=4326" \
+  --etherscan-api-key "$ETHERSCAN_API_KEY"
+```
+
 Record the **`TimeArena`** implementation address from the broadcast log as **`NEW_IMPL`**.
+
+**Current verified implementation (MegaETH 4326, 2026-07-03):** [`0x8Eb1c7619ffE4ca8471177D0A8601E6b341FD557`](https://megascan.com/address/0x8eb1c7619ffe4ca8471177d0a8601e6b341fd557#code) behind proxy **`0xba39cea0e5ef6808d8cb926c722877480049e0ee`**. Also recorded in [`indexer/address-registry.megaeth-mainnet.json`](../../indexer/address-registry.megaeth-mainnet.json) → **`implementations.TimeArena`** (metadata only — ingestion uses proxy addresses).
 
 **Manual `forge create` alternative** — deploy the library first, then link:
 
@@ -179,15 +189,31 @@ On MegaETH mainnet you may reuse the library already linked by the current imple
 
 ### 2. Upgrade proxy (`owner()` signer)
 
+Plain upgrade (no migration calldata):
+
 ```bash
 export TIME_ARENA_PROXY="$(jq -r '.contracts.TimeArena' indexer/address-registry.megaeth-mainnet.json)"
 
 scripts/uups-upgrade-timearena-mainnet.sh "$NEW_IMPL"
 ```
 
-Manual equivalent: `cast send "$TIME_ARENA_PROXY" "upgradeToAndCall(address,bytes)" "$NEW_IMPL" 0x … --interactive`
+**Reinitializer migration** — when the new implementation adds a `reinitializer` (e.g. **`migrateEpochPodiumScores()`** for per-epoch Time Booster / Defended Streak scoring, 2026-07-03 mainnet upgrade):
 
-Confirm ERC1967 implementation slot (last 20 bytes = **`NEW_IMPL`**) and smoke-read a new selector if applicable.
+```bash
+export TIME_ARENA_PROXY="$(jq -r '.contracts.TimeArena' indexer/address-registry.megaeth-mainnet.json)"
+MIGRATE_CALLDATA="$(cast calldata "migrateEpochPodiumScores()")"
+
+scripts/uups-upgrade-timearena-mainnet.sh "$NEW_IMPL" "$MIGRATE_CALLDATA"
+```
+
+Manual equivalent: `cast send "$TIME_ARENA_PROXY" "upgradeToAndCall(address,bytes)" "$NEW_IMPL" "$MIGRATE_CALLDATA" --rpc-url https://mainnet.megaeth.com/rpc --interactive`
+
+Confirm ERC1967 implementation slot (last 20 bytes = **`NEW_IMPL`**) and smoke-read a new selector if applicable:
+
+```bash
+cast storage "$TIME_ARENA_PROXY" 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc --rpc-url https://mainnet.megaeth.com/rpc
+cast call "$TIME_ARENA_PROXY" "effectiveEpochTimerSecAdded(address)(uint256)" 0x0000000000000000000000000000000000000001 --rpc-url https://mainnet.megaeth.com/rpc
+```
 
 ### 3. Optional — retune per-category settlement timers
 

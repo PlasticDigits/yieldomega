@@ -139,7 +139,9 @@ cd contracts && forge script script/DeployTimeArenaImpl.s.sol:DeployTimeArenaImp
 scripts/uups-upgrade-timearena-mainnet.sh "$NEW_IMPL"
 ```
 
-Owner may then call **`setPodiumTimerConfig`** on the proxy to retune per-category prize-settlement timers.
+**Current verified implementation (4326):** [`0x8Eb1c7619ffE4ca8471177D0A8601E6b341FD557`](https://megascan.com/address/0x8eb1c7619ffe4ca8471177d0a8601e6b341fd557#code) (proxy `0xba39cea0e5ef6808d8cb926c722877480049e0ee`).
+
+Owner may call **`setPodiumTimerConfig`** on the proxy to retune per-category prize-settlement timers.
 
 ## Contract map
 

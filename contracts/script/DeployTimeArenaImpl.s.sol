@@ -9,7 +9,7 @@ import {TimeArena} from "../src/arena/TimeArena.sol";
 ///      `upgradeToAndCall(newImpl, 0x)` then optional `setPodiumTimerConfig`.
 contract DeployTimeArenaImpl is Script {
     function run() external {
-        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
+        vm.startBroadcast();
         new TimeArena();
         vm.stopBroadcast();
     }

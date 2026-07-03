@@ -38,7 +38,9 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 **Last Buy epoch:** `lastBuyEpoch` increments on Last Buy **hard reset**; emits **`LastBuyEpochStarted`**. This drives epoch-scoped CHARM and CRED accrual (below).
 
-**Podium epoch roll:** permissionless **`rollPodiumEpoch(category)`** when `block.timestamp > podiumDeadline[category]` ([#240 open decision #4](#resolved-open-decisions-gitlab-240), implementation [#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)). On roll: snapshot top-3, pay **4∶2∶1** from active pool, roll seed → active, increment `podiumEpoch[cat]`, clear that category’s live scores, emit **`PodiumEpochRolled`**.
+**Podium epoch roll:** permissionless **`rollPodiumEpoch(category)`** when `block.timestamp > podiumDeadline[category]` ([#240 open decision #4](#resolved-open-decisions-gitlab-240), implementation [#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)). On roll: snapshot top-3, pay **4∶2∶1** from active pool, roll seed → active, increment `podiumEpoch[cat]`, clear that category’s live podium slots, and **reset per-epoch scoring counters** for Time Booster and Defended Streak (generation bump — same pattern as WarBow BP). Lifetime stats **`totalEffectiveTimerSecAdded`** and **`bestDefendedStreak`** remain for profile/history reads. Emit **`PodiumEpochRolled`**.
+
+**Time Booster / Defended Streak scoring:** podium rank uses **`epochTimerSecAdded`** / **`epochBestDefendedStreak`** (current prize epoch only). Views: **`effectiveEpochTimerSecAdded(address)`**, **`effectiveEpochBestDefendedStreak(address)`**. UUPS upgrade seeds in-flight epoch slot holders via **`migrateEpochPodiumScores()`**.
 
 **Timer cap:** per category **`timerCapSec[cat] = 4 × initialTimerSec[cat]`** (WarBow cap = 192h). Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol) ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)). **Owner retune (live proxy):** `setPodiumTimerConfig(category, …)` after a UUPS upgrade — see [deployment guide § TimeArena UUPS upgrade](../operations/deployment-guide.md#timearena-uups-upgrade).
 
