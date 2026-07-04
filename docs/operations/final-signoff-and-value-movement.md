@@ -33,6 +33,14 @@ Authoritative onchain gate for user-facing arena value movement: **`TimeArena.pa
 
 Upgrade used **`upgradeToAndCall`** with **`migrateEpochPodiumScores()`** (`reinitializer(2)`) to seed in-flight Time Booster / Defended Streak slot scores into per-epoch counters. Post-upgrade smoke reads: **`effectiveEpochTimerSecAdded`**, **`timeBoosterGeneration`**, **`defendedStreakGeneration`**. Invariant: **`INV-TIME-ARENA-PODIUM-EPOCH-SCORE-RESET`**. Runbook: [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade).
 
+<a id="timearena-buy-plant-flag-upgrade-2026-07-04"></a>
+
+### TimeArena direct-DOUB flag plant upgrade (2026-07-04)
+
+**Proxy:** `0xba39cea0e5ef6808d8cb926c722877480049e0ee` · **New implementation:** [`0xaA298FCf0E3d67c7B4b68ed418C2B90F97CE9077`](https://megascan.com/address/0xaa298fcf0e3d67c7b4b68ed418c2b90f97ce9077#code)
+
+Plain **`upgradeToAndCall(newImpl, 0x)`** — adds **`buy(uint256,bool)`** and **`buy(uint256,bytes32,bool)`** so direct DOUB buys can pass **`plantWarBowFlag`** (level 5+ gate unchanged). Post-upgrade smoke: **`warbowPendingFlagOwner`** after a flagged DOUB buy. Runbook: [deployment guide § TimeArena UUPS upgrade](deployment-guide.md#timearena-uups-upgrade).
+
 ## Verification
 
 - **Forge:** `TimeArena.t.sol`, `DevStackIntegration.t.sol`, `ArenaPrizeRouting.t.sol`.

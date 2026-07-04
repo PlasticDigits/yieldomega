@@ -172,7 +172,7 @@ forge verify-contract "$NEW_IMPL" \
 
 Record the **`TimeArena`** implementation address from the broadcast log as **`NEW_IMPL`**.
 
-**Current verified implementation (MegaETH 4326, 2026-07-03):** [`0x8Eb1c7619ffE4ca8471177D0A8601E6b341FD557`](https://megascan.com/address/0x8eb1c7619ffe4ca8471177d0a8601e6b341fd557#code) behind proxy **`0xba39cea0e5ef6808d8cb926c722877480049e0ee`**. Also recorded in [`indexer/address-registry.megaeth-mainnet.json`](../../indexer/address-registry.megaeth-mainnet.json) → **`implementations.TimeArena`** (metadata only — ingestion uses proxy addresses).
+**Current verified implementation (MegaETH 4326, 2026-07-04):** [`0xaA298FCf0E3d67c7B4b68ed418C2B90F97CE9077`](https://megascan.com/address/0xaa298fcf0e3d67c7b4b68ed418c2b90f97ce9077#code) behind proxy **`0xba39cea0e5ef6808d8cb926c722877480049e0ee`**. Adds direct-DOUB **`buy(uint256,bool)`** / **`buy(uint256,bytes32,bool)`** overloads for WarBow flag plant. Also recorded in [`indexer/address-registry.megaeth-mainnet.json`](../../indexer/address-registry.megaeth-mainnet.json) → **`implementations.TimeArena`** (metadata only — ingestion uses proxy addresses).
 
 **Manual `forge create` alternative** — deploy the library first, then link:
 
