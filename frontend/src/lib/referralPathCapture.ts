@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { normalizeReferralCode } from "@/lib/referralCode";
+import { isReferralCodeBlocked } from "@/lib/referralBlockedCodes";
 import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 
 function pathSegments(pathname: string): string[] {
@@ -46,7 +47,11 @@ export function isReferralPlayPathname(pathname: string): boolean {
 
 function tryNormalizeReferralSlug(raw: string): string | null {
   try {
-    return normalizeReferralCode(raw);
+    const normalized = normalizeReferralCode(raw);
+    if (isReferralCodeBlocked(normalized)) {
+      return null;
+    }
+    return normalized;
   } catch {
     return null;
   }

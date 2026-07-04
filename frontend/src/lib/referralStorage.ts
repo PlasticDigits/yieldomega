@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { extractReferralCodeFromPathname } from "@/lib/referralPathCapture";
+import { isReferralCodeBlocked, isReferralCodeBlockedRaw } from "@/lib/referralBlockedCodes";
 import { normalizeReferralCode } from "@/lib/referralCode";
 import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 
@@ -163,7 +164,7 @@ function captureFromRefQueryString(search: string): boolean {
   }
   try {
     const normalized = normalizeReferralCode(ref);
-    if (isReferralSlugReservedForRouting(normalized)) {
+    if (isReferralSlugReservedForRouting(normalized) || isReferralCodeBlocked(normalized)) {
       return false;
     }
     writePendingToStores(normalized);
@@ -184,12 +185,46 @@ export function applyReferralUrlCapture(pathname: string, search: string): void 
   }
   purgeLegacyReferralStorage();
   syncPendingReferralAcrossStores();
+  purgePendingReferralIfBlocked();
   if (captureFromRefQueryString(search)) {
     return;
   }
   const fromPath = extractReferralCodeFromPathname(pathname);
-  if (fromPath) {
+  if (fromPath && !isReferralCodeBlocked(fromPath)) {
     writePendingToStores(fromPath);
+  }
+}
+
+/**
+ * Drop blocked pending slugs (e.g. `yieldomega`) from browser storage.
+ *
+ * @returns whether pending storage was cleared
+ */
+export function purgePendingReferralIfBlocked(): boolean {
+  const pending = getPendingReferralCodeRaw();
+  if (!pending?.trim() || !isReferralCodeBlockedRaw(pending)) {
+    return false;
+  }
+  clearPendingReferralCode();
+  return true;
+}
+
+/** Read pending payload without blocked-code purge — internal only. */
+function getPendingReferralCodeRaw(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  purgeLegacyReferralStorage();
+  syncPendingReferralAcrossStores();
+  try {
+    const raw = window.localStorage.getItem(REF_STORAGE) ?? window.sessionStorage.getItem(REF_STORAGE);
+    if (!raw) {
+      return null;
+    }
+    const p = JSON.parse(raw) as { code?: string };
+    return typeof p.code === "string" ? p.code : null;
+  } catch {
+    return null;
   }
 }
 
@@ -207,19 +242,8 @@ export function getPendingReferralCode(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
-  purgeLegacyReferralStorage();
-  syncPendingReferralAcrossStores();
-  try {
-    /** Prefer local first: it survives tab close; session is kept in sync above. */
-    const raw = window.localStorage.getItem(REF_STORAGE) ?? window.sessionStorage.getItem(REF_STORAGE);
-    if (!raw) {
-      return null;
-    }
-    const p = JSON.parse(raw) as { code?: string };
-    return typeof p.code === "string" ? p.code : null;
-  } catch {
-    return null;
-  }
+  purgePendingReferralIfBlocked();
+  return getPendingReferralCodeRaw();
 }
 
 /** Manual / test helper only — buy flows keep pending codes locked in storage. */

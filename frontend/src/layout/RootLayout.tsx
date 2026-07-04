@@ -5,6 +5,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAccount, useChainId } from "wagmi";
 import { ReferralPathSync } from "@/components/ReferralPathSync";
 import { ReferralSelfReferralPurge } from "@/components/ReferralSelfReferralPurge";
+import { ReferralBlockedCodePurge } from "@/components/ReferralBlockedCodePurge";
 import { AgentFooterCard } from "@/components/AgentFooterCard";
 import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { SwitchToTargetChainButton } from "@/components/SwitchToTargetChainButton";
@@ -259,6 +260,7 @@ export function RootLayout() {
   return (
     <div className={shellClassName}>
       <ReferralPathSync />
+      <ReferralBlockedCodePurge />
       <ReferralSelfReferralPurge />
       <header className="app-header app-header--dense">
         <div className="app-header__top">

@@ -3,6 +3,7 @@
 import { lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import { normalizeReferralCode } from "@/lib/referralCode";
+import { isReferralCodeBlockedRaw } from "@/lib/referralBlockedCodes";
 import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
@@ -39,7 +40,11 @@ function tryNormalizeReferralSlug(raw: string): string | null {
 export function ReferralBranchPage() {
   const { referralSegment } = useParams<{ referralSegment: string }>();
   const raw = referralSegment ?? "";
-  if (isReferralSlugReservedForRouting(raw) || !tryNormalizeReferralSlug(raw)) {
+  if (
+    isReferralSlugReservedForRouting(raw) ||
+    isReferralCodeBlockedRaw(raw) ||
+    !tryNormalizeReferralSlug(raw)
+  ) {
     return <NotFoundPage />;
   }
   return (

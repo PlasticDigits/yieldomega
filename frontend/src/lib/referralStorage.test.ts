@@ -99,16 +99,30 @@ describe("referralStorage pending cross-store sync", () => {
     expect(n).toBe(1);
   });
 
+  it("does not capture blocked brand slug ?ref=yieldomega", async () => {
+    const { applyReferralUrlCapture, getPendingReferralCode } = await import("./referralStorage");
+    applyReferralUrlCapture("/", "?ref=yieldomega");
+    expect(getPendingReferralCode()).toBeNull();
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it("purges blocked pending slug from storage on read", async () => {
+    window.localStorage.setItem(KEY, JSON.stringify({ code: "yieldomega", ts: 1 }));
+    window.sessionStorage.setItem(KEY, JSON.stringify({ code: "yieldomega", ts: 1 }));
+    const { getPendingReferralCode } = await import("./referralStorage");
+    expect(getPendingReferralCode()).toBeNull();
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+  });
+
   it("pending code stays after capture until overwritten or clearPendingReferralCode", async () => {
     const { applyReferralUrlCapture, getPendingReferralCode, clearPendingReferralCode } =
       await import("./referralStorage");
-    applyReferralUrlCapture("/", "?ref=yieldomega");
-    expect(getPendingReferralCode()).toBe("yieldomega");
-    expect(getPendingReferralCode()).toBe("yieldomega");
-    clearPendingReferralCode();
-    expect(getPendingReferralCode()).toBeNull();
     applyReferralUrlCapture("/", "?ref=other12");
     expect(getPendingReferralCode()).toBe("other12");
+    clearPendingReferralCode();
+    expect(getPendingReferralCode()).toBeNull();
+    applyReferralUrlCapture("/", "?ref=abc123");
+    expect(getPendingReferralCode()).toBe("abc123");
   });
 
   it("purges legacy v1 pending and myrefcode keys on module load", async () => {

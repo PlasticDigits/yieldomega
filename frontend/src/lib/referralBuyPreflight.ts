@@ -3,6 +3,7 @@
 import type { Config } from "wagmi";
 import { readContract } from "wagmi/actions";
 import { referralRegistryReadAbi } from "@/lib/abis";
+import { isReferralCodeBlockedRaw } from "@/lib/referralBlockedCodes";
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 
 export type ReferralBuyPreflightResult = { ok: true } | { ok: false; message: string };
@@ -50,4 +51,55 @@ export async function assertReferralReadyForBuy(params: {
   }
 
   return { ok: true };
+}
+
+/**
+ * Returns a `codeHash` only when the pending slug is registered for a third-party referrer.
+ * Blocked, malformed, unregistered, and self-referral codes are dropped so buys proceed
+ * without referral attachment; {@link params.clearPendingReferral} runs when the slug is
+ * unusable.
+ */
+export async function resolveReferralCodeHashForBuy(params: {
+  wagmiConfig: Config;
+  referralRegistry: `0x${string}` | undefined;
+  buyer: `0x${string}`;
+  pendingCode: string;
+  clearPendingReferral: () => void;
+}): Promise<`0x${string}` | undefined> {
+  const clear = params.clearPendingReferral;
+
+  if (isReferralCodeBlockedRaw(params.pendingCode)) {
+    clear();
+    return undefined;
+  }
+
+  let codeHash: `0x${string}`;
+  try {
+    codeHash = hashReferralCode(params.pendingCode);
+  } catch {
+    clear();
+    return undefined;
+  }
+
+  if (!params.referralRegistry) {
+    return undefined;
+  }
+
+  const owner = (await readContract(params.wagmiConfig, {
+    address: params.referralRegistry,
+    abi: referralRegistryReadAbi,
+    functionName: "ownerOfCode",
+    args: [codeHash],
+  })) as `0x${string}`;
+
+  if (
+    !owner ||
+    owner.toLowerCase() === ZERO ||
+    owner.toLowerCase() === params.buyer.toLowerCase()
+  ) {
+    clear();
+    return undefined;
+  }
+
+  return codeHash;
 }

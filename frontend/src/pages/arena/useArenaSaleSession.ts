@@ -43,7 +43,8 @@ import {
 } from "@/lib/kumbayaCl8ySpendFromPayToken";
 import { type WalletWriteAsync } from "@/lib/timeArenaKumbayaSingleTx";
 import { submitArenaKumbayaSingleTxBuy } from "@/lib/timeArenaKumbayaSingleTx";
-import { hashReferralCode } from "@/lib/referralCode";
+import { resolveReferralCodeHashForBuy } from "@/lib/referralBuyPreflight";
+import { clearPendingReferralCode } from "@/lib/referralStorage";
 import {
   type KumbayaEnv,
   type PayWithAsset,
@@ -1940,6 +1941,24 @@ export function useArenaSaleSession(
             : parseUnits("1000", 18);
         const needDoub = (cw * priceWad) / parseUnits("1", 18);
 
+        const resolveBuyReferralCodeHash = async (): Promise<`0x${string}` | undefined> => {
+          if (!useReferral || !referralRegistryOn || !pendingReferralCode) {
+            return undefined;
+          }
+          const referralRegistryAddress =
+            referralRegistryR?.status === "success" &&
+            isNonZeroHexAddress(referralRegistryR.result)
+              ? (referralRegistryR.result as `0x${string}`)
+              : undefined;
+          return resolveReferralCodeHashForBuy({
+            wagmiConfig,
+            referralRegistry: referralRegistryAddress,
+            buyer: address as `0x${string}`,
+            pendingCode: pendingReferralCode,
+            clearPendingReferral: clearPendingReferralCode,
+          });
+        };
+
         if (payUsesKumbayaRoute(payWith, isArenaV2)) {
           const k = resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv);
           if (!k.ok) {
@@ -1974,12 +1993,7 @@ export function useArenaSaleSession(
           }
           let codeHash: `0x${string}` | undefined;
           if (useReferral && referralRegistryOn && pendingReferralCode) {
-            try {
-              codeHash = hashReferralCode(pendingReferralCode);
-            } catch (e) {
-              setBuyError(e instanceof Error ? e.message : String(e));
-              return;
-            }
+            codeHash = await resolveBuyReferralCodeHash();
           }
           const chainSec = await submitArenaKumbayaSingleTxBuy({
             wagmiConfig,
@@ -2017,12 +2031,7 @@ export function useArenaSaleSession(
         });
         let codeHash: `0x${string}` | undefined;
         if (useReferral && referralRegistryOn && pendingReferralCode) {
-          try {
-            codeHash = hashReferralCode(pendingReferralCode);
-          } catch (e) {
-            setBuyError(e instanceof Error ? e.message : String(e));
-            return;
-          }
+          codeHash = await resolveBuyReferralCodeHash();
         }
         const buyArgs = plantWarBowFlag
           ? codeHash
@@ -2070,6 +2079,7 @@ export function useArenaSaleSession(
     spendWei,
     useReferral,
     referralRegistryOn,
+    referralRegistryR,
     pendingReferralCode,
     plantWarBowFlag,
     writeContractAsync,
