@@ -2,6 +2,7 @@
 
 //! Aggregations for `GET /v1/arena/wallet/{address}/stats` (#255).
 
+use alloy_primitives::U256;
 use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
 
@@ -84,7 +85,9 @@ fn parse_u128_decimal(s: &str) -> u128 {
 fn pending_cred_from_epoch_parts(weight: u128, total: u128, epoch_buys: u64, bonus: u128) -> u128 {
     let pool = (epoch_buys as u128).saturating_mul(CRED_PER_BUY_WAD);
     let pro_rata = if weight > 0 && total > 0 {
-        pool.saturating_mul(weight) / total
+        // `pool * weight` exceeds u128 on mainnet-scale epochs; mirrors `Math.mulDiv` onchain.
+        let numer = U256::from(pool) * U256::from(weight);
+        (numer / U256::from(total)).to::<u128>()
     } else {
         0
     };
@@ -1603,6 +1606,20 @@ mod tests {
     fn pending_cred_pro_rata_plus_bonus() {
         let pending = pending_cred_from_epoch_parts(WAD, WAD * 2, 2, FIRST_BUY_CRED_BONUS_WAD);
         assert_eq!(pending, CRED_PER_BUY_WAD + FIRST_BUY_CRED_BONUS_WAD);
+    }
+
+    #[test]
+    fn pending_cred_mainnet_scale_pro_rata_by_charm() {
+        let epoch_buys = 420u64;
+        let total = 583_977_389_916_515_647_986u128;
+        let alice = 72_284_752_141_583_175_409u128;
+        let bob = 41_745_200_000_000_000_000u128;
+        let alice_pending = pending_cred_from_epoch_parts(alice, total, epoch_buys, 0);
+        let bob_pending = pending_cred_from_epoch_parts(bob, total, epoch_buys, 0);
+        assert_ne!(alice_pending, bob_pending);
+        assert!(alice_pending > bob_pending);
+        // u128 `saturating_mul` used to pin every wallet at ~0.58 CRED on mainnet.
+        assert!(alice_pending > CRED_PER_BUY_WAD);
     }
 
     #[test]
