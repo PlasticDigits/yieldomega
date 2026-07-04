@@ -6,18 +6,14 @@ import { describe, expect, it, vi } from "vitest";
 import { ArenaWarbowHeroPanel, type WarbowTarget } from "./ArenaWarbowHeroPanel";
 
 const mockWarbowHero = vi.fn();
+const mockPendingRevengeTargets = vi.fn();
 
 vi.mock("./useArenaWarbowHero", () => ({
   useArenaWarbowHero: () => mockWarbowHero(),
 }));
 
 vi.mock("@/hooks/useArenaPendingRevengeTargets", () => ({
-  useArenaPendingRevengeTargets: () => ({
-    pendingRevengeTargets: [],
-    hasRevengeOpen: false,
-    revengeIndexerConfigured: true,
-    pendingRevengeLoadFailed: false,
-  }),
+  useArenaPendingRevengeTargets: () => mockPendingRevengeTargets(),
 }));
 
 vi.mock("wagmi", () => ({
@@ -72,9 +68,44 @@ const baseHook = {
   arenaPaused: false,
 };
 
+const noRevengeMock = {
+  pendingRevengeTargets: [],
+  hasRevengeOpen: false,
+  revengeIndexerConfigured: true,
+  pendingRevengeLoadFailed: false,
+};
+
 describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
+  it("formats revenge window remaining time as HH:MM:SS (#revenge-countdown)", () => {
+    mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue({
+      pendingRevengeTargets: [
+        {
+          stealer: TARGET_A,
+          steal_seq: "1",
+          expiry_exclusive: String(1_700_060_406),
+        },
+      ],
+      hasRevengeOpen: true,
+      revengeIndexerConfigured: true,
+      pendingRevengeLoadFailed: false,
+    });
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 4,
+        warbowTargets,
+        indexerViewerBattlePoints: 100n,
+      }),
+    );
+    // 60406s remaining → 16:46:46 (not mm:ss "1006:46")
+    expect(html).toContain("16:46:46");
+    expect(html).not.toContain("1006:46");
+  });
+
   it("renders steal target listbox with roving tabindex on the first option", () => {
     mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
     const html = renderToStaticMarkup(
       createElement(ArenaWarbowHeroPanel, {
         phase: "saleActive",
@@ -96,6 +127,7 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
       canPress: false,
       arenaPaused: true,
     });
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
     const html = renderToStaticMarkup(
       createElement(ArenaWarbowHeroPanel, {
         phase: "saleActive",
@@ -108,6 +140,7 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
 
   it("shows LEVEL 5 lock on WarBow flag at level 4 (#334)", () => {
     mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
     const html = renderToStaticMarkup(
       createElement(ArenaWarbowHeroPanel, {
         phase: "saleActive",
@@ -125,6 +158,7 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
       ...baseHook,
       pvpErr: "WarBow steal reverted",
     });
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
     const html = renderToStaticMarkup(
       createElement(ArenaWarbowHeroPanel, {
         phase: "saleActive",

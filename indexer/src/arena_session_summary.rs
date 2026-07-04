@@ -15,7 +15,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::api::{internal_db_error_response, with_schema_version, AppState};
 use crate::api_validate::valid_0x_address20;
-use crate::arena_podium_live::PODIUM_CATEGORY_LABELS;
+use crate::arena_podium_live::podium_label_for_onchain_category;
 use crate::arena_podium_prize::payout_shares;
 
 /// Maximum lookback for `since_ms` (30 days).
@@ -154,10 +154,7 @@ async fn fetch_podium_epochs_ended(pool: &PgPool, since_sec: f64) -> Result<Vec<
         .iter()
         .map(|r| {
             let category: i16 = r.get("category");
-            let label = PODIUM_CATEGORY_LABELS
-                .get(category as usize)
-                .copied()
-                .unwrap_or("unknown");
+            let label = podium_label_for_onchain_category(category as u8);
             let pool_paid: String = r.get("pool_paid");
             let pool = U256::from_str_radix(pool_paid.as_str(), 10).unwrap_or(U256::ZERO);
             let (first_prize, second_prize, third_prize) = payout_shares(pool);
@@ -275,5 +272,15 @@ mod tests {
         let now = 1_700_000_000_000i64;
         let old = now - MAX_SINCE_AGE_MS - 1_000;
         assert_eq!(clamp_since_ms(old, now), Ok(now - MAX_SINCE_AGE_MS));
+    }
+
+    #[test]
+    fn podium_label_maps_onchain_category_not_ux_index() {
+        use crate::arena_podium_live::podium_label_for_onchain_category;
+
+        assert_eq!(podium_label_for_onchain_category(0), "last_buy");
+        assert_eq!(podium_label_for_onchain_category(1), "time_booster");
+        assert_eq!(podium_label_for_onchain_category(2), "defended_streak");
+        assert_eq!(podium_label_for_onchain_category(3), "warbow");
     }
 }

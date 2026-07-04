@@ -23,6 +23,17 @@ pub const PODIUM_CATEGORY_LABELS: [&str; 4] = [
     "time_booster",
 ];
 
+/// Onchain `category` index (0=Last Buy, 1=Time Booster, 2=Defended Streak, 3=WarBow).
+pub const PODIUM_ONCHAIN_CATEGORY_LABELS: [&str; 4] =
+    ["last_buy", "time_booster", "defended_streak", "warbow"];
+
+pub fn podium_label_for_onchain_category(category: u8) -> &'static str {
+    PODIUM_ONCHAIN_CATEGORY_LABELS
+        .get(category as usize)
+        .copied()
+        .unwrap_or("unknown")
+}
+
 fn u256_dec(n: U256) -> String {
     n.to_string()
 }

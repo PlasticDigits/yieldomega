@@ -10,7 +10,7 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatWarbowViewerBattlePointsDisplay } from "@/lib/arenaPageHelpers";
 import { formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
-import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
+import { formatCountdown } from "@/pages/arena/formatTimer";
 import { useArenaPendingRevengeTargets } from "@/hooks/useArenaPendingRevengeTargets";
 import { ArenaLevelGate } from "@/components/ArenaLevelGate";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
@@ -202,7 +202,7 @@ export function ArenaWarbowHeroPanel({
             GUARD:{" "}
             <strong>
               {w.guardedActive && guardRemaining !== undefined
-                ? formatMmSsCountdown(guardRemaining)
+                ? formatCountdown(guardRemaining)
                 : "INACTIVE"}
             </strong>
           </p>
@@ -398,7 +398,7 @@ export function ArenaWarbowHeroPanel({
                       size={16}
                     />
                     <span className="mono muted" title={formatUnixSecIsoUtc(BigInt(row.expiry_exclusive))}>
-                      {formatMmSsCountdown(remainingSec)}
+                      {formatCountdown(remainingSec)}
                     </span>
                     {w.isConnected && w.saleActive && (
                       <ChainMismatchWriteBarrier>
