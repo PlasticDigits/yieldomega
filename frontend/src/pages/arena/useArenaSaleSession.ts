@@ -2024,6 +2024,13 @@ export function useArenaSaleSession(
             return;
           }
         }
+        const buyArgs = plantWarBowFlag
+          ? codeHash
+            ? ([cw, codeHash, plantWarBowFlag] as const)
+            : ([cw, plantWarBowFlag] as const)
+          : codeHash
+            ? ([cw, codeHash] as const)
+            : ([cw] as const);
         const { hash: buyHash } = await writeContractWithGasBuffer({
           wagmiConfig,
           writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -2032,7 +2039,7 @@ export function useArenaSaleSession(
           address: tc,
           abi: timeArenaWriteAbi,
           functionName: "buy",
-          args: codeHash ? ([cw, codeHash] as const) : ([cw] as const),
+          args: buyArgs,
         });
         const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
         assertSuccessfulBuyReceipt(receipt);

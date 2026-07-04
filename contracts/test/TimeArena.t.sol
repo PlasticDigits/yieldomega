@@ -2275,6 +2275,41 @@ contract TimeArenaTest is Test {
         assertEq(arena.warbowPendingFlagOwner(), address(0));
     }
 
+    /// Direct DOUB buy overload plants flag at level 5+.
+    function test_buy_plant_flag_direct_doub() public {
+        _ensureLevel(alice, 5);
+        doub.mint(alice, 10_000e18);
+        vm.startPrank(alice);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buy(1e18, true);
+        vm.stopPrank();
+        assertEq(arena.warbowPendingFlagOwner(), alice);
+        assertGt(arena.warbowPendingFlagPlantAt(), 0);
+    }
+
+    /// Direct DOUB buy with referral code can plant flag at level 5+.
+    function test_buy_plant_flag_direct_doub_with_code_hash() public {
+        _ensureLevel(alice, 5);
+        doub.mint(alice, 10_000e18);
+        bytes32 codeHash = keccak256("yieldomega");
+        vm.startPrank(alice);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buy(1e18, codeHash, true);
+        vm.stopPrank();
+        assertEq(arena.warbowPendingFlagOwner(), alice);
+    }
+
+    /// Level 4 direct DOUB buy with plant flag still ignored.
+    function test_level_4_buy_plant_flag_direct_doub_ignored() public {
+        _ensureLevel(alice, 4);
+        doub.mint(alice, 10_000e18);
+        vm.startPrank(alice);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buy(1e18, true);
+        vm.stopPrank();
+        assertEq(arena.warbowPendingFlagOwner(), address(0));
+    }
+
     /// GitLab #299: level < 4 cannot WarBow steal.
     function test_level_3_warbow_steal_reverts() public {
         _ensureLevel(bob, 4);

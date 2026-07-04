@@ -68,6 +68,8 @@ export const timeArenaReadAbi = parseAbi([
   "function buyWithCred(uint256 charmWad)",
   "function buy(uint256 charmWad)",
   "function buy(uint256 charmWad, bytes32 codeHash)",
+  "function buy(uint256 charmWad, bool plantWarBowFlag)",
+  "function buy(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag)",
   "function playCred() view returns (address)",
   "function CRED_PER_CHARM_WAD() view returns (uint256)",
   "function REFERRAL_CRED_FLAT_WAD() view returns (uint256)",
@@ -100,6 +102,8 @@ export const timeArenaReadAbi = parseAbi([
 export const timeArenaWriteAbi = parseAbi([
   "function buy(uint256 charmWad)",
   "function buy(uint256 charmWad, bytes32 codeHash)",
+  "function buy(uint256 charmWad, bool plantWarBowFlag)",
+  "function buy(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag)",
   "function buyWithCred(uint256 charmWad)",
   "function topUpPodiumPools(uint256 amountDoubWad)",
   "function claimWarBowFlag()",

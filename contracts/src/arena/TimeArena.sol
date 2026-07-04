@@ -408,6 +408,14 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         _buyDoub(msg.sender, charmWad, codeHash, false);
     }
 
+    function buy(uint256 charmWad, bool plantWarBowFlag) external nonReentrant {
+        _buyDoub(msg.sender, charmWad, bytes32(0), plantWarBowFlag);
+    }
+
+    function buy(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) external nonReentrant {
+        _buyDoub(msg.sender, charmWad, codeHash, plantWarBowFlag);
+    }
+
     function buyWithCred(uint256 charmWad) external nonReentrant {
         _buyCred(msg.sender, charmWad);
     }
