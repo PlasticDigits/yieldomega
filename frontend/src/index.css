@@ -5085,6 +5085,16 @@ button.empty-data-placeholder--connect:disabled {
   margin: 0;
 }
 
+.warbow-hero-flag-silence {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.warbow-hero-flag-silence strong.mono {
+  font-variant-numeric: tabular-nums;
+}
+
 .warbow-hero-card--viewer-summary {
   grid-column: 1 / -1;
   justify-self: center;

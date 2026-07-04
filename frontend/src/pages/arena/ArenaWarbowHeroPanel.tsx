@@ -10,6 +10,9 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatWarbowViewerBattlePointsDisplay } from "@/lib/arenaPageHelpers";
 import { formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
+import { WarbowClaimFlagButton } from "@/components/WarbowClaimFlagButton";
+import { WARBOW_FLAG_SILENCE_SEC } from "@/lib/arenaWarbowConstants";
+import { warbowClaimFlagSilenceRemainingSec } from "@/lib/warbowClaimFlagState";
 import { formatCountdown } from "@/pages/arena/formatTimer";
 import { useArenaPendingRevengeTargets } from "@/hooks/useArenaPendingRevengeTargets";
 import { ArenaLevelGate } from "@/components/ArenaLevelGate";
@@ -47,7 +50,16 @@ type Props = {
   plantWarBowFlag?: boolean;
   onPlantWarBowFlagChange?: (checked: boolean) => void;
   plantFlagDisabled?: boolean;
+  /** Viewer holds a planted flag — show silence countdown + claim CTA in this card. */
+  showClaimFlagControl?: boolean;
+  canClaimWarBowFlag?: boolean;
+  flagSilenceEndSec?: bigint;
+  ledgerNowSec?: number;
+  onClaimFlag?: () => void | Promise<void>;
+  claimFlagWriting?: boolean;
 };
+
+const WARBOW_FLAG_SILENCE_MINUTES = WARBOW_FLAG_SILENCE_SEC / 60;
 
 export type WarbowTarget = {
   address: `0x${string}`;
@@ -90,6 +102,12 @@ export function ArenaWarbowHeroPanel({
   plantWarBowFlag = false,
   onPlantWarBowFlagChange,
   plantFlagDisabled = true,
+  showClaimFlagControl = false,
+  canClaimWarBowFlag = false,
+  flagSilenceEndSec = 0n,
+  ledgerNowSec,
+  onClaimFlag,
+  claimFlagWriting = false,
 }: Props) {
   const { address } = useAccount();
   const w = useArenaWarbowHero(phase, { indexerViewerBattlePoints, indexerWarbowHead });
@@ -165,6 +183,12 @@ export function ArenaWarbowHeroPanel({
   const guardRemaining =
     w.chainNowSec !== undefined && w.guardedActive
       ? Math.max(0, Number(BigInt(w.guardUntilSec) - BigInt(Math.floor(w.chainNowSec))))
+      : undefined;
+
+  const flagLedgerNowSec = ledgerNowSec ?? w.chainNowSec;
+  const flagSilenceRemainingSec =
+    showClaimFlagControl && flagLedgerNowSec !== undefined
+      ? warbowClaimFlagSilenceRemainingSec(flagLedgerNowSec, flagSilenceEndSec)
       : undefined;
 
   return (
@@ -442,7 +466,36 @@ export function ArenaWarbowHeroPanel({
               0 DOUB
             </span>
           </div>
-          <p className="muted">Claim after silence.</p>
+          <p className="muted">Claim after {WARBOW_FLAG_SILENCE_MINUTES} minutes of silence.</p>
+          {showClaimFlagControl && flagSilenceRemainingSec !== undefined && (
+            <p className="warbow-hero-flag-silence" data-testid="warbow-hero-flag-silence-countdown">
+              {canClaimWarBowFlag ? (
+                <>
+                  Silence complete — <strong>claim now</strong> before another buy clears your slot.
+                </>
+              ) : (
+                <>
+                  Your flag is active. Silence ends in{" "}
+                  <strong className="mono">{formatCountdown(flagSilenceRemainingSec)}</strong>
+                </>
+              )}
+            </p>
+          )}
+          {showClaimFlagControl && flagLedgerNowSec !== undefined && w.isConnected && w.saleActive && (
+            <ChainMismatchWriteBarrier>
+              <WarbowClaimFlagButton
+                canClaimWarBowFlag={canClaimWarBowFlag}
+                ledgerNowSec={flagLedgerNowSec}
+                flagSilenceEndSec={flagSilenceEndSec}
+                saleActive={w.saleActive}
+                arenaPaused={w.arenaPaused}
+                isConnected={w.isConnected}
+                isWriting={claimFlagWriting || w.isWriting}
+                onClaim={() => void onClaimFlag?.()}
+                testId="warbow-hero-claim-flag-submit"
+              />
+            </ChainMismatchWriteBarrier>
+          )}
           {w.isConnected && w.saleActive ? (
             !warbowFlagUnlocked && showWarbowFlagLevelLock ? (
               <LockedUntilLevel

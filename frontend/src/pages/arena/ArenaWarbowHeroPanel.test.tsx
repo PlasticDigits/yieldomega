@@ -153,6 +153,46 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
     expect(html).toContain("LEVEL 5");
   });
 
+  it("shows flag silence copy and countdown when viewer holds planted flag", () => {
+    mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+        showClaimFlagControl: true,
+        canClaimWarBowFlag: false,
+        flagSilenceEndSec: 1_700_000_200n,
+        ledgerNowSec: 1_700_000_000,
+      }),
+    );
+    expect(html).toContain("Claim after 5 minutes of silence.");
+    expect(html).toContain('data-testid="warbow-hero-flag-silence-countdown"');
+    expect(html).toContain("03:20");
+    expect(html).toContain('data-testid="warbow-hero-claim-flag-submit"');
+  });
+
+  it("enables claim flag CTA after silence window", () => {
+    mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+        showClaimFlagControl: true,
+        canClaimWarBowFlag: true,
+        flagSilenceEndSec: 1_700_000_200n,
+        ledgerNowSec: 1_700_000_400,
+      }),
+    );
+    expect(html).toContain("Silence complete");
+    expect(html).toContain('data-testid="warbow-hero-claim-flag-submit"');
+    expect(html).toContain(">Claim flag<");
+    expect(html).not.toMatch(/warbow-hero-claim-flag-submit[^>]*disabled/);
+  });
+
   it("surfaces WarBow PvP errors with dismiss control", () => {
     mockWarbowHero.mockReturnValue({
       ...baseHook,

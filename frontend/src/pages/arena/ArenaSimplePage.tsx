@@ -62,7 +62,6 @@ import {
 } from "@/pages/arena/ArenaWarbowHeroPanel";
 import type { IndexerWarbowHeroHead } from "@/pages/arena/useArenaWarbowHero";
 import { useArenaSaleSession } from "@/pages/arena/useArenaSaleSession";
-import { WarbowClaimFlagButton } from "@/components/WarbowClaimFlagButton";
 import { useArenaSimplePageSfx } from "@/pages/arena/useArenaSimplePageSfx";
 import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { ArenaBuyProjectedEffectsPills } from "@/pages/arena/ArenaBuyProjectedEffectsPills";
@@ -1196,23 +1195,6 @@ export function ArenaSimplePage({
                 </StatusMessage>
               )}
 
-              {session.walletConnected &&
-                session.showWarbowClaimFlagButton &&
-                session.chainNowSec !== undefined && (
-                <WarbowClaimFlagButton
-                  canClaimWarBowFlag={session.canClaimWarBowFlag}
-                  ledgerNowSec={session.chainNowSec}
-                  flagSilenceEndSec={session.warbowFlagSilenceEndSec}
-                  saleActive={session.phase === "saleActive"}
-                  arenaPaused={session.arenaPaused}
-                  isConnected={session.walletConnected}
-                  isWriting={session.isWriting || session.buySubmitBusy}
-                  onClaim={() => void session.submitClaimWarBowFlag()}
-                  className="btn-secondary btn-secondary--priority arena-simple__claim-flag-cta"
-                  testId="arena-simple-claim-flag-submit"
-                />
-              )}
-
             </>
           )}
 
@@ -1273,6 +1255,12 @@ export function ArenaSimplePage({
             plantWarBowFlag={session.plantWarBowFlag}
             onPlantWarBowFlagChange={session.setPlantWarBowFlag}
             plantFlagDisabled={warbowFlagDisabled}
+            showClaimFlagControl={session.showWarbowClaimFlagButton}
+            canClaimWarBowFlag={session.canClaimWarBowFlag}
+            flagSilenceEndSec={session.warbowFlagSilenceEndSec}
+            ledgerNowSec={session.chainNowSec}
+            onClaimFlag={() => void session.submitClaimWarBowFlag()}
+            claimFlagWriting={session.isWriting || session.buySubmitBusy}
           />
         </div>
       ) : null}
