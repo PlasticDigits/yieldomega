@@ -165,6 +165,56 @@ describe("formatSimplePodiumScoreLine", () => {
     expect(resolveViewerPodiumValueRaw(1, row, ALICE, {})).toBe("900");
   });
 
+  it("resolveViewerPodiumValueRaw uses wallet current_scores when viewer is off the podium", () => {
+    const row: PodiumReadRow = {
+      winners: [ALICE, BOB, "0x0000000000000000000000000000000000000000"],
+      values: ["900", "500", "0"],
+      epoch: "12",
+    };
+    const walletCurrentScores = [
+      { podium: "last_buy", epoch: "12", score: "1700000000", rank: null },
+      { podium: "warbow", epoch: "12", score: "2000", rank: null },
+      { podium: "defended_streak", epoch: "12", score: "1", rank: null },
+      { podium: "time_booster", epoch: "12", score: "1842", rank: null },
+    ];
+    const viewer = "0x0739a2229f9f8dae762830b415d244c4b5d50226";
+    expect(
+      resolveViewerPodiumValueRaw(0, row, viewer, { walletCurrentScores }),
+    ).toBe("1700000000");
+    expect(
+      resolveViewerPodiumValueRaw(1, row, viewer, { walletCurrentScores }),
+    ).toBe("2000");
+    expect(
+      resolveViewerPodiumValueRaw(2, row, viewer, { walletCurrentScores }),
+    ).toBe("1");
+    expect(
+      resolveViewerPodiumValueRaw(3, row, viewer, { walletCurrentScores }),
+    ).toBe("1842");
+  });
+
+  it("formatViewerPodiumScoreLine formats Last Buy from wallet current score unix sec", () => {
+    expect(
+      formatViewerPodiumScoreLine(0, "1700000000", {
+        nowUnixSec: 1_700_008_484,
+        walletConnected: true,
+        compact: true,
+      }),
+    ).toBe("02:21:24");
+  });
+
+  it("formatSimplePodiumScoreLine uses hh:mm:ss for Last Buy on compact side-rail surfaces", () => {
+    expect(
+      formatSimplePodiumScoreLine(0, 0, {
+        winner: ALICE,
+        winnerReady: true,
+        valueRaw: "3",
+        nowUnixSec: 1_700_000_042,
+        winnerBuySec: "1700000000",
+        compact: true,
+      }),
+    ).toBe("00:00:42");
+  });
+
   it("formatViewerPodiumScoreLine mirrors podium score copy for the connected wallet", () => {
     expect(
       formatViewerPodiumScoreLine(1, "900", {

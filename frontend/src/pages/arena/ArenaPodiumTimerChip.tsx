@@ -92,6 +92,7 @@ export function ArenaPodiumTimerChip({
   const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
   const walletStatsQuery = useWalletStats(address);
   const walletHighestScores = walletStatsQuery.data?.highest_scores ?? null;
+  const walletCurrentScores = walletStatsQuery.data?.current_scores ?? null;
   const walletStats = walletStatsQuery.data;
   const walletStatsPending =
     Boolean(address?.trim()) &&
@@ -124,12 +125,18 @@ export function ArenaPodiumTimerChip({
     activeDefendedStreak,
     recentBuys,
     walletHighestScores,
+    walletCurrentScores,
   });
+  const winners = podiumRow?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
+  const viewerIsPlacing = winners.some(
+    (winner) => hasPodiumWinner(winner) && samePodiumAddress(winner, address),
+  );
+  const showViewerStandingRow = walletConnected && Boolean(address?.trim()) && !viewerIsPlacing;
   const viewerScoreLine = formatViewerPodiumScoreLine(categoryIndex, viewerValueRaw, {
     nowUnixSec: scoreNowUnixSec,
     walletConnected,
+    compact: true,
   });
-  const winners = podiumRow?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
 
   const helpButton =
     showFeatureHelp && onFeatureHelp && feature !== undefined ? (
@@ -182,12 +189,6 @@ export function ArenaPodiumTimerChip({
       </div>
 
       <div className="arena-timer-chips__body">
-        <p
-          className="arena-timer-chips__viewer-score muted"
-          data-testid={`arena-timer-chip-score-${contractIndex}`}
-        >
-          Your score: <strong>{viewerScoreLine}</strong>
-        </p>
         <ol className="arena-timer-chips__places" aria-label={`${podiumName} leaders`}>
           {PODIUM_PLACE_LABELS.map((placeLabel, placeIndex) => {
             const winner = winners[placeIndex] ?? ZERO_ADDR;
@@ -231,6 +232,35 @@ export function ArenaPodiumTimerChip({
               </li>
             );
           })}
+          {showViewerStandingRow ? (
+            <li
+              key={`${contractIndex}-viewer`}
+              className="arena-timer-chips__place arena-timer-chips__place--you"
+              data-testid={`arena-timer-chip-viewer-${contractIndex}`}
+            >
+              <span className="arena-timer-chips__place-rank">YOU</span>
+              <span className="arena-timer-chips__place-prize">
+                <span className="arena-timer-chips__place-prize-amount muted" aria-hidden="true">
+                  —
+                </span>
+              </span>
+              <span
+                className="arena-timer-chips__place-score muted"
+                aria-label="Your score"
+                data-testid={`arena-timer-chip-score-${contractIndex}`}
+              >
+                {viewerScoreLine}
+              </span>
+              <PlayerIdentity
+                address={address!}
+                tailHexDigits={6}
+                size={14}
+                className="arena-timer-chips__place-identity"
+                labelClassName="arena-timer-chips__place-identity-label--you"
+                onOpenProfile={onOpenWalletProfile}
+              />
+            </li>
+          ) : null}
         </ol>
       </div>
     </>

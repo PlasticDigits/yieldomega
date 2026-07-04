@@ -168,6 +168,68 @@ describe("ArenaPodiumTimerChip side-rail locks", () => {
     expect(html).toMatch(/address-inline__label arena-timer-chips__place-identity-label--you">dddddd/);
   });
 
+  it("shows a viewer standing row below 3rd when wallet is not placing", () => {
+    mockWalletStats.mockReturnValue({
+      data: {
+        buy_count: 1,
+        first_buy_at: "1700000000",
+        current_scores: [
+          { podium: "defended_streak", epoch: "0", score: "1", rank: null },
+        ],
+      },
+      isLoading: false,
+      isFetching: false,
+    });
+    const viewer = "0xdddddddddddddddddddddddddddddddddddddddd" as const;
+    const html = renderToStaticMarkup(
+      createElement(ArenaPodiumTimerChip, {
+        ...baseProps,
+        feature: "defended_streak",
+        contractIndex: 2,
+        categoryIndex: 2,
+        podiumName: "Defended Streak",
+        address: viewer,
+        playerLevel: 5,
+        podiumRow: {
+          winners: [OTHER, OTHER, OTHER],
+          values: ["0", "0", "0"],
+          epoch: "0",
+        },
+      }),
+    );
+    expect(html).toContain('data-testid="arena-timer-chip-viewer-2"');
+    expect(html).toContain(">YOU<");
+    expect(html).toContain('data-testid="arena-timer-chip-score-2"');
+    expect(html).toContain("1 sequential buys");
+    expect(html).toContain("arena-timer-chips__place--you");
+  });
+
+  it("hides viewer standing row when wallet is already on the podium", () => {
+    mockWalletStats.mockReturnValue({
+      data: { buy_count: 1, first_buy_at: "1700000000" },
+      isLoading: false,
+      isFetching: false,
+    });
+    const viewer = "0xdddddddddddddddddddddddddddddddddddddddd" as const;
+    const html = renderToStaticMarkup(
+      createElement(ArenaPodiumTimerChip, {
+        ...baseProps,
+        feature: "defended_streak",
+        contractIndex: 2,
+        categoryIndex: 2,
+        podiumName: "Defended Streak",
+        address: viewer,
+        playerLevel: 5,
+        podiumRow: {
+          winners: [OTHER, viewer, OTHER],
+          values: ["0", "0", "0"],
+          epoch: "0",
+        },
+      }),
+    );
+    expect(html).not.toContain('data-testid="arena-timer-chip-viewer-2"');
+  });
+
   it("shows each feature unlock tier on side-rail pre-buy locks", () => {
     mockWalletStats.mockReturnValue({
       data: undefined,

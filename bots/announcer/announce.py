@@ -38,6 +38,8 @@ WATCH_TOPICS = [
 ]
 ZERO_ADDR = "0x0000000000000000000000000000000000000000"
 PODIUM_LABELS = {0: "Last Buy", 1: "Time Booster", 2: "Defended Streak", 3: "WarBow"}
+# ArenaPodiumTimerConfig.resetToRemainingSec — cap countdown bands per podium.
+PODIUM_RESET_TO_REMAINING_SEC = (900, 300, 1800, 3600)
 
 
 # ------------------------- env helpers -------------------------
@@ -402,6 +404,16 @@ def build_podium_countdown_message(label, threshold_sec, row, market=None):
     return "\n".join(lines)
 
 
+def _countdown_thresholds_for_category(category, thresholds):
+    """Drop global thresholds above a podium's hard-reset target (e.g. no 10m band on Time Booster)."""
+    cap = (
+        PODIUM_RESET_TO_REMAINING_SEC[category]
+        if category < len(PODIUM_RESET_TO_REMAINING_SEC)
+        else max(thresholds, default=0)
+    )
+    return tuple(t for t in sorted(thresholds) if t <= cap)
+
+
 def _countdown_threshold_for_remaining(remaining_sec, thresholds):
     """Map remaining seconds to the active countdown band (largest threshold still above floor)."""
     ordered = sorted(thresholds)
@@ -437,7 +449,6 @@ def check_podium_countdowns(announced_keys, market=None):
             rows_by_cat[int(cat)] = row
     if market is None:
         market = fetch_market_snapshot()
-    thresholds = sorted(PODIUM_COUNTDOWN_THRESHOLDS_SEC)
     for cat in range(4):
         if cat >= len(deadlines):
             continue
@@ -452,6 +463,9 @@ def check_podium_countdowns(announced_keys, market=None):
         _prune_stale_countdown_keys(announced_keys, cat, epoch, deadline)
         row = rows_by_cat.get(cat, {})
         label = row.get("category") or PODIUM_LABELS.get(cat, f"Podium {cat}")
+        thresholds = _countdown_thresholds_for_category(cat, PODIUM_COUNTDOWN_THRESHOLDS_SEC)
+        if not thresholds:
+            continue
         threshold = _countdown_threshold_for_remaining(remaining, thresholds)
         if threshold is None:
             continue

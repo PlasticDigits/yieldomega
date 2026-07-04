@@ -34,7 +34,7 @@ describe("ArenaTimerChips", () => {
 describe("ArenaPodiumTimerChip", () => {
   it("renders compact leader rows with score, prize, and wallet identity", () => {
     const src = readFileSync(resolve(__dirname, "ArenaPodiumTimerChip.tsx"), "utf8");
-    expect(src).toContain("Your score:");
+    expect(src).toContain("showViewerStandingRow");
     expect(src).toContain("arena-timer-chips__title");
     expect(src).toContain("EPOCH ${podiumRow.epoch}");
     expect(src).toContain("arena-timer-chips__places");

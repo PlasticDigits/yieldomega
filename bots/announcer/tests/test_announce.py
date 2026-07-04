@@ -268,6 +268,48 @@ def test_countdown_threshold_for_remaining():
     assert announce._countdown_threshold_for_remaining(601, thresholds) is None
 
 
+def test_countdown_thresholds_for_category_caps_time_booster():
+    global_thresholds = announce.PODIUM_COUNTDOWN_THRESHOLDS_SEC
+    tb = announce._countdown_thresholds_for_category(1, global_thresholds)
+    assert 600 not in tb
+    assert tb == (10, 30, 60, 300)
+    assert announce._countdown_threshold_for_remaining(360, tb) is None
+    assert announce._countdown_threshold_for_remaining(298, tb) == 300
+    lb = announce._countdown_thresholds_for_category(0, global_thresholds)
+    assert 600 in lb
+
+
+def test_check_podium_countdowns_time_booster_uses_five_min_band(monkeypatch):
+    sent = []
+    timers = {
+        "block_timestamp_sec": "1000",
+        "podium_deadlines_sec": ["0", "1360", "0", "0"],
+        "podium_timer_armed": [False, True, False, False],
+        "podium_epochs": ["0", "2", "0", "0"],
+    }
+    podiums = {
+        "sale_ended": False,
+        "rows": [{
+            "category": "Time Booster",
+            "category_index": 1,
+            "winners": ["0xeff850382506d409baefb6511b1f975f4d277a06"],
+            "prize_places_doub_wad": [str(10**18), "0", "0"],
+            "active_pool_balance_doub_wad": str(3 * 10**18),
+        }],
+    }
+    monkeypatch.setattr(announce, "tg_send", lambda m: sent.append(m))
+    monkeypatch.setattr(announce, "fetch_arena_timers", lambda: timers)
+    monkeypatch.setattr(announce, "fetch_podiums_rows", lambda: podiums)
+    announced = set()
+    announce.check_podium_countdowns(announced, {"doub_usd_wad": None})
+    assert sent == []
+    timers["block_timestamp_sec"] = "1062"  # 298s left → 5 Minutes band
+    announce.check_podium_countdowns(announced, {"doub_usd_wad": None})
+    assert len(sent) == 1
+    assert "5 Minutes Left On Time Booster!" in sent[0]
+    assert "10 Minutes" not in sent[0]
+
+
 def test_countdown_header_emojis_escalate():
     assert "\U0001F6A8" in announce._countdown_header_emojis(10)
     assert "\U0001F525" in announce._countdown_header_emojis(30)

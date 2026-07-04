@@ -4,6 +4,7 @@ import { formatCompactDecimalString, rawToBigIntForFormat } from "@/lib/compactN
 import type { ArenaWalletHighestScore, BuyItem } from "@/lib/indexerApi";
 import { isAddress } from "viem";
 import type { PodiumReadRow } from "./usePodiumReads";
+import { formatCountdown } from "./formatTimer";
 import { formatTimeBoosterPodiumSec } from "./timeBoosterPodiumFormat";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -41,7 +42,11 @@ function parseUnixSecString(raw: string): number | null {
   }
 }
 
-function formatLastBuySecondsAgo(nowUnixSec: number, buySecRaw: string): string | null {
+function formatLastBuySecondsAgo(
+  nowUnixSec: number,
+  buySecRaw: string,
+  compact?: boolean,
+): string | null {
   try {
     const t = parseUnixSecString(buySecRaw);
     if (t === null) {
@@ -51,7 +56,7 @@ function formatLastBuySecondsAgo(nowUnixSec: number, buySecRaw: string): string 
       return null;
     }
     const delta = Math.max(0, Math.floor(nowUnixSec) - t);
-    return `${delta}s`;
+    return compact ? formatCountdown(delta) : `${delta}s`;
   } catch {
     return null;
   }
@@ -99,7 +104,7 @@ export function formatSimplePodiumScoreLine(
   if (categoryIndex === 0) {
     const indexedSec = opts.winnerBuySec?.trim();
     if (indexedSec) {
-      const fromIndexer = formatLastBuySecondsAgo(opts.nowUnixSec, indexedSec);
+      const fromIndexer = formatLastBuySecondsAgo(opts.nowUnixSec, indexedSec, opts.compact);
       if (fromIndexer) {
         return fromIndexer;
       }
@@ -111,7 +116,7 @@ export function formatSimplePodiumScoreLine(
     if (b.buyer.trim().toLowerCase() !== w) {
       return "—";
     }
-    const fromRecent = formatLastBuySecondsAgo(opts.nowUnixSec, b.block_timestamp);
+    const fromRecent = formatLastBuySecondsAgo(opts.nowUnixSec, b.block_timestamp, opts.compact);
     return fromRecent ?? "—";
   }
 
@@ -142,6 +147,8 @@ export function resolveViewerPodiumValueRaw(
     activeDefendedStreak?: bigint;
     recentBuys?: readonly BuyItem[] | null;
     walletHighestScores?: readonly ArenaWalletHighestScore[] | null;
+    /** Indexer `current_scores` — same source as participant profile standings. */
+    walletCurrentScores?: readonly ArenaWalletHighestScore[] | null;
   },
 ): string | null {
   if (!viewerAddress?.trim()) {
@@ -154,6 +161,22 @@ export function resolveViewerPodiumValueRaw(
     const winner = winners[i];
     if (winner && isPodiumWinnerAddress(winner) && sameViewerAddress(winner, viewer)) {
       return values[i] ?? "0";
+    }
+  }
+
+  const podiumKey = WALLET_STATS_PODIUM_BY_UX_CATEGORY[categoryIndex];
+  const epoch = row?.epoch?.trim();
+  if (podiumKey && opts.walletCurrentScores?.length) {
+    const exact =
+      epoch !== undefined && epoch !== ""
+        ? opts.walletCurrentScores.find(
+            (rowScore) => rowScore.podium === podiumKey && rowScore.epoch === epoch,
+          )
+        : undefined;
+    const match =
+      exact ?? opts.walletCurrentScores.find((rowScore) => rowScore.podium === podiumKey);
+    if (match?.score?.trim()) {
+      return match.score;
     }
   }
 
@@ -170,8 +193,6 @@ export function resolveViewerPodiumValueRaw(
   }
 
   if (categoryIndex === 3) {
-    const epoch = row?.epoch;
-    const podiumKey = WALLET_STATS_PODIUM_BY_UX_CATEGORY[categoryIndex];
     const match = opts.walletHighestScores?.find(
       (rowScore) =>
         rowScore.podium === podiumKey && (epoch === undefined || rowScore.epoch === epoch),
@@ -188,7 +209,7 @@ export function resolveViewerPodiumValueRaw(
 export function formatViewerPodiumScoreLine(
   categoryIndex: number,
   valueRaw: string | null,
-  opts: { nowUnixSec: number; walletConnected: boolean },
+  opts: { nowUnixSec: number; walletConnected: boolean; compact?: boolean },
 ): string {
   if (!opts.walletConnected) {
     return "—";
@@ -201,5 +222,7 @@ export function formatViewerPodiumScoreLine(
     winnerReady: true,
     valueRaw,
     nowUnixSec: opts.nowUnixSec,
+    compact: opts.compact,
+    ...(categoryIndex === 0 ? { winnerBuySec: valueRaw } : {}),
   });
 }
