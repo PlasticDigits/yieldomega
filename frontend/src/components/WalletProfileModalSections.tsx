@@ -407,7 +407,7 @@ export function WalletProfileStatsBody({
   data: ArenaWalletStats;
 }) {
   return (
-    <div className="wallet-profile-modal__sections">
+    <>
       <WalletProfileOverviewSection data={data} />
       <WalletProfilePodiumWinsSection data={data} />
       <WalletProfileSpendingSection data={data} />
@@ -416,7 +416,7 @@ export function WalletProfileStatsBody({
       <WalletProfileWarbowSection data={data} />
       <WalletProfileReferralsSection data={data} />
       <WalletProfileFunFactsSection data={data} />
-    </div>
+    </>
   );
 }
 

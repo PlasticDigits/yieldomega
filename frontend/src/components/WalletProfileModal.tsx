@@ -3,9 +3,11 @@
 import { useEffect, useId, useRef } from "react";
 import { explorerAddressUrl } from "@/lib/explorer";
 import { indexerBaseUrl } from "@/lib/addresses";
+import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { useWalletProfileBalances } from "@/hooks/useWalletProfileBalances";
 import { useWalletStats } from "@/hooks/useWalletStats";
 import { AddressInline } from "@/components/AddressInline";
+import { formatLocaleInteger } from "@/lib/formatAmount";
 import {
   WalletProfileBalancesSection,
   WalletProfileCurrentScoresSection,
@@ -74,29 +76,41 @@ export function WalletProfileModal({ address, onClose }: Props) {
           </button>
         </header>
 
-        <div className="wallet-profile-modal__identity">
-          <p className="wallet-profile-modal__address">
-            <AddressInline address={address} explorer={false} />
-          </p>
-          <p className="wallet-profile-modal__explorer-link">
-            <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer noopener">
-              View on explorer
-            </a>
-          </p>
-        </div>
+        <div className="wallet-profile-modal__scroll">
+          <div className="wallet-profile-modal__identity">
+            <div className="wallet-profile-modal__identity-row">
+              <p className="wallet-profile-modal__address">
+                <AddressInline address={address} explorer={false} />
+              </p>
+              <span className="wallet-profile-modal__level-badge" data-testid="wallet-profile-level">
+                {isLoading ? (
+                  <EmptyDataPlaceholder>…</EmptyDataPlaceholder>
+                ) : data?.level ? (
+                  <>Lv {formatLocaleInteger(data.level)}</>
+                ) : (
+                  <EmptyDataPlaceholder>—</EmptyDataPlaceholder>
+                )}
+              </span>
+            </div>
+            <p className="wallet-profile-modal__explorer-link">
+              <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer noopener">
+                View on explorer
+              </a>
+            </p>
+          </div>
 
-        <div className="wallet-profile-modal__sections wallet-profile-modal__sections--balances-only">
-          <WalletProfileBalancesSection balances={balances} />
-          <WalletProfileCurrentScoresSection data={data ?? undefined} isLoading={isLoading} />
+          <div className="wallet-profile-modal__sections">
+            <WalletProfileBalancesSection balances={balances} />
+            <WalletProfileCurrentScoresSection data={data ?? undefined} isLoading={isLoading} />
+            {isLoading ? <WalletProfileLoadingState /> : null}
+            {!isLoading && (isError || indexerUnset) ? (
+              <WalletProfileErrorState indexerUnset={indexerUnset} />
+            ) : null}
+            {!isLoading && !isError && !indexerUnset && data ? (
+              <WalletProfileStatsBody data={data} />
+            ) : null}
+          </div>
         </div>
-
-        {isLoading ? <WalletProfileLoadingState /> : null}
-        {!isLoading && (isError || indexerUnset) ? (
-          <WalletProfileErrorState indexerUnset={indexerUnset} />
-        ) : null}
-        {!isLoading && !isError && !indexerUnset && data ? (
-          <WalletProfileStatsBody data={data} />
-        ) : null}
       </div>
     </dialog>
   );

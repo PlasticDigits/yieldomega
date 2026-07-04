@@ -68,6 +68,8 @@ describe("WalletProfileModal (GitLab #321)", () => {
     expect(html).toContain("Participant profile");
     expect(html).toContain('aria-label="Close dialog"');
     expect(html).toContain("0xdddddddddddddddddddddddddddddddddddddddd");
+    expect(html).toContain('data-testid="wallet-profile-level"');
+    expect(html).toContain("Lv 1");
   });
 
   it("restores focus to the opener when the modal closes", () => {
