@@ -9,3 +9,8 @@ export const WARBOW_MAX_STEALS_PER_DAY = 3;
 export const WARBOW_SECONDS_PER_DAY = 86_400n;
 /** Onchain `WARBOW_FLAG_SILENCE_SEC` — plant-to-claim quiet window. */
 export const WARBOW_FLAG_SILENCE_SEC = 300;
+export const WARBOW_FLAG_CLAIM_BP = 1000n;
+export const WARBOW_GUARD_DURATION_SEC = 6 * 60 * 60;
+export const WARBOW_REVENGE_WINDOW_SEC = 24 * 60 * 60;
+export const WARBOW_STEAL_DRAIN_BPS = 1000;
+export const WARBOW_STEAL_DRAIN_GUARDED_BPS = 100;

@@ -5037,6 +5037,7 @@ button.empty-data-placeholder--connect:disabled {
 }
 
 .warbow-hero-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -13715,6 +13716,13 @@ a.podium-address-explorer:hover .address-inline__label {
   width: 1.45rem;
   height: 1.45rem;
   font-size: 0.82rem;
+}
+
+.warbow-hero-card__subcard-help {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 2;
 }
 
 .arena-command-console .arena-charm-cred-card.data-panel,

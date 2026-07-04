@@ -29,6 +29,12 @@ import {
 } from "@/pages/arena/useArenaWarbowHero";
 import type { SaleSessionPhase } from "@/pages/arena/arenaSimplePhase";
 import { moveWarbowTargetListIndex } from "@/pages/arena/warbowTargetListKeyboard";
+import { WarbowHeroSubcardHelpButton } from "@/pages/arena/WarbowHeroSubcardHelpButton";
+import {
+  type WarbowHeroSubcardHelpTopic,
+  warbowHeroSubcardHelpCopy,
+} from "@/pages/arena/warbowHeroSubcardHelpCopy";
+import { WarbowHeroSubcardHelpModal } from "@/components/WarbowHeroSubcardHelpModal";
 
 function targetIsInsideAddressAction(target: EventTarget | null): boolean {
   return Boolean(
@@ -123,6 +129,9 @@ export function ArenaWarbowHeroPanel({
     shouldShowLevelLock(playerLevel, FEATURE_UNLOCK_LEVEL.warbow_flag);
   const [targetFilter, setTargetFilter] = useState<TargetFilter>("eligible");
   const [targetSort, setTargetSort] = useState<TargetSort>("bp-desc");
+  const [subcardHelpTopic, setSubcardHelpTopic] = useState<WarbowHeroSubcardHelpTopic | null>(
+    null,
+  );
   const targetOptionRefs = useRef<Array<HTMLDivElement | null>>([]);
   const selectedTarget = w.stealVictimInput.trim();
   const visibleTargets = useMemo(() => {
@@ -191,6 +200,24 @@ export function ArenaWarbowHeroPanel({
       ? warbowClaimFlagSilenceRemainingSec(flagLedgerNowSec, flagSilenceEndSec)
       : undefined;
 
+  const subcardHelpCopy = useMemo(() => {
+    if (!subcardHelpTopic) return null;
+    return warbowHeroSubcardHelpCopy(subcardHelpTopic, {
+      stealCostLabel: stealCost,
+      guardCostLabel: guardCost,
+      bypassCostLabel: bypassCost,
+      revengeCostLabel: revengeCost,
+      maxStealsPerDay: w.maxStealsPerDay,
+    });
+  }, [
+    subcardHelpTopic,
+    stealCost,
+    guardCost,
+    bypassCost,
+    revengeCost,
+    w.maxStealsPerDay,
+  ]);
+
   return (
     <ArenaLevelGate
       playerLevel={playerLevel}
@@ -244,6 +271,7 @@ export function ArenaWarbowHeroPanel({
 
       <div className="warbow-hero-actions__grid">
         <article className="warbow-hero-card warbow-hero-card--steal">
+          <WarbowHeroSubcardHelpButton topic="steal" label="Steal" onOpen={setSubcardHelpTopic} />
           <div className="warbow-hero-card__head">
             <h3>Steal</h3>
             <span className="status-pill status-pill--warning" data-testid="warbow-hero-steal-cost">
@@ -373,6 +401,7 @@ export function ArenaWarbowHeroPanel({
         </article>
 
         <article className="warbow-hero-card">
+          <WarbowHeroSubcardHelpButton topic="guard" label="Guard" onOpen={setSubcardHelpTopic} />
           <div className="warbow-hero-card__head">
             <h3>Guard</h3>
             <span className="status-pill status-pill--info" data-testid="warbow-hero-guard-cost">
@@ -396,6 +425,7 @@ export function ArenaWarbowHeroPanel({
         </article>
 
         <article className="warbow-hero-card warbow-hero-card--revenge">
+          <WarbowHeroSubcardHelpButton topic="revenge" label="Revenge" onOpen={setSubcardHelpTopic} />
           <div className="warbow-hero-card__head">
             <h3>Revenge</h3>
             <span className="status-pill status-pill--info" data-testid="warbow-hero-revenge-cost">
@@ -460,6 +490,7 @@ export function ArenaWarbowHeroPanel({
         </article>
 
         <article className="warbow-hero-card warbow-hero-card--claim-flag" title="Flag claim costs 0 DOUB when the silence window is satisfied.">
+          <WarbowHeroSubcardHelpButton topic="flag" label="Flag" onOpen={setSubcardHelpTopic} />
           <div className="warbow-hero-card__head">
             <h3>Flag</h3>
             <span className="status-pill status-pill--success" data-testid="warbow-hero-flag-cost">
@@ -542,6 +573,10 @@ export function ArenaWarbowHeroPanel({
         <AmountDisplay raw={w.guardDoubWad} decimals={18} /> revenge{" "}
         <AmountDisplay raw={w.revengeDoubWad} decimals={18} />
       </p>
+      <WarbowHeroSubcardHelpModal
+        copy={subcardHelpCopy}
+        onClose={() => setSubcardHelpTopic(null)}
+      />
     </section>
     </ArenaLevelGate>
   );

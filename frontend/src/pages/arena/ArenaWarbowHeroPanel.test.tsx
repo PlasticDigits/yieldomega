@@ -209,4 +209,22 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
     expect(html).toContain("WarBow steal reverted");
     expect(html).toContain("dismiss");
   });
+
+  it("renders subcard help buttons for steal, guard, revenge, and flag", () => {
+    mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+        indexerViewerBattlePoints: 100n,
+      }),
+    );
+    expect(html).toContain('data-testid="warbow-hero-steal-help"');
+    expect(html).toContain('data-testid="warbow-hero-guard-help"');
+    expect(html).toContain('data-testid="warbow-hero-revenge-help"');
+    expect(html).toContain('data-testid="warbow-hero-flag-help"');
+    expect(html).toContain('aria-label="Open Steal help"');
+  });
 });
