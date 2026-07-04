@@ -25,7 +25,7 @@ contract MockCl8yReserve is ERC20 {
     }
 }
 
-/// @dev GitLab #305 — epoch-anchored DOUB/CHARM + 10%/day growth; re-anchor on Last Buy hard reset.
+/// @dev GitLab #305 — epoch-anchored DOUB/CHARM + 10%/day growth; re-anchor on Last Buy podium roll.
 contract TimeArenaEpochCharmPriceTest is Test {
     Doubloon doub;
     PlayCred cred;
@@ -114,7 +114,7 @@ contract TimeArenaEpochCharmPriceTest is Test {
         assertEq(before - doub.balanceOf(alice), preview, "preview matches buy within epoch");
     }
 
-    /// GitLab #315 — at hard-reset boundary, preview samples re-anchor before state write.
+    /// GitLab #315 — hard reset no longer re-anchors; preview matches growing effective price.
     function test_doubOwedForBuy_matches_buy_at_hard_reset_boundary() public {
         _wireKumbayaSpot();
         vm.prank(alice);
@@ -125,16 +125,16 @@ contract TimeArenaEpochCharmPriceTest is Test {
         kumbaya.setPair(address(cl8y), address(doub), 200_000e18, 100_000_000e18);
 
         uint256 preview = arena.doubOwedForBuy(CHARM_MIN);
-        uint256 stalePriceOwed = Math.mulDiv(CHARM_MIN, arena.effectiveCharmPriceWad(), WAD);
-        assertLt(preview, stalePriceOwed, "preview uses sampled anchor, not stale effective price");
+        uint256 expected = Math.mulDiv(CHARM_MIN, arena.effectiveCharmPriceWad(), WAD);
+        assertEq(preview, expected, "preview uses effective price at hard reset");
 
         uint256 before = doub.balanceOf(alice);
         vm.prank(alice);
         arena.buy(CHARM_MIN);
         uint256 paid = before - doub.balanceOf(alice);
 
-        assertEq(preview, paid, "doubOwedForBuy equals buy DOUB at hard-reset boundary");
-        assertEq(paid, Math.mulDiv(CHARM_MIN, arena.effectiveCharmPriceWad(), WAD), "buy uses post-reset anchor");
+        assertEq(preview, paid, "doubOwedForBuy equals buy DOUB at hard reset");
+        assertEq(arena.lastBuyEpoch(), 0, "hard reset does not advance epoch");
     }
 
     function test_buyWithCred_ignores_epoch_growth() public {
@@ -147,29 +147,31 @@ contract TimeArenaEpochCharmPriceTest is Test {
         assertEq(cred.balanceOf(alice), before - 100e18);
     }
 
-    function test_hard_reset_reanchors_and_prices_at_new_anchor() public {
+    function test_last_buy_roll_reanchors_and_prices_at_new_anchor() public {
         _wireKumbayaSpot();
         vm.prank(alice);
         arena.buy(CHARM_MIN);
 
-        vm.warp(arena.deadline() - 600);
-
-        // Change spot to 500 DOUB/CHARM before hard-reset buy.
+        // Change spot before Last Buy podium roll.
         kumbaya.setPair(address(cl8y), address(doub), 200_000e18, 100_000_000e18);
 
         (uint256 spotAnchor,) =
             AnvilKumbayaPools.charmPriceWadFromSpot(kumbaya, address(doub), address(cl8y), address(weth), address(usdm));
 
-        uint256 before = doub.balanceOf(alice);
-        vm.prank(alice);
-        arena.buy(CHARM_MIN);
+        vm.warp(arena.podiumDeadline(0) + 1);
+        arena.rollPodiumEpoch(0);
 
-        uint256 paid = before - doub.balanceOf(alice);
-        uint256 expectedAtNewAnchor = Math.mulDiv(CHARM_MIN, spotAnchor, WAD);
-        assertEq(paid, expectedAtNewAnchor, "reset buy priced at post-reset anchor");
         assertEq(arena.epochCharmAnchorWad(), spotAnchor);
         assertEq(arena.lastBuyEpoch(), 1);
         assertEq(arena.effectiveCharmPriceWad(), spotAnchor);
+
+        uint256 preview = arena.doubOwedForBuy(CHARM_MIN);
+        uint256 before = doub.balanceOf(alice);
+        vm.prank(alice);
+        arena.buy(CHARM_MIN);
+        uint256 paid = before - doub.balanceOf(alice);
+        assertEq(paid, preview, "post-roll buy matches preview");
+        assertEq(paid, Math.mulDiv(CHARM_MIN, spotAnchor, WAD), "post-roll buy priced at new anchor");
     }
 
     function test_setEpochCharmAnchorWad_resets_growth_clock() public {

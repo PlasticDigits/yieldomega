@@ -19,7 +19,7 @@ impl LastBuyEpochHead {
         Self { epoch }
     }
 
-    /// Load the latest persisted epoch start (defaults to **0** before any hard reset).
+    /// Load the latest persisted epoch start (defaults to **0** before any Last Buy podium roll).
     pub async fn load(conn: &mut PgConnection) -> Result<Self> {
         let row: Option<(i64,)> = sqlx::query_as(
             r#"SELECT COALESCE(MAX(epoch), 0)::bigint FROM idx_arena_last_buy_epoch_started"#,

@@ -173,6 +173,8 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
     event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
+    event LastBuyEpochAligned(uint256 previousEpoch, uint256 alignedEpoch);
+    event DriftEpochBalancesConsolidated(uint256 indexed targetEpoch, uint256 previousHeadEpoch, uint256 walletsProcessed);
     event LastBuyEpochCharmAnchored(
         uint256 indexed epoch, uint256 anchorWad, uint256 doubUsdWad, uint256 anchorTimestamp
     );
@@ -384,19 +386,9 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     }
 
     /// @notice Gross DOUB wei for `buy` / `buyFor` at the current block — `eth_call` / `staticcall` safe (#315).
-    /// @dev When Last Buy is in the hard-reset band (`remaining < podiumResetBelowRemainingSec[0]`),
-    ///      samples the same anchor as `_reanchorEpochCharmPrice` **before** the buy writes state:
-    ///      Anvil spot via `setCharmAnchorOracle`, MegaETH **4326** Kumbaya V3 TWAP (`ArenaCharmPriceTwap`),
-    ///      or falls back to stored `epochCharmAnchorWad` / `charmPriceWad`. Otherwise uses
-    ///      `effectiveCharmPriceWad()` (epoch anchor + 10%/day growth). External pool/oracle reads
-    ///      are view-only — no state writes on this path. Integrators: prefer this over
-    ///      `effectiveCharmPriceWad` for swap sizing at the reset boundary. TWAP re-anchor is sampled
-    ///      at tx time, so same-block sandwich cannot underpay vs the executed buy (#315).
+    /// @dev Uses `effectiveCharmPriceWad()` (epoch anchor + 10%/day growth). CHARM re-anchors only when
+    ///      Last Buy podium rolls and `lastBuyEpoch` advances — not on timer hard reset.
     function doubOwedForBuy(uint256 charmWad) external view returns (uint256) {
-        if (_willLastBuyHardReset()) {
-            (uint256 anchorWad,) = _sampleCharmAnchor();
-            return Math.mulDiv(charmWad, anchorWad, WAD);
-        }
         return Math.mulDiv(charmWad, effectiveCharmPriceWad(), WAD);
     }
 
@@ -519,6 +511,10 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
             podiumVaults.payPodiumWinners(category, winners[0], winners[1], winners[2], a, b, c);
         }
         podiumVaults.rollEpochTranches(category);
+
+        if (category == CAT_LAST_BUYERS) {
+            _startNextLastBuyEpoch();
+        }
 
         podiumEpoch[category] = epochBefore + 1;
         podiumTimerArmed[category] = false;
@@ -667,8 +663,6 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         _validateCharm(charmWad);
         _spendBuyCharge(buyer);
 
-        _prepareBuyBeforeTimer();
-
         uint256 doubOwed = Math.mulDiv(charmWad, effectiveCharmPriceWad(), WAD);
         // `buyFor` is router-only: DOUB was swapped onto `timeArenaBuyRouter`, not the participant wallet (#251 / #270).
         address doubPayer = msg.sender == timeArenaBuyRouter ? msg.sender : buyer;
@@ -684,7 +678,6 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         _requireLiveAndAutoroll();
         _validateCharm(charmWad);
         _spendBuyCharge(buyer);
-        _prepareBuyBeforeTimer();
         require(address(playCred) != address(0), "TimeArena: no cred");
         uint256 credBurn = Math.mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD);
         require(credBurn > 0, "TimeArena: zero cred burn");
@@ -714,9 +707,6 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         );
         deadline = newDl;
         podiumDeadline[CAT_LAST_BUYERS] = newDl;
-        if (hardReset) {
-            emit LastBuyEpochStarted(lastBuyEpoch, newDl);
-        }
 
         if (isFirstBuy && address(playCred) != address(0)) {
             uint256 targetEpoch = lastBuyEpoch + 1;
@@ -941,10 +931,51 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         return _effectiveEpochBestDefendedStreak(user);
     }
 
-    /// @dev One-shot UUPS migration: seed current Time Booster / Defended Streak slot scores for the in-flight epoch.
-    function migrateEpochPodiumScores() external reinitializer(2) {
-        _seedEpochPodiumScores(CAT_TIME_BOOSTER);
-        _seedEpochPodiumScores(CAT_DEFENDED_STREAK);
+    /// @dev One-shot UUPS migration: align `lastBuyEpoch` with Last Buy `podiumEpoch[0]` and fold
+    /// drift-epoch CHARM/CRED (from pre-2026-07 hard-reset bumps) into the aligned epoch.
+    /// `wallets` must list every buyer with non-zero `epochCharmWad` or `epochFixedCredBonus` in
+    /// drift epochs `(target, previous]` — export from indexer `idx_arena_buy` before governance.
+    /// Pool totals merge without the wallet list; per-wallet mappings require it.
+    function migrateLastBuyEpochToPodium(address[] calldata wallets) external reinitializer(3) {
+        uint256 target = podiumEpoch[CAT_LAST_BUYERS];
+        uint256 previous = lastBuyEpoch;
+        if (previous > target) {
+            _consolidateDriftEpochBalances(target, previous, wallets);
+        }
+        if (previous != target) {
+            lastBuyEpoch = target;
+            emit LastBuyEpochAligned(previous, target);
+        }
+    }
+
+    function _consolidateDriftEpochBalances(uint256 target, uint256 previous, address[] calldata wallets)
+        private
+    {
+        for (uint256 e = target + 1; e <= previous; ++e) {
+            epochCredPool[target] += epochCredPool[e];
+            epochCredPool[e] = 0;
+            epochCharmTotal[target] += epochCharmTotal[e];
+            epochCharmTotal[e] = 0;
+        }
+
+        for (uint256 i; i < wallets.length; ++i) {
+            address w = wallets[i];
+            if (w == address(0)) continue;
+            for (uint256 e = target + 1; e <= previous; ++e) {
+                uint256 charm = epochCharmWad[e][w];
+                if (charm > 0) {
+                    epochCharmWad[target][w] += charm;
+                    epochCharmWad[e][w] = 0;
+                }
+                uint256 bonus = epochFixedCredBonus[e][w];
+                if (bonus > 0) {
+                    epochFixedCredBonus[target][w] += bonus;
+                    epochFixedCredBonus[e][w] = 0;
+                }
+            }
+        }
+
+        emit DriftEpochBalancesConsolidated(target, previous, wallets.length);
     }
 
     /// @dev Default PodiumVaults maps every pool slot to `address(podiumVaults)` — one ERC-20 xfer
@@ -1054,16 +1085,13 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         return remaining < podiumResetBelowRemainingSec[CAT_LAST_BUYERS];
     }
 
-    function _prepareBuyBeforeTimer() internal {
-        if (!_willLastBuyHardReset()) return;
-        _reanchorEpochCharmPrice();
-    }
-
-    function _reanchorEpochCharmPrice() internal {
-        (uint256 anchorWad, uint256 doubUsdWad) = _sampleCharmAnchor();
+    /// @dev Last Buy podium roll: advance CHARM/CRED epoch, re-anchor DOUB/CHARM, open prior epoch claims.
+    function _startNextLastBuyEpoch() internal {
         lastBuyEpoch += 1;
+        (uint256 anchorWad, uint256 doubUsdWad) = _sampleCharmAnchor();
         _setEpochCharmAnchor(anchorWad);
         emit LastBuyEpochCharmAnchored(lastBuyEpoch, anchorWad, doubUsdWad, block.timestamp);
+        emit LastBuyEpochStarted(lastBuyEpoch, 0);
     }
 
     function _setEpochCharmAnchor(uint256 wad) internal {
@@ -1348,22 +1376,6 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         }
         if (activeDefendedStreak[buyer] > epochBestDefendedStreak[buyer]) {
             epochBestDefendedStreak[buyer] = activeDefendedStreak[buyer];
-        }
-    }
-
-    function _seedEpochPodiumScores(uint8 cat) private {
-        Podium storage p = _podiums[cat];
-        for (uint8 r; r < 3; ++r) {
-            address w = p.winners[r];
-            if (w == address(0)) continue;
-            uint256 v = p.values[r];
-            if (cat == CAT_TIME_BOOSTER) {
-                epochTimerSecAdded[w] = v;
-                timeBoosterScoreGeneration[w] = timeBoosterGeneration;
-            } else if (cat == CAT_DEFENDED_STREAK) {
-                epochBestDefendedStreak[w] = v;
-                defendedStreakScoreGeneration[w] = defendedStreakGeneration;
-            }
         }
     }
 

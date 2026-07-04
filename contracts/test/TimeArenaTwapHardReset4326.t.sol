@@ -62,25 +62,28 @@ contract TimeArenaTwapHardReset4326Test is Test {
         doub.approve(address(arena), type(uint256).max);
     }
 
-    /// GitLab #352 - MegaETH chain id uses `ArenaCharmPriceTwap` at Last Buy hard reset (mocked pools).
-    function test_chain4326_last_buy_hard_reset_twap_reanchor() public {
+    /// GitLab #352 - MegaETH chain id uses `ArenaCharmPriceTwap` on Last Buy podium roll (mocked pools).
+    function test_chain4326_last_buy_roll_twap_reanchor() public {
         vm.prank(alice);
         arena.buy(CHARM_MIN);
-        assertEq(arena.lastBuyEpoch(), 0, "pre-reset epoch");
+        assertEq(arena.lastBuyEpoch(), 0, "pre-roll epoch");
 
         _wireMegaethTwapMocks(0, 0, 0);
-        vm.warp(arena.deadline() - 600);
 
         ArenaCharmPriceTwap.Result memory twap = ArenaCharmPriceTwap.computeMegaethMainnet();
         assertGt(twap.charmPriceWad, 0, "TWAP anchor nonzero");
         assertLt(twap.charmPriceWad, arena.effectiveCharmPriceWad(), "TWAP differs from stale epoch price");
 
+        vm.warp(arena.podiumDeadline(0) + 1);
+        arena.rollPodiumEpoch(0);
+
+        assertEq(arena.lastBuyEpoch(), 1, "epoch bumped on Last Buy roll");
+        assertEq(arena.epochCharmAnchorWad(), twap.charmPriceWad, "anchor from TWAP");
+        assertEq(arena.effectiveCharmPriceWad(), twap.charmPriceWad, "post-roll price at TWAP anchor");
+
         uint256 preview = arena.doubOwedForBuy(CHARM_MIN);
         uint256 expectedOwed = Math.mulDiv(CHARM_MIN, twap.charmPriceWad, WAD);
-        assertEq(preview, expectedOwed, "doubOwedForBuy uses TWAP anchor on 4326");
-
-        uint256 staleOwed = Math.mulDiv(CHARM_MIN, arena.effectiveCharmPriceWad(), WAD);
-        assertLt(preview, staleOwed, "preview not stale effective price");
+        assertEq(preview, expectedOwed, "doubOwedForBuy uses post-roll TWAP anchor on 4326");
 
         uint256 before = doub.balanceOf(alice);
         vm.prank(alice);
@@ -88,9 +91,6 @@ contract TimeArenaTwapHardReset4326Test is Test {
         uint256 paid = before - doub.balanceOf(alice);
 
         assertEq(paid, preview, "buy DOUB matches doubOwedForBuy");
-        assertEq(arena.lastBuyEpoch(), 1, "epoch bumped on hard reset");
-        assertEq(arena.epochCharmAnchorWad(), twap.charmPriceWad, "anchor from TWAP");
-        assertEq(arena.effectiveCharmPriceWad(), twap.charmPriceWad, "post-reset price at TWAP anchor");
         assertEq(paid, expectedOwed, "buy priced at TWAP anchor");
     }
 

@@ -172,7 +172,7 @@ forge verify-contract "$NEW_IMPL" \
 
 Record the **`TimeArena`** implementation address from the broadcast log as **`NEW_IMPL`**.
 
-**Current verified implementation (MegaETH 4326, 2026-07-04):** [`0xaA298FCf0E3d67c7B4b68ed418C2B90F97CE9077`](https://megascan.com/address/0xaa298fcf0e3d67c7b4b68ed418c2b90f97ce9077#code) behind proxy **`0xba39cea0e5ef6808d8cb926c722877480049e0ee`**. Adds direct-DOUB **`buy(uint256,bool)`** / **`buy(uint256,bytes32,bool)`** overloads for WarBow flag plant. Also recorded in [`indexer/address-registry.megaeth-mainnet.json`](../../indexer/address-registry.megaeth-mainnet.json) → **`implementations.TimeArena`** (metadata only — ingestion uses proxy addresses).
+**Current verified implementation (MegaETH 4326, 2026-07-04):** [`0x7F6b147d38C036D6553745611f11BBB996Ca20d1`](https://megascan.com/address/0x7f6b147d38c036d6553745611f11bbb996ca20d1#code) behind proxy **`0xba39cea0e5ef6808d8cb926c722877480049e0ee`**. Last Buy epoch on podium roll (not hard reset), **`migrateLastBuyEpochToPodium`**, CHARM/CRED drift consolidation. Prior impl [`0xaA298FCf0E3d67c7B4b68ed418C2B90F97CE9077`](https://megascan.com/address/0xaa298fcf0e3d67c7b4b68ed418c2b90f97ce9077#code). Recorded in [`indexer/address-registry.megaeth-mainnet.json`](../../indexer/address-registry.megaeth-mainnet.json) → **`implementations.TimeArena`** (metadata only — ingestion uses proxy addresses).
 
 **Manual `forge create` alternative** — deploy the library first, then link:
 
@@ -197,16 +197,34 @@ export TIME_ARENA_PROXY="$(jq -r '.contracts.TimeArena' indexer/address-registry
 scripts/uups-upgrade-timearena-mainnet.sh "$NEW_IMPL"
 ```
 
-**Reinitializer migration** — when the new implementation adds a `reinitializer` (e.g. **`migrateEpochPodiumScores()`** for per-epoch Time Booster / Defended Streak scoring, 2026-07-03 mainnet upgrade):
+**Reinitializer migration — align `lastBuyEpoch` with `podiumEpoch[0]` and consolidate drift CHARM/CRED** (corrects pre-2026-07 hard-reset epoch drift; bundle with the implementation that rolls epoch on Last Buy payout only). **`migrateEpochPodiumScores()`** (`reinitializer(2)`) was already executed on mainnet 2026-07-03 — do not include it again.
 
 ```bash
 export TIME_ARENA_PROXY="$(jq -r '.contracts.TimeArena' indexer/address-registry.megaeth-mainnet.json)"
-MIGRATE_CALLDATA="$(cast calldata "migrateEpochPodiumScores()")"
 
+# Pre-flight: confirm drift (example: lastBuyEpoch=13, podiumEpoch(0)=0)
+cast call "$TIME_ARENA_PROXY" "lastBuyEpoch()(uint256)" --rpc-url https://mainnet.megaeth.com/rpc
+cast call "$TIME_ARENA_PROXY" "podiumEpoch(uint8)(uint256)" 0 --rpc-url https://mainnet.megaeth.com/rpc
+
+# Export every distinct buyer for per-wallet consolidation (required for epochCharmWad / fixed bonus)
+# psql "$DATABASE_URL" -t -A -c "SELECT DISTINCT lower(buyer) FROM idx_arena_buy ORDER BY 1"
+# Build cast array, e.g. WALLETS='[0xabc...,0xdef...]'
+MIGRATE_CALLDATA="$(cast calldata "migrateLastBuyEpochToPodium(address[])" "$WALLETS")"
 scripts/uups-upgrade-timearena-mainnet.sh "$NEW_IMPL" "$MIGRATE_CALLDATA"
+
+# Post-flight: counters must match; active-epoch pools merged into podiumEpoch(0)
+cast call "$TIME_ARENA_PROXY" "lastBuyEpoch()(uint256)" --rpc-url https://mainnet.megaeth.com/rpc
 ```
 
-Manual equivalent: `cast send "$TIME_ARENA_PROXY" "upgradeToAndCall(address,bytes)" "$NEW_IMPL" "$MIGRATE_CALLDATA" --rpc-url https://mainnet.megaeth.com/rpc --interactive`
+`migrateLastBuyEpochToPodium(address[])` is `reinitializer(3)` — one shot per proxy. Merges **`epochCredPool`** / **`epochCharmTotal`** from drift epochs `(target, previous]` into **`podiumEpoch[0]`**, and per-wallet **`epochCharmWad`** / **`epochFixedCredBonus`** for each address in `wallets`. Emits **`LastBuyEpochAligned`** and **`DriftEpochBalancesConsolidated`**.
+
+**Indexer repair (required after migration):** wallet stats use `MAX(idx_arena_last_buy_epoch_started.epoch)` and `idx_arena_buy.last_buy_epoch` — hard-reset history leaves head **13** until Postgres is repaired. Run once on the production indexer DB:
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/sql/fix-last-buy-epoch-drift-mainnet.sql
+```
+
+Then spot-check `GET /v1/arena/wallet/{address}/stats` → `last_buy_epoch` **0** and non-zero `epoch_charm_wad` for active buyers. Timer head poller already reads on-chain `lastBuyEpoch` ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
 
 Confirm ERC1967 implementation slot (last 20 bytes = **`NEW_IMPL`**) and smoke-read a new selector if applicable:
 

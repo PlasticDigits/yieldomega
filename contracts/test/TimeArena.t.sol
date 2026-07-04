@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.24;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -20,6 +20,8 @@ import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract TimeArenaTest is Test {
+    using stdStorage for StdStorage;
+
     Doubloon doub;
     PlayCred cred;
     PodiumVaults vaults;
@@ -208,24 +210,31 @@ contract TimeArenaTest is Test {
         assertGt(vaults.activePoolBalance(cat), 0, "former seed tranche promoted to active");
     }
 
-    function test_timer_hard_reset_increments_epoch() public {
+    function test_timer_hard_reset_does_not_increment_epoch() public {
         vm.prank(alice);
         arena.buy(1e18);
         _warpNearHardReset();
         vm.prank(alice);
         arena.buy(1e18);
-        assertEq(arena.lastBuyEpoch(), 1);
+        assertEq(arena.lastBuyEpoch(), 0);
     }
 
-    /// INV-TIME-ARENA-EPOCH-EVENT (#246): hard reset emits `LastBuyEpochStarted`.
-    function test_emits_LastBuyEpochStarted_on_hard_reset() public {
+    function test_last_buy_roll_increments_epoch() public {
         vm.prank(alice);
         arena.buy(1e18);
-        _warpNearHardReset();
+        _endLastBuyEpoch();
+        assertEq(arena.lastBuyEpoch(), 1);
+        assertEq(arena.podiumEpoch(arena.CAT_LAST_BUYERS()), 1);
+    }
+
+    /// INV-TIME-ARENA-EPOCH-EVENT (#246): Last Buy roll emits `LastBuyEpochStarted`.
+    function test_emits_LastBuyEpochStarted_on_last_buy_roll() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.warp(arena.podiumDeadline(0) + 1);
         vm.expectEmit(true, false, false, true);
-        emit TimeArena.LastBuyEpochStarted(1, block.timestamp + 900);
-        vm.prank(alice);
-        arena.buy(1e18);
+        emit TimeArena.LastBuyEpochStarted(1, 0);
+        arena.rollPodiumEpoch(0);
     }
 
     /// INV-TIME-ARENA-CHARM-BAND (#246): fixed min/max CHARM envelope.
@@ -568,13 +577,10 @@ contract TimeArenaTest is Test {
         vm.prank(bob);
         arena.buy(2e18);
 
-        _warpNearHardReset();
-        _freezeCharmPrice();
-        vm.prank(alice);
-        arena.buy(1e18);
-
         uint256 ep = 0;
         assertEq(arena.epochCharmTotal(ep), 3e18);
+
+        _endLastBuyEpoch();
 
         vm.prank(alice);
         arena.claimCred(ep);
@@ -709,7 +715,7 @@ contract TimeArenaTest is Test {
         assertEq(arena.epochCredPool(1), 35e18);
     }
 
-    /// INV-TIME-ARENA-CRED-POOL-EPOCH: `buyWithCred` at hard reset credits post-reset epoch pool (#311).
+    /// INV-TIME-ARENA-CRED-POOL-EPOCH: `buyWithCred` at hard reset stays in current epoch pool (#311).
     function test_buyWithCred_at_epoch_boundary() public {
         vm.prank(alice);
         arena.buy(1e18);
@@ -723,12 +729,12 @@ contract TimeArenaTest is Test {
         arena.buyWithCred(1e18);
 
         uint256 epAfter = arena.lastBuyEpoch();
-        assertGt(epAfter, epBefore);
-        assertEq(arena.epochCredPool(epAfter), 35e18);
-        assertEq(arena.epochCredPool(epBefore), 35e18);
+        assertEq(epAfter, epBefore);
+        assertEq(arena.epochCredPool(epAfter), 70e18);
+        assertEq(arena.epochCredPool(epBefore), 70e18);
     }
 
-    /// INV-TIME-ARENA-CRED-EPOCH-BOUNDARY: `buyWithCred` at hard reset credits post-reset epoch pool (solo) (#311).
+    /// INV-TIME-ARENA-CRED-EPOCH-BOUNDARY: hard reset does not split CRED pool across epochs (#311).
     function test_cred_accrue_buyWithCred_at_epoch_boundary() public {
         vm.prank(alice);
         arena.buy(1e18);
@@ -737,9 +743,9 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buyWithCred(1e18);
         uint256 epAfter = arena.lastBuyEpoch();
-        assertEq(epAfter, epBefore + 1);
-        assertEq(arena.epochCredPool(epAfter), 35e18);
-        assertEq(arena.epochCredPool(epBefore), 35e18);
+        assertEq(epAfter, epBefore);
+        assertEq(arena.epochCredPool(epAfter), 70e18);
+        assertEq(arena.epochCredPool(epBefore), 70e18);
     }
 
     /// Attack: CRED-only buyer cannot extract more than fair pro-rata share (#311).
@@ -825,14 +831,8 @@ contract TimeArenaTest is Test {
         arena.buy(1e18);
         uint256 bonusEpoch = 1;
 
-        _warpNearHardReset();
-        vm.prank(bob);
-        arena.buy(1e18);
-
-        _warpNearHardReset();
-        _warpPastBuyCooldown();
-        vm.prank(bob);
-        arena.buy(1e18);
+        _endLastBuyEpoch();
+        _endLastBuyEpoch();
 
         assertEq(arena.epochCharmWad(bonusEpoch, alice), 0);
         assertGt(arena.lastBuyEpoch(), bonusEpoch);
@@ -850,17 +850,12 @@ contract TimeArenaTest is Test {
         uint256 bonusEpoch = 1;
         assertEq(arena.epochFixedCredBonus(bonusEpoch, alice), 1100e18);
 
-        _warpNearHardReset();
-        vm.prank(bob);
-        arena.buy(1e18);
-
+        _endLastBuyEpoch();
         _warpPastBuyCooldown();
         vm.prank(alice);
         arena.buy(1e18);
 
-        _warpNearHardReset();
-        vm.prank(bob);
-        arena.buy(1e18);
+        _endLastBuyEpoch();
 
         assertGt(arena.lastBuyEpoch(), bonusEpoch);
         uint256 expected = arena.pendingCred(alice, bonusEpoch);
@@ -880,13 +875,13 @@ contract TimeArenaTest is Test {
         arena.claimCred(future);
     }
 
-    function test_first_buy_hard_reset_targets_post_epoch() public {
+    function test_first_buy_hard_reset_stays_in_scheduled_epoch() public {
         vm.prank(alice);
         arena.buy(1e18);
         _warpNearHardReset();
         vm.prank(alice);
         arena.buy(1e18);
-        assertEq(arena.lastBuyEpoch(), 1);
+        assertEq(arena.lastBuyEpoch(), 0);
         assertEq(arena.epochFixedCredBonus(1, alice), 1100e18);
     }
 
@@ -896,9 +891,7 @@ contract TimeArenaTest is Test {
         uint256 target = arena.lastBuyEpoch() + 1;
         assertEq(arena.epochFixedCredBonus(target, alice), 1100e18);
 
-        _warpNearHardReset();
-        vm.prank(bob);
-        arena.buy(1e18);
+        _endLastBuyEpoch();
         assertEq(arena.epochFixedCredBonus(target, alice), 1100e18);
         assertEq(arena.buyCount(alice), 1);
     }
@@ -914,10 +907,16 @@ contract TimeArenaTest is Test {
     }
 
     function _endLastBuyEpoch() internal {
-        _warpNearHardReset();
-        vm.prank(bob);
-        arena.buy(1e18);
-        assertGt(arena.lastBuyEpoch(), 0);
+        uint8 cat = arena.CAT_LAST_BUYERS();
+        if (!arena.podiumTimerArmed(cat)) {
+            _warpPastBuyCooldown();
+            vm.prank(bob);
+            arena.buy(1e18);
+        }
+        require(arena.podiumTimerArmed(cat), "arm Last Buy first");
+        _freezeCharmPrice();
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
     }
 
     function test_xp_levels() public {
@@ -1052,7 +1051,7 @@ contract TimeArenaTest is Test {
         vm.warp(block.timestamp + arena.deadline() - 600);
         vm.prank(alice);
         arena.buy(1e18);
-        assertEq(arena.lastBuyEpoch(), 1);
+        assertEq(arena.lastBuyEpoch(), 0);
         assertEq(arena.level(alice), lvlBefore);
         assertGe(arena.xpTowardNext(alice), towardBefore);
         assertGt(arena.xp(alice), xpBefore);
@@ -1248,34 +1247,81 @@ contract TimeArenaTest is Test {
         assertEq(arena.defendedStreakGeneration(), 1);
     }
 
-    /// UUPS migration seeds in-flight epoch podium slot scores for Time Booster / Defended Streak.
-    function test_migration_seeds_slot_holders() public {
-        _ensureLevel(alice, 2);
-        _ensureLevel(bob, 2);
-
+    /// UUPS migration aligns inflated `lastBuyEpoch` with Last Buy `podiumEpoch[0]` and consolidates drift balances.
+    function test_migration_aligns_last_buy_epoch_to_podium() public {
         vm.prank(alice);
         arena.buy(1e18);
-        _warpPastBuyCooldown();
-        vm.prank(bob);
-        arena.buy(1e18);
-        _warpPastBuyCooldown();
-        vm.prank(alice);
-        arena.buy(1e18);
+        assertEq(arena.podiumEpoch(arena.CAT_LAST_BUYERS()), 0);
+        assertEq(arena.epochCharmWad(0, alice), 1e18);
+        assertEq(arena.epochCredPool(0), 35e18);
 
-        (address[3] memory tbWinners, uint256[3] memory tbValues) = arena.podium(arena.CAT_TIME_BOOSTER());
-        assertGt(tbValues[0], 0);
+        stdstore.target(address(arena)).sig("lastBuyEpoch()").checked_write(13);
+        stdstore.target(address(arena)).sig("epochCharmWad(uint256,address)").with_key(3).with_key(alice)
+            .checked_write(2e18);
+        stdstore.target(address(arena)).sig("epochCharmWad(uint256,address)").with_key(13).with_key(bob).checked_write(
+            1e18
+        );
+        stdstore.target(address(arena)).sig("epochCharmTotal(uint256)").with_key(3).checked_write(2e18);
+        stdstore.target(address(arena)).sig("epochCharmTotal(uint256)").with_key(13).checked_write(1e18);
+        stdstore.target(address(arena)).sig("epochCredPool(uint256)").with_key(3).checked_write(35e18);
+        stdstore.target(address(arena)).sig("epochCredPool(uint256)").with_key(13).checked_write(70e18);
+        stdstore.target(address(arena)).sig("epochFixedCredBonus(uint256,address)").with_key(13).with_key(alice)
+            .checked_write(1100e18);
 
-        uint256 genBefore = arena.timeBoosterGeneration();
+        address[] memory wallets = new address[](2);
+        wallets[0] = alice;
+        wallets[1] = bob;
 
         TimeArena newImpl = new TimeArena();
         vm.prank(admin);
-        arena.upgradeToAndCall(address(newImpl), abi.encodeCall(TimeArena.migrateEpochPodiumScores, ()));
+        arena.upgradeToAndCall(address(newImpl), abi.encodeCall(TimeArena.migrateLastBuyEpochToPodium, (wallets)));
 
-        assertEq(arena.effectiveEpochTimerSecAdded(tbWinners[0]), tbValues[0]);
-        assertEq(arena.timeBoosterGeneration(), genBefore);
+        assertEq(arena.lastBuyEpoch(), 0);
+        assertEq(arena.podiumEpoch(arena.CAT_LAST_BUYERS()), 0);
+        assertEq(arena.epochCharmWad(0, alice), 3e18);
+        assertEq(arena.epochCharmWad(0, bob), 1e18);
+        assertEq(arena.epochCharmWad(3, alice), 0);
+        assertEq(arena.epochCharmWad(13, bob), 0);
+        assertEq(arena.epochCharmTotal(0), 4e18);
+        assertEq(arena.epochCharmTotal(3), 0);
+        assertEq(arena.epochCharmTotal(13), 0);
+        assertEq(arena.epochCredPool(0), 140e18);
+        assertEq(arena.epochCredPool(3), 0);
+        assertEq(arena.epochCredPool(13), 0);
+        assertEq(arena.epochFixedCredBonus(0, alice), 2200e18, "epoch 1 first-buy bonus + epoch 13 drift");
+        assertEq(arena.epochFixedCredBonus(1, alice), 0);
 
         vm.expectRevert();
-        arena.migrateEpochPodiumScores();
+        arena.migrateLastBuyEpochToPodium(wallets);
+    }
+
+    /// No-op when counters already match (still consumes reinitializer version).
+    function test_migration_align_last_buy_epoch_noop_when_matched() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.lastBuyEpoch(), 0);
+        assertEq(arena.podiumEpoch(arena.CAT_LAST_BUYERS()), 0);
+
+        address[] memory wallets = new address[](0);
+        TimeArena newImpl = new TimeArena();
+        vm.recordLogs();
+        vm.prank(admin);
+        arena.upgradeToAndCall(address(newImpl), abi.encodeCall(TimeArena.migrateLastBuyEpochToPodium, (wallets)));
+
+        assertEq(arena.lastBuyEpoch(), 0);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        for (uint256 i; i < entries.length; ++i) {
+            assertNotEq(
+                entries[i].topics[0],
+                keccak256("LastBuyEpochAligned(uint256,uint256)"),
+                "no align event when already matched"
+            );
+            assertNotEq(
+                entries[i].topics[0],
+                keccak256("DriftEpochBalancesConsolidated(uint256,uint256,uint256)"),
+                "no consolidate event when already matched"
+            );
+        }
     }
 
     /// GitLab #355: zero active ledger at roll skips payout; seed/future still promote per [time-arena.md](../docs/product/time-arena.md) epoch tranches.
@@ -1356,8 +1402,8 @@ contract TimeArenaTest is Test {
         assertEq(shareFirst + shareSecond + shareThird, poolBal);
     }
 
-    /// GitLab #247: other podium rolls do not bump global `lastBuyEpoch`.
-    function test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll() public {
+    /// GitLab #247: Last Buy roll bumps global `lastBuyEpoch`; other podium rolls do not.
+    function test_last_buy_epoch_on_roll_not_on_other_podium_roll() public {
         address carol = makeAddr("carol");
         doub.mint(carol, 1_000_000e18);
         vm.prank(carol);
@@ -1376,6 +1422,10 @@ contract TimeArenaTest is Test {
         arena.rollPodiumEpoch(arena.CAT_DEFENDED_STREAK());
         assertEq(arena.lastBuyEpoch(), lbEpoch);
         assertEq(arena.podiumEpoch(arena.CAT_DEFENDED_STREAK()), streakEpoch + 1);
+
+        vm.warp(arena.podiumDeadline(arena.CAT_LAST_BUYERS()) + 1);
+        arena.rollPodiumEpoch(arena.CAT_LAST_BUYERS());
+        assertEq(arena.lastBuyEpoch(), lbEpoch + 1);
     }
 
     function test_warbow_steal_pulls_doub() public {
