@@ -78,7 +78,7 @@ describe("resolveReferralCodeHashForBuy", () => {
     expect(readContract).not.toHaveBeenCalled();
   });
 
-  it("drops unregistered codes and clears pending", async () => {
+  it("keeps pending when ownerOfCode is zero after retry (transient unregistered read)", async () => {
     vi.mocked(readContract).mockResolvedValue(
       "0x0000000000000000000000000000000000000000",
     );
@@ -91,7 +91,54 @@ describe("resolveReferralCodeHashForBuy", () => {
       clearPendingReferral: clear,
     });
     expect(h).toBeUndefined();
+    expect(clear).not.toHaveBeenCalled();
+    expect(readContract).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns hash when first ownerOfCode read is zero and retry succeeds", async () => {
+    vi.mocked(readContract)
+      .mockResolvedValueOnce("0x0000000000000000000000000000000000000000")
+      .mockResolvedValueOnce(REFERRER);
+    const clear = vi.fn();
+    const h = await resolveReferralCodeHashForBuy({
+      wagmiConfig: {} as never,
+      referralRegistry: REGISTRY,
+      buyer: BUYER,
+      pendingCode: "test1",
+      clearPendingReferral: clear,
+    });
+    expect(h).toMatch(/^0x[a-f0-9]{64}$/);
+    expect(clear).not.toHaveBeenCalled();
+    expect(readContract).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears pending on self-referral", async () => {
+    vi.mocked(readContract).mockResolvedValue(BUYER);
+    const clear = vi.fn();
+    const h = await resolveReferralCodeHashForBuy({
+      wagmiConfig: {} as never,
+      referralRegistry: REGISTRY,
+      buyer: BUYER,
+      pendingCode: "test1",
+      clearPendingReferral: clear,
+    });
+    expect(h).toBeUndefined();
     expect(clear).toHaveBeenCalledOnce();
+  });
+
+  it("propagates ownerOfCode read errors without clearing pending", async () => {
+    vi.mocked(readContract).mockRejectedValue(new Error("rpc down"));
+    const clear = vi.fn();
+    await expect(
+      resolveReferralCodeHashForBuy({
+        wagmiConfig: {} as never,
+        referralRegistry: REGISTRY,
+        buyer: BUYER,
+        pendingCode: "test1",
+        clearPendingReferral: clear,
+      }),
+    ).rejects.toThrow("rpc down");
+    expect(clear).not.toHaveBeenCalled();
   });
 
   it("returns hash for registered third-party referrer", async () => {

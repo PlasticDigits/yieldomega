@@ -912,6 +912,11 @@ async fn arena_activity(State(state): State<AppState>, Query(p): Query<ListPageP
                 Ok(v) => v,
                 Err(res) => return res,
             };
+        let target = if kind == "podium_epoch" {
+            target.map(|epoch| crate::arena_podium_epoch::settled_epoch_str_from_roll_event(&epoch))
+        } else {
+            target
+        };
         items.push(json!({
             "kind": kind,
             "actor": actor,

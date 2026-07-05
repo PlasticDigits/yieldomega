@@ -55,9 +55,9 @@ export async function assertReferralReadyForBuy(params: {
 
 /**
  * Returns a `codeHash` only when the pending slug is registered for a third-party referrer.
- * Blocked, malformed, unregistered, and self-referral codes are dropped so buys proceed
- * without referral attachment; {@link params.clearPendingReferral} runs when the slug is
- * unusable.
+ * Blocked, malformed, and self-referral codes are dropped so buys proceed without referral
+ * attachment; {@link params.clearPendingReferral} runs only for deterministic failures.
+ * Transient `ownerOfCode == 0` reads retry once and keep pending storage when still zero.
  */
 export async function resolveReferralCodeHashForBuy(params: {
   wagmiConfig: Config;
@@ -85,18 +85,24 @@ export async function resolveReferralCodeHashForBuy(params: {
     return undefined;
   }
 
-  const owner = (await readContract(params.wagmiConfig, {
-    address: params.referralRegistry,
-    abi: referralRegistryReadAbi,
-    functionName: "ownerOfCode",
-    args: [codeHash],
-  })) as `0x${string}`;
+  const readOwner = async (): Promise<`0x${string}`> =>
+    (await readContract(params.wagmiConfig, {
+      address: params.referralRegistry!,
+      abi: referralRegistryReadAbi,
+      functionName: "ownerOfCode",
+      args: [codeHash],
+    })) as `0x${string}`;
 
-  if (
-    !owner ||
-    owner.toLowerCase() === ZERO ||
-    owner.toLowerCase() === params.buyer.toLowerCase()
-  ) {
+  let owner = await readOwner();
+
+  if (!owner || owner.toLowerCase() === ZERO) {
+    owner = await readOwner();
+    if (!owner || owner.toLowerCase() === ZERO) {
+      return undefined;
+    }
+  }
+
+  if (owner.toLowerCase() === params.buyer.toLowerCase()) {
     clear();
     return undefined;
   }

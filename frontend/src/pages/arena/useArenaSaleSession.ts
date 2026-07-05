@@ -1942,14 +1942,28 @@ export function useArenaSaleSession(
         const needDoub = (cw * priceWad) / parseUnits("1", 18);
 
         const resolveBuyReferralCodeHash = async (): Promise<`0x${string}` | undefined> => {
-          if (!useReferral || !referralRegistryOn || !pendingReferralCode) {
+          if (!useReferral || !pendingReferralCode) {
             return undefined;
           }
-          const referralRegistryAddress =
+          let referralRegistryAddress: `0x${string}` | undefined;
+          if (
             referralRegistryR?.status === "success" &&
             isNonZeroHexAddress(referralRegistryR.result)
-              ? (referralRegistryR.result as `0x${string}`)
-              : undefined;
+          ) {
+            referralRegistryAddress = referralRegistryR.result as `0x${string}`;
+          } else {
+            const registryAddr = (await readContract(wagmiConfig, {
+              address: tc,
+              abi: timeArenaReadAbi,
+              functionName: "referralRegistry",
+            })) as `0x${string}`;
+            if (isNonZeroHexAddress(registryAddr)) {
+              referralRegistryAddress = registryAddr;
+            }
+          }
+          if (!referralRegistryAddress) {
+            return undefined;
+          }
           return resolveReferralCodeHashForBuy({
             wagmiConfig,
             referralRegistry: referralRegistryAddress,
@@ -1991,10 +2005,7 @@ export function useArenaSaleSession(
             setBuyError(WALLET_BUY_SESSION_DRIFT_MESSAGE);
             return;
           }
-          let codeHash: `0x${string}` | undefined;
-          if (useReferral && referralRegistryOn && pendingReferralCode) {
-            codeHash = await resolveBuyReferralCodeHash();
-          }
+          const codeHash = await resolveBuyReferralCodeHash();
           const chainSec = await submitArenaKumbayaSingleTxBuy({
             wagmiConfig,
             writeContractAsync: writeContractAsync as WalletWriteAsync,
@@ -2029,10 +2040,7 @@ export function useArenaSaleSession(
           needWei: needDoub,
           unlimitedPreferred: readArenaDoubUnlimitedApproval(),
         });
-        let codeHash: `0x${string}` | undefined;
-        if (useReferral && referralRegistryOn && pendingReferralCode) {
-          codeHash = await resolveBuyReferralCodeHash();
-        }
+        const codeHash = await resolveBuyReferralCodeHash();
         const buyArgs = plantWarBowFlag
           ? codeHash
             ? ([cw, codeHash, plantWarBowFlag] as const)
@@ -2078,7 +2086,6 @@ export function useArenaSaleSession(
     charmBoundsR,
     spendWei,
     useReferral,
-    referralRegistryOn,
     referralRegistryR,
     pendingReferralCode,
     plantWarBowFlag,

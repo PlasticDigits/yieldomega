@@ -24,6 +24,28 @@ export type EnsureDoubTimeArenaAllowanceParams = {
   unlimitedPreferred?: boolean;
 };
 
+export type DoubTimeArenaApprovePlan = {
+  readonly approveAmt: bigint;
+  readonly required: boolean;
+};
+
+/**
+ * Pure guard: skip approve when allowance covers this buy (+ 50 bps headroom);
+ * when approving, size to `unlimitedPreferred` (default maxUint256).
+ */
+export function planDoubTimeArenaApprove(
+  allow: bigint,
+  needWei: bigint,
+  unlimitedPreferred: boolean,
+): DoubTimeArenaApprovePlan {
+  if (needWei <= 0n) {
+    return { approveAmt: 0n, required: false };
+  }
+  const sizedSufficiency = arenaDoubApprovalAmountWei(needWei, false);
+  const approveAmt = arenaDoubApprovalAmountWei(needWei, unlimitedPreferred);
+  return { approveAmt, required: allow < sizedSufficiency };
+}
+
 /** Read DOUB allowance for `TimeArena` and approve only when below sized target ([#143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143)). */
 export async function ensureDoubTimeArenaAllowance({
   wagmiConfig,
@@ -45,8 +67,8 @@ export async function ensureDoubTimeArenaAllowance({
     functionName: "allowance",
     args: [account, timeArenaAddress],
   });
-  const approveAmt = arenaDoubApprovalAmountWei(needWei, unlimitedPreferred);
-  if (allow >= approveAmt) {
+  const plan = planDoubTimeArenaApprove(allow, needWei, unlimitedPreferred);
+  if (!plan.required) {
     return;
   }
 
@@ -58,7 +80,7 @@ export async function ensureDoubTimeArenaAllowance({
     address: doubAddress,
     abi: erc20Abi,
     functionName: "approve",
-    args: [timeArenaAddress, approveAmt],
+    args: [timeArenaAddress, plan.approveAmt],
   });
   await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
 }

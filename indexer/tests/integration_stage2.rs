@@ -1121,7 +1121,7 @@ async fn api_arena_activity_smoke(pool: &sqlx::PgPool) {
     );
     assert_eq!(
         podium_epoch.get("target").and_then(|v| v.as_str()),
-        Some("1")
+        Some("0")
     );
 
     let feature_unlocked = items

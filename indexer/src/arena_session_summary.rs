@@ -161,10 +161,11 @@ async fn fetch_podium_epochs_ended(pool: &PgPool, since_sec: f64) -> Result<Vec<
             let first_place: Option<String> = r.try_get("first_place").ok();
             let second_place: Option<String> = r.try_get("second_place").ok();
             let third_place: Option<String> = r.try_get("third_place").ok();
+            let roll_epoch: String = r.get("epoch");
             json!({
                 "podium": label,
                 "category": category,
-                "epoch": r.get::<String, _>("epoch"),
+                "epoch": crate::arena_podium_epoch::settled_epoch_str_from_roll_event(&roll_epoch),
                 "winners": [
                     { "rank": 1, "address": first_place, "prize_doub_wad": first_prize.to_string() },
                     { "rank": 2, "address": second_place, "prize_doub_wad": second_prize.to_string() },

@@ -28,6 +28,18 @@ On a referred **DOUB** buy with **`REFERRAL_CRED_FLAT_WAD = 5e18`**:
 
 Forge: [`TimeArena.t.sol::test_referred_buy_mints_cred_not_charm`](../../contracts/test/TimeArena.t.sol), [`test_self_referral_reverts`](../../contracts/test/TimeArena.t.sol). Indexer: **`idx_arena_referral_cred`** ← **`ReferralCredApplied`**. HTTP: **`GET /v1/referrals/applied`**, **`referrer-leaderboard`**, **`wallet-cred-summary`** (schema **≥ 2.3.0**).
 
+### Browser capture and buy attribution
+
+<a id="browser-capture-and-buy-attribution"></a>
+
+| Step | Behavior |
+|------|----------|
+| **Capture** | Valid `?ref=` or `/{code}` writes **`yieldomega.ref.v2`** (local + session storage). Pending codes **persist across successful buys** until overwritten or cleared. |
+| **Submit — registry** | When a pending code exists, buy submit resolves **`TimeArena.referralRegistry()`** from the cached multicall read or a **direct onchain read** at submit time (avoids dropping attribution while sale-head reads are still loading). |
+| **Submit — `codeHash`** | [`resolveReferralCodeHashForBuy`](../../frontend/src/lib/referralBuyPreflight.ts) hashes the pending slug and reads **`ownerOfCode`**. **RPC errors abort the buy** (fail closed). |
+| **Transient zero owner** | If **`ownerOfCode`** returns zero, the client **retries once**; if still zero, the buy proceeds **without** `codeHash` but the **pending code stays in storage** (flaky RPC must not permanently drop attribution). |
+| **Deterministic drop** | Pending storage is cleared only for **blocked slugs**, **malformed codes**, or **confirmed self-referral**. |
+
 ---
 
 ## Legacy (v1 launchpad — retired)

@@ -901,7 +901,7 @@ fn prizes_from_placements(placements: &[PodiumPlacement]) -> Vec<PrizeWon> {
                     .get(p.category as usize)
                     .copied()
                     .unwrap_or("unknown"),
-                epoch: p.epoch.clone(),
+                epoch: crate::arena_podium_epoch::settled_epoch_str_from_roll_event(&p.epoch),
                 rank: p.rank,
                 amount_doub: amount.to_string(),
             }
@@ -1262,6 +1262,21 @@ mod tests {
         assert_eq!(a, 400);
         assert_eq!(b, 200);
         assert_eq!(c, 100);
+    }
+
+    #[test]
+    fn prizes_won_uses_settled_epoch() {
+        let prizes = prizes_from_placements(&[PodiumPlacement {
+            category: 1,
+            epoch: "3".into(),
+            rank: 1,
+            pool_paid: 700,
+        }]);
+        assert_eq!(prizes.len(), 1);
+        assert_eq!(prizes[0].podium, "time_booster");
+        assert_eq!(prizes[0].epoch, "2");
+        assert_eq!(prizes[0].rank, 1);
+        assert_eq!(prizes[0].amount_doub, "400");
     }
 
     #[test]
