@@ -171,6 +171,59 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
     expect(html).toContain('data-testid="warbow-hero-flag-silence-countdown"');
     expect(html).toContain("03:20");
     expect(html).toContain('data-testid="warbow-hero-claim-flag-submit"');
+    expect(html).toContain('data-testid="warbow-hero-viewer-summary-flag"');
+    expect(html).toContain("03:20 until claim");
+  });
+
+  it("shows viewer-summary flag countdown during silence (#362)", () => {
+    mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+        showClaimFlagControl: true,
+        canClaimWarBowFlag: false,
+        flagSilenceEndSec: 1_700_000_200n,
+        ledgerNowSec: 1_700_000_000,
+      }),
+    );
+    expect(html).toContain('data-testid="warbow-hero-viewer-summary-flag"');
+    expect(html).toContain("FLAG:");
+    expect(html).toContain("03:20 until claim");
+  });
+
+  it("shows viewer-summary claim-now when silence elapsed (#362)", () => {
+    mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+        showClaimFlagControl: true,
+        canClaimWarBowFlag: true,
+        flagSilenceEndSec: 1_700_000_200n,
+        ledgerNowSec: 1_700_000_400,
+      }),
+    );
+    expect(html).toContain('data-testid="warbow-hero-viewer-summary-flag"');
+    expect(html).toContain("claim now");
+  });
+
+  it("omits viewer-summary flag line when no planted flag (#362)", () => {
+    mockWarbowHero.mockReturnValue(baseHook);
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+        showClaimFlagControl: false,
+      }),
+    );
+    expect(html).not.toContain('data-testid="warbow-hero-viewer-summary-flag"');
   });
 
   it("enables claim flag CTA after silence window", () => {
