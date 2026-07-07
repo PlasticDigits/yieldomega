@@ -1730,6 +1730,183 @@ label:has(input[type="radio"]:disabled) {
   font-weight: 700;
 }
 
+.arena-event-directory__lede,
+.arena-event-page__subtitle {
+  margin: 0 0 0.85rem;
+  color: var(--yo-text-muted, #b8d4e6);
+  max-width: 52rem;
+}
+
+.arena-event-directory__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.arena-event-directory__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.arena-event-directory__chip {
+  border: 1px solid rgba(126, 241, 255, 0.28);
+  background: rgba(8, 22, 34, 0.72);
+  color: #dff8ff;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.arena-event-directory__chip--active {
+  border-color: rgba(248, 213, 107, 0.65);
+  background: rgba(248, 213, 107, 0.12);
+}
+
+.arena-event-directory__search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  margin-left: auto;
+}
+
+.arena-event-directory__search-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.arena-event-directory__search-input {
+  min-width: min(100%, 16rem);
+  border-radius: 0.65rem;
+  border: 1px solid rgba(126, 241, 255, 0.28);
+  background: rgba(5, 14, 22, 0.85);
+  color: #eefcff;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+}
+
+.arena-event-directory__search-btn,
+.arena-event-directory__more-btn {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(126, 241, 255, 0.34);
+  background: rgba(18, 48, 68, 0.9);
+  color: #eefcff;
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.arena-event-directory__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.arena-event-directory__link {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(126, 241, 255, 0.22);
+  background: rgba(7, 18, 29, 0.72);
+  color: inherit;
+  text-decoration: none;
+}
+
+.arena-event-directory__link:hover {
+  border-color: rgba(248, 213, 107, 0.45);
+}
+
+.arena-event-directory__title {
+  font-weight: 700;
+  color: #f4fdff;
+}
+
+.arena-event-directory__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.88rem;
+  color: var(--yo-cyan-soft, #8ce9ff);
+}
+
+.arena-event-directory__subtitle {
+  font-size: 0.9rem;
+  color: var(--yo-text-muted, #b8d4e6);
+}
+
+.arena-event-directory__status,
+.arena-event-directory__more {
+  margin-top: 0.75rem;
+}
+
+.arena-event-page__facts {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.arena-event-page__facts > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.arena-event-page__facts dt {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--yo-cyan-soft, #8ce9ff);
+}
+
+.arena-event-page__facts dd {
+  margin: 0;
+}
+
+.arena-event-page__winners {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.arena-event-page__winner-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(126, 241, 255, 0.22);
+  background: rgba(7, 18, 29, 0.72);
+}
+
+.arena-event-page__winner-rank {
+  font-weight: 700;
+  color: #f8d56b;
+}
+
+.arena-event-page__winner-prize {
+  color: #eefcff;
+}
+
+.arena-event-page__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+}
+
+.arena-event-page__cta-row a {
+  color: var(--yo-cyan-soft, #8ce9ff);
+}
+
 .arena-protocol-page .unix-timestamp--compact {
   gap: 0.15rem;
 }

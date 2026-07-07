@@ -31,6 +31,13 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("coreReadRowsFromArenaTimers");
   });
 
+  it("useArenaSaleSession supplements warbow flag reads when timers omit flag fields (#362)", () => {
+    const src = readArena("useArenaSaleSession.ts");
+    expect(src).toContain("arenaV2WarbowFlagSupplementContracts");
+    expect(src).toContain("mapArenaV2WarbowFlagSupplementRows");
+    expect(src).toMatch(/enabled:\s*Boolean\(tc && indexerOn && isArenaV2\)/);
+  });
+
   it("useArenaSaleSession disables Buy contract-event watch when indexer is on", () => {
     const src = readArena("useArenaSaleSession.ts");
     expect(src).toMatch(/useWatchContractEvent\([\s\S]*enabled:\s*Boolean\(tc\)\s*&&\s*!indexerOn/);
