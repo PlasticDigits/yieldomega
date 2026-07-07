@@ -78,9 +78,10 @@ test.describe("Anvil Arena #331 play-feel visual UX", () => {
     const buyCharm = arenaBuyCharmButton(page);
     await expect(buyCharm).toBeEnabled({ timeout: ARENA_E2E_TIMEOUT_MS });
     await buyCharm.click();
-    await expect(page.getByTestId("arena-buy-effect-toast").first()).toBeVisible({
+    await expect(page.getByTestId("arena-buy-result-share-popover")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
+    await page.getByTestId("arena-buy-result-share-close").click();
 
     await gotoCarouselDot(page, 1);
     await expect(page.getByTestId("arena-timer-podium-lock-3")).toBeVisible({
@@ -145,9 +146,10 @@ test.describe("Anvil Arena #331 play-feel visual UX", () => {
       const buyCharm = arenaBuyCharmButton(page);
       await expect(buyCharm).toBeEnabled({ timeout: ARENA_E2E_TIMEOUT_MS });
       await buyCharm.click();
-      await expect(page.getByTestId("arena-buy-effect-toast").first()).toBeVisible({
+      await expect(page.getByTestId("arena-buy-result-share-popover")).toBeVisible({
         timeout: ARENA_E2E_TIMEOUT_MS,
       });
+      await page.getByTestId("arena-buy-result-share-close").click();
 
       const profileButton = page
         .getByRole("button", { name: /Open wallet profile for 0x/i })

@@ -361,3 +361,188 @@
     padding: 0.36rem 0.52rem;
   }
 }
+
+/* Post-buy transaction result share card — closable popover on play route (#365) */
+.arena-buy-result-share {
+  position: fixed;
+  inset: 0;
+  z-index: 115;
+  display: grid;
+  place-items: end center;
+  padding: clamp(0.75rem, 4vh, 1.25rem) 0.75rem
+    calc(max(0.75rem, env(safe-area-inset-bottom, 0px)) + 0.25rem);
+  pointer-events: none;
+}
+
+.arena-buy-result-share__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(4, 10, 18, 0.42);
+  pointer-events: auto;
+  cursor: default;
+}
+
+.arena-buy-result-share__motion {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 22rem);
+  pointer-events: auto;
+}
+
+.arena-buy-result-share__panel {
+  border-radius: 0.95rem;
+}
+
+.arena-buy-result-share__content {
+  padding: 0.8rem 0.9rem 0.85rem;
+}
+
+.arena-buy-result-share__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.arena-buy-result-share__eyebrow {
+  margin: 0;
+  color: var(--yga-teal-live);
+  font-family: var(--yga-font-display);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.arena-buy-result-share__close {
+  border: none;
+  background: transparent;
+  color: var(--arena-console-ink-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  cursor: pointer;
+}
+
+.arena-buy-result-share__headline {
+  margin: 0.45rem 0 0;
+  color: var(--arena-console-ink);
+  font-family: var(--yga-font-data);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.arena-buy-result-share__pending {
+  margin: 0.3rem 0 0;
+  color: var(--arena-console-ink-muted);
+  font-size: 0.68rem;
+}
+
+.arena-buy-result-share__rows {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.32rem;
+}
+
+.arena-buy-result-share__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.28rem 0.42rem;
+  border-radius: 0.45rem;
+  background: rgba(8, 18, 30, 0.42);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.arena-buy-result-share__row-label {
+  color: var(--arena-console-ink-muted);
+  font-weight: 600;
+}
+
+.arena-buy-result-share__row-value {
+  color: var(--arena-console-ink);
+  font-family: var(--yga-font-data);
+  font-weight: 700;
+  text-align: right;
+}
+
+.arena-buy-result-share__row--timer .arena-buy-result-share__row-value {
+  color: var(--yga-teal-live);
+}
+
+.arena-buy-result-share__row--xp .arena-buy-result-share__row-value {
+  color: var(--yga-emerald);
+}
+
+.arena-buy-result-share__row--level .arena-buy-result-share__row-value {
+  color: var(--yga-gold);
+}
+
+.arena-buy-result-share__row--warbow .arena-buy-result-share__row-value {
+  color: var(--yga-purple);
+}
+
+.arena-buy-result-share__row--flag .arena-buy-result-share__row-value {
+  color: var(--yga-warning);
+}
+
+.arena-buy-result-share__row--rank .arena-buy-result-share__row-value {
+  color: var(--yga-gold);
+}
+
+.arena-buy-result-share__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.arena-buy-result-share__action {
+  font-size: 0.72rem;
+  padding: 0.28rem 0.55rem;
+}
+
+.arena-buy-result-share__copy-banner {
+  margin: 0.45rem 0 0;
+  font-size: 0.68rem;
+  color: var(--yga-emerald);
+}
+
+.arena-buy-result-share__copy-banner--error {
+  color: var(--yga-warning);
+}
+
+@media (max-width: 720px) {
+  .arena-buy-result-share {
+    place-items: end center;
+    padding-bottom: calc(
+      max(0.4rem, env(safe-area-inset-bottom, 0px)) + 3.95rem + 0.35rem
+    );
+  }
+
+  .arena-buy-result-share__motion {
+    width: min(100%, 20rem);
+  }
+
+  .arena-buy-result-share__headline {
+    font-size: 0.78rem;
+  }
+
+  .arena-buy-result-share__row {
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-buy-result-share__motion {
+    animation: none;
+  }
+}

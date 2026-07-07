@@ -123,13 +123,13 @@ Layout priorities:
 - **Last Buy primary:** `ArenaTimerHero` sits in the primary console column with the largest timer treatment.
 - **Podium carousel:** `ArenaTimerPodiumCarousel` cycles one podium timer/scoring view at a time on the play surface (four-card grid lives on **`/arena/protocol`** only).
 - **Inline CHARM buy:** the buy panel remains visible in the primary column with text entry, slider, min/max controls, pay picker, and direct **Buy CHARM** CTA; no modal-first buy flow.
-- **Post-buy effect toasts:** after a successful buy on **`/`**, [`ArenaEffectToastStack`](../../frontend/src/pages/arena/ArenaEffectToastStack.tsx) overlays one glass toast per effect line (timer, XP, level, WarBow, flag, Last Buyer); copy reuses [`buildArenaBuyProjectedEffectLines`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) / [`buildArenaBuyActualEffectLines`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) ([#337](https://gitlab.com/PlasticDigits/yieldomega/-/issues/337)).
+- **Post-buy result share card:** after a successful buy on **`/`**, [`ArenaBuyResultSharePopover`](../../frontend/src/pages/arena/ArenaBuyResultSharePopover.tsx) shows one closable glass card summarizing timer, rank, BP, XP/level, and WarBow effects; copy collapses [`buildArenaBuyProjectedEffectLines`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) / [`buildArenaBuyActualEffectLines`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) via [`buildArenaBuyShareSummary`](../../frontend/src/pages/arena/arenaBuyShareSummary.ts) ([#365](https://gitlab.com/PlasticDigits/yieldomega/-/issues/365)); supersedes ephemeral multi-toast stack ([#337](https://gitlab.com/PlasticDigits/yieldomega/-/issues/337)) on the play route.
 - **Buy hub metrics:** CHARM price (DOUB), **0.99–10 CHARM** range, and DOUB-buy **CRED yield** appear in the buy panel and projected-effects pills — **no** separate `arena-command-console__decision-row` strip or in-page **`ArenaSubnav`** ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320); see `arenaCommandConsoleStatic.test.ts`).
 - **Secondary operations:** `ArenaCharmCredCard`, `ArenaTimerChips` (Time Booster · Defended Streak · WarBow), and `ArenaWarbowHeroPanel` sit in the secondary operations rail.
 - **Removed chrome (do not document as shipped):** `ArenaSubnav`, `arena-command-console__decision-row` tiles ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)).
 - **Characters and art:** existing bunny + sniper-shark assets remain recognizable but render as low-opacity cyberminimalist console accents; consumed Arena scene backplates use the dark command-console SVGs from #297, not the older bright arcade JPG pack.
 
-Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants §291](../testing/invariants-and-business-logic.md#frontend-arena-command-console-gitlab-291) · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** in [invariants §297](../testing/invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297) · **`INV-FRONTEND-337-BUY-EFFECT-TOASTS`** in [invariants §337](../testing/invariants-and-business-logic.md#frontend-post-buy-effect-toasts-gitlab-337). QA: [manual checklist §291](../testing/manual-qa-checklists.md#manual-qa-issue-291) · [manual checklist §297](../testing/manual-qa-checklists.md#manual-qa-issue-297) · [manual checklist §337](../testing/manual-qa-checklists.md#manual-qa-issue-337).
+Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants §291](../testing/invariants-and-business-logic.md#frontend-arena-command-console-gitlab-291) · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** in [invariants §297](../testing/invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297) · **`INV-FRONTEND-365-BUY-RESULT-SHARE`** in [invariants §365](../testing/invariants-and-business-logic.md#frontend-post-buy-result-share-gitlab-365). QA: [manual checklist §291](../testing/manual-qa-checklists.md#manual-qa-issue-291) · [manual checklist §297](../testing/manual-qa-checklists.md#manual-qa-issue-297) · [manual checklist §365](../testing/manual-qa-checklists.md#manual-qa-issue-365).
 
 <a id="post-buy-effect-toasts-gitlab-337"></a>
 
@@ -147,7 +147,33 @@ After a successful CHARM buy on the play route, the UI shows a compact glass toa
 
 Components: [`ArenaEffectToastStack.tsx`](../../frontend/src/pages/arena/ArenaEffectToastStack.tsx) · [`useArenaBuyEffectToasts.ts`](../../frontend/src/pages/arena/useArenaBuyEffectToasts.ts) · CSS in [`yieldomega-glass-arena.css`](../../frontend/src/styles/yieldomega-glass-arena.css).
 
-Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** · **`INV-FRONTEND-337-BUY-EFFECT-TOASTS`** · **`INV-FRONTEND-362-WARBOW-VIEWER-SUMMARY-FLAG`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md), [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
+**Superseded on play `/` by [#365](https://gitlab.com/PlasticDigits/yieldomega/-/issues/365):** toast stack retained for rollback reference; live play route uses [`ArenaBuyResultSharePopover`](../../frontend/src/pages/arena/ArenaBuyResultSharePopover.tsx).
+
+<a id="post-buy-result-share-gitlab-365"></a>
+
+### Post-buy transaction result share card (GitLab [#365](https://gitlab.com/PlasticDigits/yieldomega/-/issues/365))
+
+Parent funnel epic: [#363](https://gitlab.com/PlasticDigits/yieldomega/-/issues/363).
+
+After a successful CHARM buy on **`/`**, a single closable glass card (`data-testid="arena-buy-result-share-popover"`) summarizes that transaction in one screenshot-ready panel.
+
+| Concern | Behavior |
+|---------|----------|
+| Copy source | Preview snapshot on tx success; upgrades to indexer-confirmed [`buildArenaBuyActualEffectLines`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) via [`buildArenaBuyShareSummary`](../../frontend/src/pages/arena/arenaBuyShareSummary.ts) when viewer buy is at indexer head (**`INV-FRONTEND-301`**) |
+| Rows | Max ~7 grouped rows (timer, rank, BP, XP/level, streak, flag); omits empty sections |
+| Dismiss | Close button, backdrop tap, **Escape**; does **not** auto-dismiss |
+| Share | **Copy summary** (plain text) + **Copy tx link** when `tx_hash` indexed; clipboard errors mirror referral copy feedback |
+| Overlays | Defers while level-up celebration ([#335](https://gitlab.com/PlasticDigits/yieldomega/-/issues/335)) is active; rapid buys replace the card (no stack) |
+| Motion | **`prefers-reduced-motion`** skips enter animation; card remains fully readable |
+| Mobile | Card clears fixed bottom nav + album dock ([`mobileBuyResultShareLayout.test.ts`](../../frontend/src/pages/arena/mobileBuyResultShareLayout.test.ts)) |
+
+Components: [`ArenaBuyResultSharePopover.tsx`](../../frontend/src/pages/arena/ArenaBuyResultSharePopover.tsx) · [`useArenaBuyResultSharePopover.ts`](../../frontend/src/pages/arena/useArenaBuyResultSharePopover.ts) · CSS in [`yieldomega-glass-arena.css`](../../frontend/src/styles/yieldomega-glass-arena.css).
+
+Screenshots: [issue-365](../testing/screenshots/issue-365/README.md) · Playwright `e2e/buy-result-share-screenshots.spec.ts`.
+
+Invariant: **`INV-FRONTEND-365-BUY-RESULT-SHARE`** · QA [manual checklist §365](../testing/manual-qa-checklists.md#manual-qa-issue-365).
+
+Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** · **`INV-FRONTEND-365-BUY-RESULT-SHARE`** · **`INV-FRONTEND-362-WARBOW-VIEWER-SUMMARY-FLAG`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md), [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
 
 <a id="warbow-viewer-summary-flag-gitlab-362"></a>
 

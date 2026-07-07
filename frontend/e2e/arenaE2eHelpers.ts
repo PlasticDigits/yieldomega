@@ -351,7 +351,70 @@ export async function waitIndexerPodiumUxEpoch(
   throw new Error(`podium UX row ${uxRowIndex} epoch did not reach ${minEpoch} within ${timeoutMs}ms`);
 }
 
-/** Poll indexer session-summary until buys/podium activity since `sinceMs` (WYWA #338). */
+async function mockArenaReadsMinimal(page: import("@playwright/test").Page) {
+  await page.route("**/v1/status", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+  await page.route("**/v1/arena/timers", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { "x-schema-version": "2.18.0" },
+      body: JSON.stringify({
+        read_block_number: "100",
+        block_timestamp_sec: String(Math.floor(Date.now() / 1000)),
+        last_buy_deadline_sec: String(Math.floor(Date.now() / 1000) + 3600),
+        arena_start_sec: String(Math.floor(Date.now() / 1000) - 3600),
+        paused: false,
+        total_doub_raised: "0",
+        charm_price_wad: "1000000000000000000000",
+        doub: "0x0000000000000000000000000000000000000001",
+        referral_registry: "0xdddddddddddddddddddddddddddddddddddddddd",
+        timer_extension_sec: "120",
+        timer_cap_sec: "86400",
+        buy_charge_interval_sec: "60",
+        max_buy_charges: "1",
+        burst_buy_cooldown_sec: "60",
+        buy_cooldown_sec: "60",
+        time_arena_buy_router: "0x0000000000000000000000000000000000000002",
+        referral_cred_flat_wad: "5000000000000000000",
+        podium_deadlines_sec: ["0", "0", "0", "0"],
+        podium_epochs: ["1", "1", "1", "1"],
+        podium_timer_armed: [true, true, true, true],
+        last_buy_epoch: "1",
+      }),
+    });
+  });
+  await page.route("**/v1/arena/podiums", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { "x-schema-version": "2.18.0" },
+      body: JSON.stringify({ items: [] }),
+    });
+  });
+  await page.route("**/v1/arena/buys**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], limit: 20, offset: 0, next_offset: null }),
+    });
+  });
+  await page.route("**/v1/arena/warbow/latest-bp**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [] }),
+    });
+  });
+}
+
+export { mockArenaReadsMinimal };
+
 export async function waitIndexerSessionSummaryActivity(
   sinceMs: number,
   timeoutMs = 60_000,
