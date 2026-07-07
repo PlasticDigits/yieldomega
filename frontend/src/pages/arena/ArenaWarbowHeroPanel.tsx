@@ -116,7 +116,10 @@ export function ArenaWarbowHeroPanel({
   claimFlagWriting = false,
 }: Props) {
   const { address } = useAccount();
-  const w = useArenaWarbowHero(phase, { indexerViewerBattlePoints, indexerWarbowHead });
+  const w = useArenaWarbowHero(phase, {
+    indexerViewerBattlePoints,
+    indexerWarbowHead,
+  });
   const { pendingRevengeTargets, hasRevengeOpen, revengeIndexerConfigured } =
     useArenaPendingRevengeTargets(address);
   const viewerBattlePointsDisplay = formatWarbowViewerBattlePointsDisplay(
@@ -182,13 +185,21 @@ export function ArenaWarbowHeroPanel({
     focusWarbowTargetAt(moved.index);
   };
 
-  const stealCost = formatCompactFromRaw(BigInt(w.stealDoubWad), 18, { sigfigs: 4 });
-  const guardCost = formatCompactFromRaw(BigInt(w.guardDoubWad), 18, { sigfigs: 4 });
-  const bypassCost = formatCompactFromRaw(BigInt(w.bypassDoubWad), 18, { sigfigs: 4 });
-  const revengeCost = formatCompactFromRaw(BigInt(w.revengeDoubWad), 18, { sigfigs: 4 });
+  const stealCost = w.ready
+    ? formatCompactFromRaw(BigInt(w.stealDoubWad), 18, { sigfigs: 4 })
+    : "";
+  const guardCost = w.ready
+    ? formatCompactFromRaw(BigInt(w.guardDoubWad), 18, { sigfigs: 4 })
+    : "";
+  const bypassCost = w.ready
+    ? formatCompactFromRaw(BigInt(w.bypassDoubWad), 18, { sigfigs: 4 })
+    : "";
+  const revengeCost = w.ready
+    ? formatCompactFromRaw(BigInt(w.revengeDoubWad), 18, { sigfigs: 4 })
+    : "";
 
   const subcardHelpCopy = useMemo(() => {
-    if (!subcardHelpTopic) return null;
+    if (!subcardHelpTopic || !w.ready) return null;
     return warbowHeroSubcardHelpCopy(subcardHelpTopic, {
       stealCostLabel: stealCost,
       guardCostLabel: guardCost,
@@ -203,6 +214,7 @@ export function ArenaWarbowHeroPanel({
     bypassCost,
     revengeCost,
     w.maxStealsPerDay,
+    w.ready,
   ]);
 
   if (!w.ready) return null;
@@ -211,6 +223,17 @@ export function ArenaWarbowHeroPanel({
     w.chainNowSec !== undefined && w.guardedActive
       ? Math.max(0, Number(BigInt(w.guardUntilSec) - BigInt(Math.floor(w.chainNowSec))))
       : undefined;
+
+  const attackerStealsUsed =
+    w.attackerStealsToday !== undefined ? Number(w.attackerStealsToday) : undefined;
+  const stealQuotaAtCap =
+    attackerStealsUsed !== undefined && attackerStealsUsed >= w.maxStealsPerDay;
+  const stealPreflightVariant =
+    w.stealPreflight.tone === "error"
+      ? "error"
+      : w.stealPreflight.tone === "warning"
+        ? "warning"
+        : "muted";
 
   const flagLedgerNowSec = ledgerNowSec ?? w.chainNowSec;
   const flagSilenceRemainingSec =
@@ -257,6 +280,29 @@ export function ArenaWarbowHeroPanel({
                 : "INACTIVE"}
             </strong>
           </p>
+          <p
+            className="warbow-hero-viewer-summary__line"
+            data-testid="warbow-hero-steal-quota-summary"
+          >
+            STEAL QUOTA:{" "}
+            <strong>
+              {attackerStealsUsed !== undefined
+                ? `${attackerStealsUsed} / ${formatLocaleInteger(w.maxStealsPerDay)}`
+                : "—"}
+            </strong>
+            {w.utcDayResetSec !== undefined ? (
+              <>
+                {" "}
+                · resets in <strong>{formatCountdown(w.utcDayResetSec)}</strong>
+              </>
+            ) : null}
+            {stealQuotaAtCap ? (
+              <>
+                {" "}
+                · <span className="muted">bypass required until reset</span>
+              </>
+            ) : null}
+          </p>
           {showClaimFlagControl && flagSilenceRemainingSec !== undefined ? (
             <p
               className="warbow-hero-viewer-summary__line"
@@ -267,24 +313,6 @@ export function ArenaWarbowHeroPanel({
                 {canClaimWarBowFlag
                   ? "claim now"
                   : `${formatCountdown(flagSilenceRemainingSec)} until claim`}
-              </strong>
-            </p>
-          ) : null}
-          {w.utcResetSec !== undefined ? (
-            <p
-              className="warbow-hero-viewer-summary__line"
-              data-testid="warbow-hero-viewer-summary-steal-quota"
-            >
-              STEAL QUOTA:{" "}
-              <strong>
-                {w.attackerStealsToday !== undefined
-                  ? `${formatLocaleInteger(w.attackerStealsToday)} / ${formatLocaleInteger(w.maxStealsPerDay)}`
-                  : "…"}{" "}
-                · resets in {formatCountdown(w.utcResetSec)}
-                {w.attackerStealsToday !== undefined &&
-                w.attackerStealsToday >= BigInt(w.maxStealsPerDay)
-                  ? " — bypass required until reset"
-                  : ""}
               </strong>
             </p>
           ) : null}
@@ -418,21 +446,18 @@ export function ArenaWarbowHeroPanel({
                 />{" "}
                 Pay {bypassCost} DOUB bypass if victim hit daily cap ({formatLocaleInteger(w.maxStealsPerDay)}/day)
               </label>
-              {w.stealVictim &&
-                (w.stealPreflight.tone === "warning" || w.stealPreflight.tone === "error") && (
-                  <StatusMessage
-                    variant={w.stealPreflight.tone === "error" ? "error" : "warning"}
-                    data-testid="warbow-hero-steal-preflight"
-                  >
-                    <strong>{w.stealPreflight.title}</strong> · {w.stealPreflight.detail}
-                  </StatusMessage>
-                )}
+              {w.stealVictim ? (
+                <StatusMessage
+                  variant={stealPreflightVariant}
+                  data-testid="warbow-hero-steal-preflight"
+                >
+                  <strong>{w.stealPreflight.title}</strong> · {w.stealPreflight.detail}
+                </StatusMessage>
+              ) : null}
               <button
                 type="button"
                 className="btn-secondary btn-secondary--critical"
-                disabled={
-                  !w.canPress || !w.stealVictim || w.stealPreflight.tone === "error"
-                }
+                disabled={!w.canPress || !w.stealVictim || w.stealPreflight.tone === "error"}
                 onClick={() => void w.runWarBowSteal()}
                 data-testid="warbow-hero-steal-submit"
               >

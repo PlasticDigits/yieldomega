@@ -305,7 +305,7 @@ describe("describeStealPreflight", () => {
     });
   });
 
-  it("flags daily steal cap before signing", () => {
+  it("warns when victim UTC-day steal cap is reached (#361)", () => {
     expect(
       describeStealPreflight({
         connected: true,
@@ -323,6 +323,28 @@ describe("describeStealPreflight", () => {
     ).toMatchObject({
       tone: "warning",
       title: "Daily steal limit",
+    });
+  });
+
+  it("warns when attacker UTC-day steal cap is exhausted (#361)", () => {
+    expect(
+      describeStealPreflight({
+        connected: true,
+        saleActive: true,
+        viewer: "0x1111111111111111111111111111111111111111",
+        victim: "0x2222222222222222222222222222222222222222",
+        viewerBattlePoints: 500n,
+        victimBattlePoints: 1200n,
+        victimStealsToday: 0n,
+        attackerStealsToday: 3n,
+        maxStealsPerDay: 3n,
+        bypassSelected: false,
+        guardActive: false,
+      }),
+    ).toMatchObject({
+      tone: "warning",
+      title: "Daily steal limit",
+      detail: expect.stringContaining("already landed 3 steals today"),
     });
   });
 });

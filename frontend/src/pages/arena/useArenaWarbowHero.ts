@@ -31,7 +31,7 @@ import {
   WARBOW_STEAL_LIMIT_BYPASS_DOUB_WAD,
 } from "@/lib/arenaWarbowConstants";
 import { readWarbowStealCapDisplay } from "@/lib/readWarbowStealCapDisplay";
-import { warbowSecondsUntilNextUtcDay, warbowUtcDayId } from "@/lib/warbowUtcDayReset";
+import { warbowUtcDayId, warbowUtcDayResetSec } from "@/lib/warbowUtcDayReset";
 import type { SaleSessionPhase } from "@/pages/arena/arenaSimplePhase";
 
 export type IndexerWarbowHeroHead = {
@@ -144,8 +144,8 @@ export function useArenaWarbowHero(
 
   const utcDayId =
     chainNowSec !== undefined ? warbowUtcDayId(chainNowSec, daySec) : 0n;
-  const utcResetSec =
-    chainNowSec !== undefined ? warbowSecondsUntilNextUtcDay(chainNowSec, daySec) : undefined;
+  const utcDayResetSec =
+    chainNowSec !== undefined ? warbowUtcDayResetSec(chainNowSec, Number(daySec)) : undefined;
 
   const stealVictim = useMemo(() => {
     const t = stealVictimInput.trim();
@@ -342,7 +342,7 @@ export function useArenaWarbowHero(
         attacker: address,
         utcDayId,
       });
-      const victimGuarded =
+      const freshVictimGuarded =
         chainNowSec !== undefined && BigInt(chainNowSec) < fresh.victimGuardUntil;
       const preflight = describeStealPreflight(
         {
@@ -356,7 +356,7 @@ export function useArenaWarbowHero(
           attackerStealsToday: fresh.attackerStealsToday,
           maxStealsPerDay: BigInt(maxSteals),
           bypassSelected: stealBypass,
-          guardActive: victimGuarded,
+          guardActive: freshVictimGuarded,
         },
         shortAddress,
       );
@@ -518,7 +518,7 @@ export function useArenaWarbowHero(
     guardedActive,
     guardUntilSec: (guardUntilEffective ?? 0n).toString(),
     chainNowSec,
-    utcResetSec,
+    utcDayResetSec,
     attackerStealsToday,
     viewerBattlePoints: viewerBattlePointsEffective?.toString(),
     stealDoubWad: stealDoubWei.toString(),

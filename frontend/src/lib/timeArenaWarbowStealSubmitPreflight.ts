@@ -8,14 +8,14 @@ export type FreshWarbowStealPreflight = {
   victimBattlePoints: bigint;
   victimStealsToday: bigint;
   victimGuardUntil: bigint;
-  attackerStealsToday?: bigint;
+  attackerStealsToday: bigint;
 };
 
 /** Fresh onchain reads immediately before `warbowSteal` submit ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216), [#101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101)). */
 export async function readFreshWarbowStealPreflight(params: {
   tc: `0x${string}`;
   victim: `0x${string}`;
-  attacker?: `0x${string}`;
+  attacker: `0x${string}`;
   utcDayId: bigint;
 }): Promise<FreshWarbowStealPreflight> {
   const { tc, victim, attacker, utcDayId } = params;
@@ -39,20 +39,17 @@ export async function readFreshWarbowStealPreflight(params: {
         functionName: "warbowGuardUntil",
         args: [victim],
       }),
-      attacker
-        ? readContract(wagmiConfig, {
-            address: tc,
-            abi: timeArenaReadAbi,
-            functionName: "stealsCommittedByAttackerOnDay",
-            args: [attacker, utcDayId],
-          })
-        : Promise.resolve(undefined),
+      readContract(wagmiConfig, {
+        address: tc,
+        abi: timeArenaReadAbi,
+        functionName: "stealsCommittedByAttackerOnDay",
+        args: [attacker, utcDayId],
+      }),
     ]);
   return {
     victimBattlePoints: BigInt(victimBattlePoints),
     victimStealsToday: BigInt(victimStealsToday),
     victimGuardUntil: BigInt(victimGuardUntil),
-    attackerStealsToday:
-      attackerStealsToday !== undefined ? BigInt(attackerStealsToday) : undefined,
+    attackerStealsToday: BigInt(attackerStealsToday),
   };
 }

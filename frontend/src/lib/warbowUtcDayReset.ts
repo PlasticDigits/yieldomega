@@ -17,3 +17,8 @@ export function warbowSecondsUntilNextUtcDay(
   const elapsedInDay = ((Math.floor(chainNowSec) % day) + day) % day;
   return day - elapsedInDay;
 }
+
+/** Alias used by WarBow hero display — same semantics as `warbowSecondsUntilNextUtcDay`. */
+export function warbowUtcDayResetSec(chainNowSec: number, secondsPerDay: number): number {
+  return warbowSecondsUntilNextUtcDay(chainNowSec, secondsPerDay);
+}

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   warbowSecondsUntilNextUtcDay,
   warbowUtcDayId,
+  warbowUtcDayResetSec,
 } from "./warbowUtcDayReset";
 import { WARBOW_SECONDS_PER_DAY } from "./arenaWarbowConstants";
 
@@ -22,5 +23,19 @@ describe("warbowUtcDayReset", () => {
     expect(warbowSecondsUntilNextUtcDay(DAY - 1, DAY)).toBe(1);
     expect(warbowSecondsUntilNextUtcDay(DAY, DAY)).toBe(DAY);
     expect(warbowSecondsUntilNextUtcDay(DAY + 3600, DAY)).toBe(DAY - 3600);
+  });
+});
+
+describe("warbowUtcDayResetSec", () => {
+  it("counts down to the next UTC midnight using floor division semantics", () => {
+    expect(warbowUtcDayResetSec(0, DAY)).toBe(DAY);
+    expect(warbowUtcDayResetSec(1, DAY)).toBe(DAY - 1);
+    expect(warbowUtcDayResetSec(DAY - 1, DAY)).toBe(1);
+    expect(warbowUtcDayResetSec(DAY, DAY)).toBe(DAY);
+    expect(warbowUtcDayResetSec(DAY + 3600, DAY)).toBe(DAY - 3600);
+  });
+
+  it("uses floor division on chain timestamps", () => {
+    expect(warbowUtcDayResetSec(86_399, DAY)).toBe(1);
   });
 });

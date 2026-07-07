@@ -50,6 +50,15 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("readWarbowStealCapDisplay");
   });
 
+  it("useArenaWarbowHero uses one-shot steal-cap reads when indexer is on (#361 · #301)", () => {
+    const src = readArena("useArenaWarbowHero.ts");
+    expect(src).toContain("readWarbowStealCapDisplay");
+    expect(src).toMatch(
+      /stealsCommittedByAttackerOnDay[\s\S]*?enabled:\s*Boolean\(tc && address && !indexerOn\)/,
+    );
+    expect(src).toContain("warbowUtcDayResetSec");
+  });
+
   it("useArenaPendingRevengeTargets uses indexer pending-revenge HTTP only (#135)", () => {
     const src = readFileSync(
       resolve(arenaDir, "../../hooks/useArenaPendingRevengeTargets.ts"),

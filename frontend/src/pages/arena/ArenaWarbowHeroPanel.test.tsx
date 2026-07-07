@@ -49,14 +49,14 @@ const baseHook = {
   guardedActive: false,
   guardUntilSec: "0",
   chainNowSec: 1_700_000_000,
-  utcResetSec: 43_200,
-  attackerStealsToday: 1n,
   viewerBattlePoints: "100",
   stealDoubWad: "1000000000000000000000",
   guardDoubWad: "10000000000000000000000",
   bypassDoubWad: "500000000000000000000",
   revengeDoubWad: "2000000000000000000000",
   maxStealsPerDay: 3,
+  attackerStealsToday: "0",
+  utcDayResetSec: 43_200,
   stealPreflight: {
     tone: "muted" as const,
     title: "Pick a rival",
@@ -288,11 +288,32 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
     expect(html).toContain('aria-label="Open Steal help"');
   });
 
-  it("shows steal quota + UTC reset in viewer summary (#361)", () => {
+  it("shows attacker steal quota and UTC-day reset countdown in viewer summary (#361)", () => {
     mockWarbowHero.mockReturnValue({
       ...baseHook,
-      attackerStealsToday: 2n,
-      utcResetSec: 3661,
+      attackerStealsToday: "2",
+      utcDayResetSec: 12_345,
+    });
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+        indexerViewerBattlePoints: 100n,
+      }),
+    );
+    expect(html).toContain('data-testid="warbow-hero-steal-quota-summary"');
+    expect(html).toContain("STEAL QUOTA:");
+    expect(html).toContain("2 / 3");
+    expect(html).toContain("03:25:45");
+  });
+
+  it("hints bypass when attacker steal quota is exhausted (#361)", () => {
+    mockWarbowHero.mockReturnValue({
+      ...baseHook,
+      attackerStealsToday: "3",
+      utcDayResetSec: 500,
     });
     mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
     const html = renderToStaticMarkup(
@@ -302,19 +323,16 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
         warbowTargets,
       }),
     );
-    expect(html).toContain('data-testid="warbow-hero-viewer-summary-steal-quota"');
-    expect(html).toContain("STEAL QUOTA:");
-    expect(html).toContain("2 / 3");
-    expect(html).toContain("01:01:01");
+    expect(html).toContain("bypass required until reset");
   });
 
-  it("shows inline daily-cap warning above Steal when victim is capped (#361)", () => {
-    const victim = TARGET_A;
+  it("renders inline steal preflight above the Steal button (#361)", () => {
     mockWarbowHero.mockReturnValue({
       ...baseHook,
-      stealVictim: victim,
+      stealVictim: TARGET_A,
+      stealVictimInput: TARGET_A,
       stealPreflight: {
-        tone: "warning" as const,
+        tone: "warning",
         title: "Daily steal limit",
         detail: "Victim already hit 3 steals received today. Enable bypass if you still want to spend for the hit.",
       },
@@ -329,6 +347,33 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
     );
     expect(html).toContain('data-testid="warbow-hero-steal-preflight"');
     expect(html).toContain("Daily steal limit");
-    expect(html).toMatch(/warbow-hero-steal-preflight[\s\S]*Steal/);
+    const preflightIdx = html.indexOf('data-testid="warbow-hero-steal-preflight"');
+    const stealBtnIdx = html.indexOf('data-testid="warbow-hero-steal-submit"');
+    expect(preflightIdx).toBeGreaterThan(-1);
+    expect(stealBtnIdx).toBeGreaterThan(preflightIdx);
+  });
+
+  it("disables Steal when inline preflight tone is error (#361)", () => {
+    mockWarbowHero.mockReturnValue({
+      ...baseHook,
+      stealVictim: TARGET_A,
+      stealVictimInput: TARGET_A,
+      stealPreflight: {
+        tone: "error",
+        title: "2× minimum not met",
+        detail: "Victim has 200 BP vs your 100 BP, so the steal would revert right now.",
+      },
+    });
+    mockPendingRevengeTargets.mockReturnValue(noRevengeMock);
+    const html = renderToStaticMarkup(
+      createElement(ArenaWarbowHeroPanel, {
+        phase: "saleActive",
+        playerLevel: 5,
+        warbowTargets,
+      }),
+    );
+    const submitTag = html.match(/<button[^>]*data-testid="warbow-hero-steal-submit"[^>]*>/)?.[0];
+    expect(submitTag).toBeDefined();
+    expect(submitTag).toContain("disabled");
   });
 });
