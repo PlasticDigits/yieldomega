@@ -36,3 +36,18 @@ describe("useArenaBuyEffectToasts wiring (#337)", () => {
     expect(src).toContain("replaceToastBatch");
   });
 });
+
+describe("useArenaBuyResultSharePopover wiring (#365)", () => {
+  const src = readFileSync(
+    resolve(__dirname, "../pages/arena/useArenaBuyResultSharePopover.ts"),
+    "utf8",
+  );
+
+  it("shows preview card on buy success and upgrades from indexer head buy", () => {
+    expect(src).toContain("onBuySuccess");
+    expect(src).toContain("buildArenaBuyShareSummary");
+    expect(src).toContain("findViewerBuyAtHead");
+    expect(src).toContain("celebrationActive");
+    expect(src).toContain("deferredCardRef");
+  });
+});

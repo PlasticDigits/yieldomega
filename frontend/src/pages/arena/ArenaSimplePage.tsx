@@ -65,12 +65,12 @@ import { useArenaSaleSession } from "@/pages/arena/useArenaSaleSession";
 import { useArenaSimplePageSfx } from "@/pages/arena/useArenaSimplePageSfx";
 import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { ArenaBuyProjectedEffectsPills } from "@/pages/arena/ArenaBuyProjectedEffectsPills";
-import { ArenaEffectToastStack } from "@/pages/arena/ArenaEffectToastStack";
+import { ArenaBuyResultSharePopover } from "@/pages/arena/ArenaBuyResultSharePopover";
 import {
   buildArenaBuyProjectedEffectLines,
   mergeArenaBuyProjectedEffectBonusLines,
 } from "@/pages/arena/arenaBuyProjectedEffects";
-import { useArenaBuyEffectToasts } from "@/pages/arena/useArenaBuyEffectToasts";
+import { useArenaBuyResultSharePopover } from "@/pages/arena/useArenaBuyResultSharePopover";
 import {
   type PodiumReadRow,
   usePodiumReads,
@@ -468,14 +468,18 @@ export function ArenaSimplePage({
       ? BigInt(playerWalletStats.xp_toward_next)
       : undefined;
 
-  const { toasts: buyEffectToasts, dismissToast: dismissBuyEffectToast, onBuySuccess: onBuyEffectToastSuccess } =
-    useArenaBuyEffectToasts({
-      recentBuys,
-      walletAddress: session.walletAddress,
-      previewPolicy: session.buyPreviewPolicy,
-      playerLevel: playerLevelRaw,
-      reduceMotion: Boolean(prefersReducedMotion),
-    });
+  const {
+    card: buyResultShareCard,
+    dismissCard: dismissBuyResultShare,
+    onBuySuccess: onBuyResultShareSuccess,
+  } = useArenaBuyResultSharePopover({
+    recentBuys,
+    walletAddress: session.walletAddress,
+    previewPolicy: session.buyPreviewPolicy,
+    playerLevel: playerLevelRaw,
+    reduceMotion: Boolean(prefersReducedMotion),
+    celebrationActive: levelUpCelebration !== null,
+  });
 
   useEffect(() => {
     const wasBusy = prevBuySubmitBusyRef.current;
@@ -483,7 +487,7 @@ export function ArenaSimplePage({
     if (wasBusy && !session.buySubmitBusy && session.buyError === null) {
       setBuyFeedRefreshNonce((n) => n + 1);
       invalidateArenaWalletStatsQueries(queryClient);
-      onBuyEffectToastSuccess(
+      onBuyResultShareSuccess(
         buildSimplePageProjectedEffectLines({
           latch: simpleProjectedEffectsLatchRef.current,
           session,
@@ -494,7 +498,7 @@ export function ArenaSimplePage({
       );
     }
   }, [
-    onBuyEffectToastSuccess,
+    onBuyResultShareSuccess,
     playerLevelRaw,
     queryClient,
     recentBuys,
@@ -1265,9 +1269,9 @@ export function ArenaSimplePage({
         </div>
       ) : null}
 
-      <ArenaEffectToastStack
-        toasts={buyEffectToasts}
-        onDismiss={dismissBuyEffectToast}
+      <ArenaBuyResultSharePopover
+        summary={buyResultShareCard}
+        onDismiss={dismissBuyResultShare}
         reduceMotion={Boolean(prefersReducedMotion)}
       />
 

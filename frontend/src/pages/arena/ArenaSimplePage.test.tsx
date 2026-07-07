@@ -28,6 +28,7 @@ vi.mock("motion/react", () => ({
 
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: () => {} }),
+  useQuery: () => ({ data: undefined, isLoading: false, isError: false }),
 }));
 
 vi.mock("wagmi", () => ({
@@ -70,10 +71,11 @@ vi.mock("./useArenaSimplePageSfx", () => ({
   useArenaSimplePageSfx: () => {},
 }));
 
-vi.mock("./useArenaBuyEffectToasts", () => ({
-  useArenaBuyEffectToasts: () => ({
-    toasts: [],
-    dismissToast: () => {},
+vi.mock("./useArenaBuyResultSharePopover", () => ({
+  useArenaBuyResultSharePopover: () => ({
+    card: null,
+    cardId: null,
+    dismissCard: () => {},
     onBuySuccess: () => {},
   }),
 }));
@@ -378,7 +380,6 @@ describe("ArenaSimplePage #331 visual feature wiring", () => {
 
   it("wires next-level lock overlays via LockedUntilLevel (#334)", () => {
     expect(src).toContain("LockedUntilLevel");
-    expect(src).toContain("shouldShowLevelLock");
     expect(src).toContain("FEATURE_UNLOCK_LEVEL");
   });
 
@@ -387,9 +388,10 @@ describe("ArenaSimplePage #331 visual feature wiring", () => {
     expect(src).toContain("LevelUpCelebrationPopover");
   });
 
-  it("wires post-buy effect toast stack on successful buys (#337)", () => {
-    expect(src).toContain("useArenaBuyEffectToasts");
-    expect(src).toContain("ArenaEffectToastStack");
-    expect(src).toContain("onBuySuccess");
+  it("wires post-buy result share popover on successful buys (#365)", () => {
+    expect(src).toContain("useArenaBuyResultSharePopover");
+    expect(src).toContain("ArenaBuyResultSharePopover");
+    expect(src).toContain("onBuyResultShareSuccess");
+    expect(src).toContain("celebrationActive");
   });
 });

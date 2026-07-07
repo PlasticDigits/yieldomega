@@ -56,7 +56,7 @@ test.describe("Anvil Arena wallet writes", () => {
     });
   });
 
-  test("DOUB buy shows post-buy effect toasts on /", async ({ page }) => {
+  test("DOUB buy shows post-buy result share popover on /", async ({ page }) => {
     await gotoArena(page);
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
       timeout: ARENA_E2E_TIMEOUT_MS,
@@ -74,8 +74,10 @@ test.describe("Anvil Arena wallet writes", () => {
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
-    await expect(page.getByTestId("arena-buy-effect-toast").first()).toBeVisible({
+    await expect(page.getByTestId("arena-buy-result-share-popover")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
+    await page.getByTestId("arena-buy-result-share-close").click();
+    await expect(page.getByTestId("arena-buy-result-share-popover")).toHaveCount(0);
   });
 });

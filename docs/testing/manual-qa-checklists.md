@@ -1020,6 +1020,25 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
 
 **Doc map:** [frontend design §290/#297](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) · [sound recommendations](../frontend/sound-effects-recommendations.md) · [art README](../../frontend/public/art/README.md) · [invariants — #297](invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297) · [play skills](../../skills/README.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
+<a id="manual-qa-issue-365"></a>
+
+## Post-buy transaction result share card (GitLab #365)
+
+**Goal:** After a successful CHARM buy on **`/`**, verify a single closable share card summarizes buy effects in one screenshot-ready panel.
+
+### Checklist
+
+- [ ] Connect wallet on live sale; submit a DOUB (or CRED) buy at minimum valid CHARM.
+- [ ] `data-testid="arena-buy-result-share-popover"` appears with headline + grouped rows (timer, Last Buyer, BP when applicable).
+- [ ] Card does not auto-dismiss; close via ×, backdrop, or Escape; subsequent buy shows a fresh card.
+- [ ] **Copy summary** writes plain-text share copy; **Copy tx link** appears after indexer confirms `tx_hash`.
+- [ ] Desktop / tablet / mobile: entire card fits in one viewport screenshot ([issue-365 screenshots](screenshots/issue-365/README.md)).
+- [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`;
+  `cd frontend && CI=1 npm run test:e2e -- --workers=1 e2e/buy-result-share-screenshots.spec.ts`;
+  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/anvil-arena-03-wallet-writes.spec.ts` (after `bash scripts/e2e-anvil.sh`).
+
+**Doc map:** [arena views §365](../frontend/arena-views.md#post-buy-result-share-gitlab-365) · [invariants — #365](invariants-and-business-logic.md#frontend-post-buy-result-share-gitlab-365) · [play-time-arena-doub skill](../../skills/play-time-arena-doub/SKILL.md)
+
 <a id="manual-qa-issue-337"></a>
 
 ## Post-buy effect toasts (GitLab #337)
