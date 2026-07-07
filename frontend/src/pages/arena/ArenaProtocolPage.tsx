@@ -19,6 +19,7 @@ import { addresses, type HexAddress } from "@/lib/addresses";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import { ArenaLiveBuysActivitySection } from "@/pages/arena/ArenaLiveBuysActivitySection";
+import { ArenaEventDirectorySection } from "@/pages/arena/ArenaEventDirectorySection";
 import { RawDataAccordion } from "@/pages/arena/ArenaSections";
 import { ArenaProtocolDonatePoolsSection } from "@/pages/arena/ArenaProtocolDonatePoolsSection";
 import { WalletProfileModal } from "@/components/WalletProfileModal";
@@ -230,6 +231,8 @@ export function ArenaProtocolPage() {
           badgeIconSrc={protocolPhaseBadge.iconSrc}
         />
       </header>
+
+      <ArenaEventDirectorySection />
 
       <ArenaSimplePodiumSection
         podiumRows={podiumReads.data}

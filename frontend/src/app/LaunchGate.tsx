@@ -24,6 +24,7 @@ const ArenaProtocolPage = lazyPage(
   () => import("@/pages/arena/ArenaProtocolPage"),
   "ArenaProtocolPage",
 );
+const ArenaEventPage = lazyPage(() => import("@/pages/arena/ArenaEventPage"), "ArenaEventPage");
 const ArenaBranchPage = lazyPage(() => import("@/pages/ArenaBranchPage"), "ArenaBranchPage");
 const ReferralBranchPage = lazyPage(
   () => import("@/pages/ReferralBranchPage"),
@@ -60,6 +61,11 @@ const AUDIT_ROUTE: Surface = {
   ),
 };
 
+const AUDIT_EVENT_ROUTE: Surface = {
+  path: "audit/events/:eventId",
+  element: <ArenaEventPage />,
+};
+
 /** Arena sub-routes and legacy `/arena` redirect (#256, #266). Play surface is index `/`. */
 const ARENA_ROUTES: Surface[] = [
   { path: "arena", element: <Navigate to="/" replace /> },
@@ -80,6 +86,7 @@ const REFERRAL_ROUTE: Surface = {
 const ROUTES_NO_ENV: Surface[] = [
   { path: undefined, element: <TimeArenaPage /> },
   { path: "home", element: <HomePage /> },
+  AUDIT_EVENT_ROUTE,
   AUDIT_ROUTE,
   ...ARENA_ROUTES,
   ...SECONDARY_ROUTES,
@@ -89,6 +96,7 @@ const ROUTES_NO_ENV: Surface[] = [
 const ROUTES_POST_LAUNCH: Surface[] = [
   { path: undefined, element: <TimeArenaPage /> },
   { path: "home", element: <HomePage /> },
+  AUDIT_EVENT_ROUTE,
   AUDIT_ROUTE,
   ...ARENA_ROUTES,
   ...SECONDARY_ROUTES,

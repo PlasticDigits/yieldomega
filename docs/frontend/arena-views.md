@@ -317,6 +317,23 @@ When a connected wallet crosses **Level 2+** on play **`/`**, [`ArenaSimplePage.
 - `GET /v1/arena/wallet/{address}/stats` — participant profile aggregates (XP, buy count, WarBow steals; [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255); schema **≥ 2.4.0**)
 - `GET /v1/arena/session-summary` — absent-session recap for play modal ([#338](https://gitlab.com/PlasticDigits/yieldomega/-/issues/338); schema **≥ 2.18.0**)
 - `GET /v1/arena/podium-pool-donations` — donate-pools AUDIT card ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
+- `GET /v1/arena/events` — searchable event catalog (podium settlements + Last Buy epoch starts) ([#364](https://gitlab.com/PlasticDigits/yieldomega/-/issues/364); schema **≥ 2.24.0**)
+- `GET /v1/arena/events/{id}` — permanent event detail (winners, chart buys, tx replay) ([#364](https://gitlab.com/PlasticDigits/yieldomega/-/issues/364))
+
+<a id="arena-event-directory-gitlab-364"></a>
+
+## AUDIT event directory and permanent event pages (GitLab [#364](https://gitlab.com/PlasticDigits/yieldomega/-/issues/364))
+
+**`/audit`** mounts **`ArenaEventDirectorySection`** immediately under the AUDIT hero: kind filter chips (**All** · **Podium settlements** · **Last Buy epochs**), search, and paginated links to **`/audit/events/{id}`**. Event pages are read-only, indexer-backed, and set per-route **`document.title`** + meta description from the event payload. No wallet prompts on event pages.
+
+| Piece | Path |
+|-------|------|
+| Directory UI | [`ArenaEventDirectorySection.tsx`](../../frontend/src/pages/arena/ArenaEventDirectorySection.tsx) |
+| Event page | [`ArenaEventPage.tsx`](../../frontend/src/pages/arena/ArenaEventPage.tsx) |
+| Indexer client | [`indexerApi.ts`](../../frontend/src/lib/indexerApi.ts) (`fetchArenaEvents`, `fetchArenaEventDetail`) |
+| Routes | [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx) (`audit/events/:eventId` before referral catch-all) |
+
+Invariant: **`INV-FRONTEND-364-ARENA-EVENT-PAGES`** · **`INV-INDEXER-364-ARENA-EVENTS`**. Verify: `bash scripts/verify-arena-events-anvil.sh`; Playwright: `e2e/anvil-audit-events.spec.ts` with `YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh`.
 
 <a id="while-you-were-away-modal-gitlab-338"></a>
 

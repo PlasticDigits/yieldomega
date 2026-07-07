@@ -1070,3 +1070,88 @@ export async function fetchArenaWarbowLatestBp(players: readonly string[]) {
   );
   return body ?? { items: [] as ArenaWarbowLatestBpItem[] };
 }
+
+export type ArenaEventKind = "podium_settlement" | "last_buy_epoch_start";
+
+export type ArenaEventListItem = {
+  id: string;
+  kind: ArenaEventKind;
+  slug: string;
+  title: string;
+  subtitle: string;
+  block_timestamp: string | null;
+  podium?: string | null;
+  category?: number | null;
+  epoch: string;
+  tx_hash: string;
+  block_number: string;
+  log_index: number;
+};
+
+export type ArenaEventWinner = {
+  rank: number;
+  address: string | null;
+  prize_doub_wad: string;
+};
+
+export type ArenaEventChartBuy = {
+  buyer: string;
+  amount: string;
+  charm_wad: string;
+  new_deadline: string;
+  total_raised_after: string;
+  buy_index: string;
+  actual_seconds_added: string;
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+  block_timestamp: string | null;
+};
+
+export type ArenaEventDetail = ArenaEventListItem & {
+  roll_epoch?: string;
+  pool_paid_doub_wad?: string;
+  winners?: ArenaEventWinner[];
+  deadline_sec?: string;
+  chart_buys: ArenaEventChartBuy[];
+};
+
+export function arenaEventsApiPath(
+  limit = 25,
+  offset = 0,
+  kind?: ArenaEventKind | "all",
+  q?: string,
+): string {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (kind && kind !== "all") {
+    params.set("kind", kind);
+  }
+  if (q?.trim()) {
+    params.set("q", q.trim());
+  }
+  return `/v1/arena/events?${params.toString()}`;
+}
+
+export function arenaEventDetailApiPath(eventId: string): string {
+  return `/v1/arena/events/${encodeURIComponent(eventId)}`;
+}
+
+export function arenaEventPagePath(eventId: string): string {
+  return `/audit/events/${encodeURIComponent(eventId)}`;
+}
+
+export async function fetchArenaEvents(
+  limit = 25,
+  offset = 0,
+  kind?: ArenaEventKind | "all",
+  q?: string,
+) {
+  return getJson<PaginatedItems<ArenaEventListItem>>(arenaEventsApiPath(limit, offset, kind, q));
+}
+
+export async function fetchArenaEventDetail(eventId: string) {
+  return getJson<ArenaEventDetail>(arenaEventDetailApiPath(eventId));
+}

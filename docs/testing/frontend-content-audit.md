@@ -79,6 +79,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
 | Heading | **AUDIT** H1; compact VERIFY / TRACE / WATCH hierarchy | [arena-views §293](../frontend/arena-views.md#arena-audit-protocol-surfaces-gitlab-293) |
+| Event directory | **`ArenaEventDirectorySection`** under hero: filter chips, search, links to **`/audit/events/{id}`** ([#364](https://gitlab.com/PlasticDigits/yieldomega/-/issues/364)) | [arena-views §364](../frontend/arena-views.md#arena-event-directory-gitlab-364) |
 | Four-podium grid | **`ArenaSimplePodiumSection`** shows all four podiums with epoch + DOUB prizes + USD equivalent | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
 | Mechanics copy | Always-live when unpaused; flat DOUB CHARM buys; **100%** podium routing (**25%** per track · **70/20/10** epochs; [#300](../product/arena-v2.md#doub-prize-routing-per-buy--300)); 100% donate top-up; WarBow activity | [arena-v2.md](../product/arena-v2.md) |
 | Podiums | Four-card **`arena-simple-podiums`** grid; epoch + DOUB prizes + USD equivalent; blockie + last-six addresses | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
@@ -87,7 +88,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Addresses | Participant rows → wallet profile; contract/vault rows → explorer | [arena-views §294](../frontend/arena-views.md#shared-frontend-primitives-gitlab-294) |
 | Forbidden copy | No TimeCurve sale-end / redemption / legacy fee-sink framing | [manual QA §293](manual-qa-checklists.md#manual-qa-issue-293) |
 
-**E2E:** `e2e/arena.spec.ts` · **Manual:** [manual QA §293](manual-qa-checklists.md#manual-qa-issue-293)
+**E2E:** `e2e/arena.spec.ts`, `e2e/anvil-audit-events.spec.ts` (indexer + Anvil) · **Manual:** [manual QA §293](manual-qa-checklists.md#manual-qa-issue-293)
 
 ---
 
