@@ -29,7 +29,13 @@ log() {
 }
 
 cast_u256() {
-  cast call "$1" "$2" --rpc-url "${RPC}" | awk '{print $1}'
+  local addr="$1" sig="$2"
+  shift 2
+  if [[ $# -gt 0 ]]; then
+    cast call "${addr}" "${sig}" "$@" --rpc-url "${RPC}" | awk '{print $1}'
+  else
+    cast call "${addr}" "${sig}" --rpc-url "${RPC}" | awk '{print $1}'
+  fi
 }
 
 warp_past_cooldown() {
@@ -84,8 +90,9 @@ anvil_send "${ALICE}" "${TA}" "buy(uint256,bytes32)" "${CHARM_WAD}" \
 warp_past_cooldown
 wait_indexer_sync "$(cast block-number --rpc-url "${RPC}")"
 
-deadline="$(cast_u256 "${TA}" "deadline()(uint256)")"
-warp_target=$((deadline - 600))
+lb_deadline="$(cast_u256 "${TA}" "podiumDeadline(uint256)(uint256)" "0")"
+[[ "${lb_deadline}" != "0" ]] || die "Last Buy podiumDeadline still zero after first buy"
+warp_target=$((lb_deadline + 5))
 cast rpc anvil_setNextBlockTimestamp "${warp_target}" --rpc-url "${RPC}" >/dev/null
 cast rpc anvil_mine 1 --rpc-url "${RPC}" >/dev/null
 warp_past_cooldown
@@ -93,13 +100,25 @@ warp_past_cooldown
 anvil_send "${ALICE}" "${TA}" "buy(uint256,bytes32)" "${CHARM_WAD}" \
   "0x0000000000000000000000000000000000000000000000000000000000000000"
 warp_past_cooldown
+wait_indexer_sync "$(cast block-number --rpc-url "${RPC}")"
+
+chain_epoch="$(cast_u256 "${TA}" "lastBuyEpoch()(uint256)")"
+[[ "${chain_epoch}" -ge 1 ]] || die "onchain lastBuyEpoch expected >= 1 after roll, got ${chain_epoch}"
+
+epoch_started_count=0
+for _ in $(seq 1 90); do
+  epoch_started_count="$(psql "${PG_URL}" -tAc "SELECT COUNT(*) FROM idx_arena_last_buy_epoch_started")"
+  if [[ "${epoch_started_count}" -ge 1 ]]; then
+    break
+  fi
+  sleep 1
+done
+[[ "${epoch_started_count}" -ge 1 ]] || die "missing idx_arena_last_buy_epoch_started rows (count=${epoch_started_count})"
+
 anvil_send "${BOB}" "${TA}" "buy(uint256,bytes32)" "${CHARM_WAD}" \
   "0x0000000000000000000000000000000000000000000000000000000000000000"
 warp_past_cooldown
 wait_indexer_sync "$(cast block-number --rpc-url "${RPC}")"
-
-epoch_started_count="$(psql "${PG_URL}" -tAc "SELECT COUNT(*) FROM idx_arena_last_buy_epoch_started")"
-[[ "${epoch_started_count}" -ge 1 ]] || die "missing idx_arena_last_buy_epoch_started rows (count=${epoch_started_count})"
 
 code="$(curl -s -o /tmp/yieldomega_verify364_events.json -w '%{http_code}' \
   "http://127.0.0.1:${INDEXER_PORT}/v1/arena/events?limit=20")"
