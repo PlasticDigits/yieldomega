@@ -7,6 +7,7 @@ import {
   ARENA_SESSION_CORE_ROW_COUNT,
   coreReadRowsFromArenaTimers,
   mapArenaV2CoreRows,
+  mapArenaV2WarbowFlagSupplementRows,
 } from "./arenaV2SaleSessionBridge";
 
 const DOUB = "0x" + "1".repeat(40);
@@ -146,6 +147,36 @@ describe("coreReadRowsFromArenaTimers", () => {
         total_doub_raised: "0",
         podium_deadlines_sec: ["0", "1", "2", "3"],
       }),
+    ).toBeUndefined();
+  });
+});
+
+describe("mapArenaV2WarbowFlagSupplementRows (#362)", () => {
+  const OWNER = "0x" + "f".repeat(40);
+
+  it("maps successful warbow flag supplement reads", () => {
+    const mapped = mapArenaV2WarbowFlagSupplementRows([
+      { status: "success", result: OWNER },
+      { status: "success", result: 1_700_000_200n },
+      { status: "success", result: 500n },
+      { status: "success", result: 300n },
+    ]);
+    expect(mapped).toEqual({
+      owner: OWNER,
+      plantAt: 1_700_000_200n,
+      claimBp: 500n,
+      silenceSec: 300n,
+    });
+  });
+
+  it("returns undefined when all reads fail", () => {
+    expect(
+      mapArenaV2WarbowFlagSupplementRows([
+        { status: "failure" },
+        { status: "failure" },
+        { status: "failure" },
+        { status: "failure" },
+      ]),
     ).toBeUndefined();
   });
 });

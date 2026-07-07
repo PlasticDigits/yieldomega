@@ -163,7 +163,7 @@ When the connected wallet holds a planted WarBow flag, [`ArenaWarbowHeroPanel`](
 | Silence elapsed | `FLAG: **claim now**` | same |
 | No planted flag | (line omitted) | — |
 
-Countdown uses [`warbowClaimFlagSilenceRemainingSec`](../../frontend/src/lib/warbowClaimFlagState.ts) with session `flagSilenceEndSec` and `ledgerNowSec` (indexer head when configured — **`INV-FRONTEND-301`**). The Flag subcard keeps the longer paragraph + [`WarbowClaimFlagButton`](../../frontend/src/components/WarbowClaimFlagButton.tsx); the summary is additive visibility only.
+Countdown uses [`warbowClaimFlagSilenceRemainingSec`](../../frontend/src/lib/warbowClaimFlagState.ts) with session `flagSilenceEndSec` and `ledgerNowSec` (indexer head when configured — **`INV-FRONTEND-301`**). Planted-flag owner/plant-at come from targeted onchain supplement reads when `VITE_INDEXER_URL` is set (`arenaV2WarbowFlagSupplementContracts` — timers JSON omits flag fields). The Flag subcard keeps the longer paragraph + [`WarbowClaimFlagButton`](../../frontend/src/components/WarbowClaimFlagButton.tsx); the summary is additive visibility only.
 
 Invariant: **`INV-FRONTEND-362-WARBOW-VIEWER-SUMMARY-FLAG`** in [invariants §362](../testing/invariants-and-business-logic.md#frontend-warbow-viewer-summary-flag-gitlab-362).
 
