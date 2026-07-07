@@ -174,6 +174,10 @@ Schema **≥ 2.4.0** (`x-schema-version`); **`level_history`** (levels 1–5 mil
 
 Schema **≥ 2.18.0** (`x-schema-version`). Stateless absent-session aggregates for the play **While You Were Away** modal: **`?since_ms=<unix_ms>`** (clamped to 30d lookback; future skew → **400**) and optional **`?wallet=0x…`**. Returns **`elapsed_ms`**, **`total_buys`**, **`unique_players`**, **`podium_updates`**, **`podium_epochs_ended[]`** (winners + 4∶2∶1 prizes), and optional **`wallet_summary`** (`buy_count`, `wins`, **`rank_delta`** by DOUB spend). Ingest stores **`block_timestamp`** on **`idx_arena_podium_epoch`** for since filters. Map: **`INV-INDEXER-338-SESSION-SUMMARY`**, **`INV-FRONTEND-338-WYWA-MODAL`** · [design — session summary](../docs/indexer/design.md#arena-session-summary-http-gitlab-338) · [arena-views §338](../docs/frontend/arena-views.md#while-you-were-away-modal-gitlab-338) · `integration_stage2.rs::arena_session_summary_fixture_since_activity`.
 
+### Arena events (`GET /v1/arena/events`, GitLab [#364](https://gitlab.com/PlasticDigits/yieldomega/-/issues/364))
+
+Schema **≥ 2.24.0**. Searchable catalog of **`idx_arena_podium_epoch`** settlements and **`idx_arena_last_buy_epoch_started`** rows; detail endpoint adds winner prizes, related buy chart sample, and tx replay fields. Anvil smoke: `bash scripts/verify-arena-events-anvil.sh`. Map: **`INV-INDEXER-364-ARENA-EVENTS`**, **`INV-FRONTEND-364-ARENA-EVENT-PAGES`** · [design — events](../docs/indexer/design.md#arena-events-http-gitlab-364) · [arena-views §364](../docs/frontend/arena-views.md#arena-event-directory-gitlab-364).
+
 ### SQLx migrations
 
 Migrations live under [`migrations/`](migrations/). Ship **paired** **`.up.sql`** and **`.down.sql`** per version so **`sqlx migrate revert`** can roll back a step and **`sqlx migrate run`** can re-apply it without hand-editing **`_sqlx_migrations`** ([GitLab #152](https://gitlab.com/PlasticDigits/yieldomega/-/issues/152) — unredeemed launched-token **`idx_*`** tables, [`invariants §128`](../docs/testing/invariants-and-business-logic.md#timecurve-unredeemed-launch-allocation-sweep-gitlab-128)).

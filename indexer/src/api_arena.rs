@@ -92,6 +92,11 @@ pub fn arena_routes() -> axum::Router<AppState> {
             "/v1/arena/vault-funding/totals",
             axum::routing::get(arena_vault_funding_totals),
         )
+        .route("/v1/arena/events", axum::routing::get(crate::arena_events::arena_events_list))
+        .route(
+            "/v1/arena/events/{event_id}",
+            axum::routing::get(crate::arena_events::arena_events_detail),
+        )
 }
 
 #[derive(Debug, serde::Deserialize)]

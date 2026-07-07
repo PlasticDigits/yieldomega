@@ -639,6 +639,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     api_podium_pool_donations_smoke(&pool).await;
     api_arena_buys_actual_seconds_added_smoke(&pool).await;
     api_arena_activity_smoke(&pool).await;
+    api_arena_events_smoke(&pool).await;
     api_arena_warbow_pending_revenge_smoke(&pool).await;
     api_platform_usage_smoke(&pool).await;
     api_session_summary_smoke(&pool).await;
@@ -1152,6 +1153,102 @@ async fn api_arena_activity_smoke(pool: &sqlx::PgPool) {
         .get("target")
         .and_then(|v| v.as_str())
         .is_some_and(|s| s.eq_ignore_ascii_case(&format!("{:#x}", addr_byte(0xb3)))));
+}
+
+/// `GET /v1/arena/events` list + detail — permanent event catalog ([#364](https://gitlab.com/PlasticDigits/yieldomega/-/issues/364)).
+async fn api_arena_events_smoke(pool: &sqlx::PgPool) {
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
+        doub_spot_price: Arc::new(RwLock::new(None)),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/events?limit=20")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let items = j.get("items").and_then(|v| v.as_array()).expect("items");
+    assert!(!items.is_empty(), "expected event rows from fixture");
+    let kinds: Vec<_> = items
+        .iter()
+        .filter_map(|row| row.get("kind").and_then(|v| v.as_str()))
+        .collect();
+    assert!(
+        kinds.contains(&"podium_settlement"),
+        "missing podium_settlement: {kinds:?}"
+    );
+    assert!(
+        kinds.contains(&"last_buy_epoch_start"),
+        "missing last_buy_epoch_start: {kinds:?}"
+    );
+
+    let podium = items
+        .iter()
+        .find(|row| row.get("kind").and_then(|v| v.as_str()) == Some("podium_settlement"))
+        .expect("podium_settlement row");
+    let event_id = podium
+        .get("id")
+        .and_then(|v| v.as_str())
+        .expect("event id");
+    assert!(podium.get("title").and_then(|v| v.as_str()).is_some());
+    assert!(podium.get("slug").and_then(|v| v.as_str()).is_some());
+
+    let detail_res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/arena/events/{}",
+                    event_id.replace(':', "%3A")
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(detail_res.status(), StatusCode::OK);
+    let detail = response_json(detail_res).await;
+    assert_eq!(detail.get("id").and_then(|v| v.as_str()), Some(event_id));
+    assert!(detail.get("winners").and_then(|v| v.as_array()).is_some());
+    assert!(detail.get("chart_buys").and_then(|v| v.as_array()).is_some());
+
+    let bad_res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/events/not-a-valid-id")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(bad_res.status(), StatusCode::BAD_REQUEST);
+
+    let over_limit = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/events?limit=9999")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(over_limit.status(), StatusCode::OK);
+    let over_j = response_json(over_limit).await;
+    assert_eq!(over_j.get("limit").and_then(|v| v.as_i64()), Some(200));
 }
 
 /// `GET /v1/arena/warbow/pending-revenge/{victim}` — open windows from steal/revenge tables (#135).

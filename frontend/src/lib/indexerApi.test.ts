@@ -18,6 +18,9 @@ import {
   arenaWarbowPendingRevengePath,
   arenaPrizeDistributionsApiPath,
   arenaPrizePayoutsApiPath,
+  arenaEventsApiPath,
+  arenaEventDetailApiPath,
+  arenaEventPagePath,
 } from "./indexerApi";
 import {
   getIndexerBackoffPollMs,
@@ -300,5 +303,19 @@ describe("fetchArenaBuysAsBuyItems (#282, #283)", () => {
     expect(item?.buy_index).toBe("7");
     expect(item?.log_index).toBe(3);
     expect(item?.block_timestamp).toBe("1700000000");
+  });
+});
+
+describe("arena events API paths (#364)", () => {
+  it("builds list and detail paths with encoding", () => {
+    expect(arenaEventsApiPath()).toBe("/v1/arena/events?limit=25&offset=0");
+    expect(arenaEventsApiPath(10, 5, "podium_settlement", "warbow")).toBe(
+      "/v1/arena/events?limit=10&offset=5&kind=podium_settlement&q=warbow",
+    );
+    const id = "podium_settlement:0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd:2";
+    expect(arenaEventDetailApiPath(id)).toBe(
+      `/v1/arena/events/${encodeURIComponent(id)}`,
+    );
+    expect(arenaEventPagePath(id)).toBe(`/audit/events/${encodeURIComponent(id)}`);
   });
 });
