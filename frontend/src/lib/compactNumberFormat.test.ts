@@ -2,8 +2,10 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  ceilPlainDecimalSigfigsString,
   formatCompactDecimalString,
   formatCompactFromRaw,
+  formatCompactFromRawCeil,
   formatPlainDecimalSigfigsString,
   normalizeScientificString,
   truncatePlainDecimalSigfigsString,
@@ -27,6 +29,24 @@ describe("formatPlainDecimalSigfigsString", () => {
   it("handles zero and negatives", () => {
     expect(formatPlainDecimalSigfigsString("0", 6)).toBe("0");
     expect(formatPlainDecimalSigfigsString("-1.2345678", 4)).toBe("-1.235");
+  });
+});
+
+describe("ceilPlainDecimalSigfigsString", () => {
+  it("ceil-rounds toward +infinity instead of truncating", () => {
+    expect(ceilPlainDecimalSigfigsString("10.2699", 4)).toBe("10.27");
+    expect(ceilPlainDecimalSigfigsString("1.953145177291660455", 8)).toBe("1.9531452");
+  });
+  it("leaves exact fits unchanged", () => {
+    expect(ceilPlainDecimalSigfigsString("10.26", 4)).toBe("10.26");
+    expect(ceilPlainDecimalSigfigsString("1.9531452", 8)).toBe("1.9531452");
+  });
+  it("ceil-rounds negatives toward +infinity", () => {
+    expect(ceilPlainDecimalSigfigsString("-10.2699", 4)).toBe("-10.26");
+    expect(ceilPlainDecimalSigfigsString("-10.2611", 4)).toBe("-10.26");
+  });
+  it("carries when the coefficient overflows sigfig width", () => {
+    expect(ceilPlainDecimalSigfigsString("999.99", 3)).toBe("1000");
   });
 });
 
@@ -87,5 +107,12 @@ describe("formatCompactFromRaw", () => {
   });
   it("coerces decimal string inputs (multicall / JSON bigint encoding)", () => {
     expect(formatCompactFromRaw("1953145177291660455", 18)).toBe("1.95");
+  });
+});
+
+describe("formatCompactFromRawCeil", () => {
+  it("ceil-compacts wei amounts with configurable sigfigs", () => {
+    expect(formatCompactFromRawCeil(1953145177291660455n, 18, { sigfigs: 8 })).toBe("1.9531452");
+    expect(formatCompactFromRawCeil(10n ** 19n, 18, { sigfigs: 8 })).toBe("10");
   });
 });

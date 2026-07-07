@@ -212,6 +212,88 @@ export type TruncatePlainDecimalSigfigsOptions = {
 };
 
 /**
+ * Plain decimal string with `sigfigs` significant figures by **ceiling** extra digits (toward +∞ for
+ * non-negative values). Uses exact digit logic on `[-]digits[.digits]` inputs (for example {@link formatUnits} output).
+ */
+export function ceilPlainDecimalSigfigsString(decimalStr: string, sigfigs: number): string {
+  const sf = Math.max(1, Math.floor(sigfigs));
+  const trimmed = decimalStr.trim();
+  if (trimmed === "" || trimmed === "-") {
+    return trimmed;
+  }
+  const neg = trimmed.startsWith("-");
+  const body = neg ? trimmed.slice(1) : trimmed;
+  const plainDec = /^(\d+)\.(\d+)$/.exec(body);
+  if (!plainDec) {
+    return formatPlainDecimalSigfigsString(decimalStr, sigfigs);
+  }
+  const intStr = plainDec[1];
+  const fracStr = plainDec[2];
+  const intLen = intStr.length;
+
+  let firstNz = -1;
+  for (let i = 0; i < intStr.length; i++) {
+    if (intStr[i] !== "0") {
+      firstNz = i;
+      break;
+    }
+  }
+  if (firstNz < 0) {
+    for (let j = 0; j < fracStr.length; j++) {
+      if (fracStr[j] !== "0") {
+        firstNz = intLen + j;
+        break;
+      }
+    }
+  }
+  if (firstNz < 0) {
+    return "0";
+  }
+
+  const digitAt = (pos: number): string => {
+    if (pos < intLen) {
+      return intStr[pos] ?? "0";
+    }
+    return fracStr[pos - intLen] ?? "0";
+  };
+
+  let coefDigits = "";
+  for (let k = 0; k < sf; k++) {
+    coefDigits += digitAt(firstNz + k);
+  }
+
+  const totalDigits = intLen + fracStr.length;
+  let tailNonZero = false;
+  for (let pos = firstNz + sf; pos < totalDigits; pos++) {
+    if (digitAt(pos) !== "0") {
+      tailNonZero = true;
+      break;
+    }
+  }
+
+  let coefBig = BigInt(coefDigits);
+  if (tailNonZero && !neg) {
+    coefBig += 1n;
+  }
+
+  const exp = intLen - 1 - firstNz;
+  let coefStr = coefBig.toString();
+  let expAdjusted = exp;
+  while (coefStr.length > sf) {
+    expAdjusted += 1;
+    coefStr = coefStr.slice(0, sf);
+  }
+  let unsignedOut = unsignedDecimalFromTruncatedCoef(coefStr, expAdjusted, sf);
+  if (absPlainDecimalMagnitudeGeSciThreshold(unsignedOut)) {
+    const c0 = coefStr[0];
+    const crest = coefStr.slice(1);
+    const sci = normalizeScientificString(`${c0}.${crest}e+${expAdjusted}`);
+    unsignedOut = sci.replace(/e\+/i, "e");
+  }
+  return neg ? `-${unsignedOut}` : unsignedOut;
+}
+
+/**
  * Plain decimal string with `sigfigs` significant figures by **truncating** extra digits (toward zero),
  * never rounding up. Uses exact digit logic on `[-]digits[.digits]` inputs (for example {@link formatUnits} output).
  */
@@ -314,4 +396,20 @@ export function formatCompactFromRaw(
   options?: FormatCompactOptions,
 ): string {
   return formatCompactDecimalString(formatUnits(rawToBigIntForFormat(raw), decimals), options);
+}
+
+/**
+ * `formatUnits(raw, decimals)` then {@link ceilPlainDecimalSigfigsString} then {@link formatCompactDecimalString}.
+ */
+export function formatCompactFromRawCeil(
+  raw: bigint | string | number,
+  decimals: number,
+  options?: FormatCompactOptions,
+): string {
+  const sigfigs = Math.max(1, options?.sigfigs ?? 3);
+  const ceiled = ceilPlainDecimalSigfigsString(
+    formatUnits(rawToBigIntForFormat(raw), decimals),
+    sigfigs,
+  );
+  return formatCompactDecimalString(ceiled, { sigfigs });
 }

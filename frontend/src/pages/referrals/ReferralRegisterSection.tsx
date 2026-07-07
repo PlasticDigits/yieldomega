@@ -30,6 +30,7 @@ import {
 } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
+import { formatCompactFromRawCeil } from "@/lib/compactNumberFormat";
 import { formatAmountTriple, parseBigIntString } from "@/lib/formatAmount";
 import { doubWeiToUsdNotionalWad } from "@/lib/doubSpotUsdPrice";
 import { buyTokenOnKumbayaUrl } from "@/lib/kumbayaSwapUrl";
@@ -62,6 +63,9 @@ import {
 } from "@/pages/referrals/referralShareCopyFeedback";
 import { formatOwnerCodeHash } from "@/pages/referrals/referralAddressDisplay";
 import { useDoubUsdWad } from "@/pages/arena/useArenaSaleState";
+
+/** Guide registration burn: compact humanized DOUB with eight significant figures (rounded up). */
+const REFERRAL_REGISTER_BURN_DISPLAY_SIGFIGS = 8;
 
 function isNonZeroBytes32(
   v: `0x${string}` | bigint | undefined,
@@ -673,12 +677,9 @@ export function ReferralRegisterSection({ className }: Props) {
                 >
                   <span title="ReferralRegistry burns this DOUB amount (Last Buy epoch anchor) only after registerCode succeeds.">Claim cost</span>
                   <strong data-testid="referrals-register-cost-amount">
-                    {
-                      formatAmountTriple(
-                        parseBigIntString(burnWad.toString()),
-                        18,
-                      ).decimal
-                    }{" "}
+                    {formatCompactFromRawCeil(burnWad, 18, {
+                      sigfigs: REFERRAL_REGISTER_BURN_DISPLAY_SIGFIGS,
+                    })}{" "}
                     DOUB
                   </strong>
                   {registerCostUsdHint ? (
