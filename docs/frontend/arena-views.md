@@ -107,7 +107,7 @@ Invariant: **`INV-FRONTEND-343-TRANSITION-UX`** · `arenaTransitionState.test.ts
 | Play timer podiums | [`ArenaTimerPodiumCarousel`](../../frontend/src/pages/arena/ArenaTimerPodiumCarousel.tsx) | Four podium timer slides in the primary column; live head via `GET /v1/arena/podiums` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273), [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
 | AUDIT four-podium grid | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) on **`/arena/protocol`** | Epoch id + live rankings + DOUB prize preview + USD equiv from **`prize_places_doub_wad`** when indexer schema ≥ 2.8.0 ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)) |
 | CHARM + Play CRED | [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) | Current Last Buy epoch, epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`** ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)) |
-| WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
+| WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)); viewer summary shows BP, guard countdown, and planted-flag silence timer ([#362](https://gitlab.com/PlasticDigits/yieldomega/-/issues/362)) |
 | AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads plus the gated donate-pools sponsorship action — no separate “Arena advanced” route |
 
 Global shell/design direction: [frontend design §290](./design.md#cyberminimalist-glass-app-shell-gitlab-290). Header nav: brand **`/`** · **AUDIT** (`/arena/protocol`) · **Referrals** — no in-page `ArenaSubnav` BUY/AUDIT row on the play surface ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)). Mechanics live in tooltips, timer carousel, and action-adjacent feedback rather than default explanatory paragraphs.
@@ -147,7 +147,25 @@ After a successful CHARM buy on the play route, the UI shows a compact glass toa
 
 Components: [`ArenaEffectToastStack.tsx`](../../frontend/src/pages/arena/ArenaEffectToastStack.tsx) · [`useArenaBuyEffectToasts.ts`](../../frontend/src/pages/arena/useArenaBuyEffectToasts.ts) · CSS in [`yieldomega-glass-arena.css`](../../frontend/src/styles/yieldomega-glass-arena.css).
 
-Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** · **`INV-FRONTEND-337-BUY-EFFECT-TOASTS`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md), [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
+Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** · **`INV-FRONTEND-337-BUY-EFFECT-TOASTS`** · **`INV-FRONTEND-362-WARBOW-VIEWER-SUMMARY-FLAG`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md), [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
+
+<a id="warbow-viewer-summary-flag-gitlab-362"></a>
+
+### WarBow viewer summary flag timer (GitLab [#362](https://gitlab.com/PlasticDigits/yieldomega/-/issues/362))
+
+Parent UX report: [#360](https://gitlab.com/PlasticDigits/yieldomega/-/issues/360).
+
+When the connected wallet holds a planted WarBow flag, [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) **`warbow-hero-card--viewer-summary`** (`data-testid="warbow-hero-viewer-summary"`) shows BP, GUARD, and a third line:
+
+| State | Summary copy | Test id |
+|-------|--------------|---------|
+| Silence active | `FLAG: **MM:SS until claim**` | `warbow-hero-viewer-summary-flag` |
+| Silence elapsed | `FLAG: **claim now**` | same |
+| No planted flag | (line omitted) | — |
+
+Countdown uses [`warbowClaimFlagSilenceRemainingSec`](../../frontend/src/lib/warbowClaimFlagState.ts) with session `flagSilenceEndSec` and `ledgerNowSec` (indexer head when configured — **`INV-FRONTEND-301`**). The Flag subcard keeps the longer paragraph + [`WarbowClaimFlagButton`](../../frontend/src/components/WarbowClaimFlagButton.tsx); the summary is additive visibility only.
+
+Invariant: **`INV-FRONTEND-362-WARBOW-VIEWER-SUMMARY-FLAG`** in [invariants §362](../testing/invariants-and-business-logic.md#frontend-warbow-viewer-summary-flag-gitlab-362).
 
 <a id="arena-production-components-gitlab-292"></a>
 

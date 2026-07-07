@@ -304,6 +304,19 @@ export function ArenaWarbowHeroPanel({
               </>
             ) : null}
           </p>
+          {showClaimFlagControl && flagSilenceRemainingSec !== undefined ? (
+            <p
+              className="warbow-hero-viewer-summary__line"
+              data-testid="warbow-hero-viewer-summary-flag"
+            >
+              FLAG:{" "}
+              <strong>
+                {canClaimWarBowFlag
+                  ? "claim now"
+                  : `${formatCountdown(flagSilenceRemainingSec)} until claim`}
+              </strong>
+            </p>
+          ) : null}
         </article>
       )}
 
