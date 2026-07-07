@@ -1,9 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-/** Whole seconds until the next UTC day boundary — matches `TimeArena` `block.timestamp / SECONDS_PER_DAY`. */
+/** Floor UTC day id — mirrors `TimeArena` `block.timestamp / SECONDS_PER_DAY`. */
+export function warbowUtcDayId(chainNowSec: number, secondsPerDay: number | bigint): bigint {
+  const day = Number(secondsPerDay);
+  if (!Number.isFinite(chainNowSec) || day <= 0) return 0n;
+  return BigInt(Math.floor(chainNowSec / day));
+}
+
+/** Whole seconds until the next UTC-day boundary (same `SECONDS_PER_DAY` floor division as onchain). */
+export function warbowSecondsUntilNextUtcDay(
+  chainNowSec: number,
+  secondsPerDay: number | bigint,
+): number {
+  const day = Number(secondsPerDay);
+  if (!Number.isFinite(chainNowSec) || day <= 0) return 0;
+  const elapsedInDay = ((Math.floor(chainNowSec) % day) + day) % day;
+  return day - elapsedInDay;
+}
+
+/** Alias used by WarBow hero display — same semantics as `warbowSecondsUntilNextUtcDay`. */
 export function warbowUtcDayResetSec(chainNowSec: number, secondsPerDay: number): number {
-  const daySec = Math.max(1, Math.floor(secondsPerDay));
-  const now = Math.floor(chainNowSec);
-  const elapsedInDay = ((now % daySec) + daySec) % daySec;
-  return daySec - elapsedInDay;
+  return warbowSecondsUntilNextUtcDay(chainNowSec, secondsPerDay);
 }

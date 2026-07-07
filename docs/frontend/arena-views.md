@@ -107,7 +107,7 @@ Invariant: **`INV-FRONTEND-343-TRANSITION-UX`** · `arenaTransitionState.test.ts
 | Play timer podiums | [`ArenaTimerPodiumCarousel`](../../frontend/src/pages/arena/ArenaTimerPodiumCarousel.tsx) | Four podium timer slides in the primary column; live head via `GET /v1/arena/podiums` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273), [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
 | AUDIT four-podium grid | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) on **`/arena/protocol`** | Epoch id + live rankings + DOUB prize preview + USD equiv from **`prize_places_doub_wad`** when indexer schema ≥ 2.8.0 ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)) |
 | CHARM + Play CRED | [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) | Current Last Buy epoch, epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`** ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)) |
-| WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)); viewer summary shows BP, guard countdown, and planted-flag silence timer ([#362](https://gitlab.com/PlasticDigits/yieldomega/-/issues/362)) |
+| WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)); viewer summary shows BP, guard countdown, steal quota + UTC reset ([#361](https://gitlab.com/PlasticDigits/yieldomega/-/issues/361)), and planted-flag silence timer ([#362](https://gitlab.com/PlasticDigits/yieldomega/-/issues/362)) |
 | AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads plus the gated donate-pools sponsorship action — no separate “Arena advanced” route |
 
 Global shell/design direction: [frontend design §290](./design.md#cyberminimalist-glass-app-shell-gitlab-290). Header nav: brand **`/`** · **AUDIT** (`/arena/protocol`) · **Referrals** — no in-page `ArenaSubnav` BUY/AUDIT row on the play surface ([#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320)). Mechanics live in tooltips, timer carousel, and action-adjacent feedback rather than default explanatory paragraphs.
@@ -166,6 +166,18 @@ When the connected wallet holds a planted WarBow flag, [`ArenaWarbowHeroPanel`](
 Countdown uses [`warbowClaimFlagSilenceRemainingSec`](../../frontend/src/lib/warbowClaimFlagState.ts) with session `flagSilenceEndSec` and `ledgerNowSec` (indexer head when configured — **`INV-FRONTEND-301`**). The Flag subcard keeps the longer paragraph + [`WarbowClaimFlagButton`](../../frontend/src/components/WarbowClaimFlagButton.tsx); the summary is additive visibility only.
 
 Invariant: **`INV-FRONTEND-362-WARBOW-VIEWER-SUMMARY-FLAG`** in [invariants §362](../testing/invariants-and-business-logic.md#frontend-warbow-viewer-summary-flag-gitlab-362).
+
+<a id="warbow-steal-quota-ux-gitlab-361"></a>
+
+### WarBow steal quota + inline cap warning (GitLab [#361](https://gitlab.com/PlasticDigits/yieldomega/-/issues/361))
+
+Parent UX report: [#360](https://gitlab.com/PlasticDigits/yieldomega/-/issues/360).
+
+[`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) viewer summary adds **`STEAL QUOTA:`** (`data-testid="warbow-hero-viewer-summary-steal-quota"`): attacker steals landed today **`X / 3`**, live countdown to next UTC day (`warbowSecondsUntilNextUtcDay` + indexer `chainNowSec` when configured), and **bypass required until reset** when at cap.
+
+When a steal victim is selected, **`describeStealPreflight`** renders in the steal card (`data-testid="warbow-hero-steal-preflight"`) above the Steal button for **warning** / **error** tones (daily cap, BP band, etc.); Steal stays disabled on **error** tone. Caps: `useReadContract` when indexer unset; one-shot [`readWarbowStealCapDisplay`](../../frontend/src/lib/readWarbowStealCapDisplay.ts) when **`VITE_INDEXER_URL`** is set — no recurring display multicall ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
+
+Invariant: **`INV-FRONTEND-361-WARBOW-STEAL-QUOTA-UX`** in [invariants §361](../testing/invariants-and-business-logic.md#frontend-warbow-steal-quota-ux-gitlab-361).
 
 <a id="arena-production-components-gitlab-292"></a>
 

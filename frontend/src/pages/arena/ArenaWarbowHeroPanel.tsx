@@ -119,7 +119,6 @@ export function ArenaWarbowHeroPanel({
   const w = useArenaWarbowHero(phase, {
     indexerViewerBattlePoints,
     indexerWarbowHead,
-    warbowTargets,
   });
   const { pendingRevengeTargets, hasRevengeOpen, revengeIndexerConfigured } =
     useArenaPendingRevengeTargets(address);

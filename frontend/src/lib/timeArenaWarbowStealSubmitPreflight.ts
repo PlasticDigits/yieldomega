@@ -21,31 +21,31 @@ export async function readFreshWarbowStealPreflight(params: {
   const { tc, victim, attacker, utcDayId } = params;
   const [victimBattlePoints, victimStealsToday, victimGuardUntil, attackerStealsToday] =
     await Promise.all([
-    readContract(wagmiConfig, {
-      address: tc,
-      abi: timeArenaReadAbi,
-      functionName: "battlePoints",
-      args: [victim],
-    }),
-    readContract(wagmiConfig, {
-      address: tc,
-      abi: timeArenaReadAbi,
-      functionName: "stealsReceivedOnDay",
-      args: [victim, utcDayId],
-    }),
-    readContract(wagmiConfig, {
-      address: tc,
-      abi: timeArenaReadAbi,
-      functionName: "warbowGuardUntil",
-      args: [victim],
-    }),
-    readContract(wagmiConfig, {
-      address: tc,
-      abi: timeArenaReadAbi,
-      functionName: "stealsCommittedByAttackerOnDay",
-      args: [attacker, utcDayId],
-    }),
-  ]);
+      readContract(wagmiConfig, {
+        address: tc,
+        abi: timeArenaReadAbi,
+        functionName: "battlePoints",
+        args: [victim],
+      }),
+      readContract(wagmiConfig, {
+        address: tc,
+        abi: timeArenaReadAbi,
+        functionName: "stealsReceivedOnDay",
+        args: [victim, utcDayId],
+      }),
+      readContract(wagmiConfig, {
+        address: tc,
+        abi: timeArenaReadAbi,
+        functionName: "warbowGuardUntil",
+        args: [victim],
+      }),
+      readContract(wagmiConfig, {
+        address: tc,
+        abi: timeArenaReadAbi,
+        functionName: "stealsCommittedByAttackerOnDay",
+        args: [attacker, utcDayId],
+      }),
+    ]);
   return {
     victimBattlePoints: BigInt(victimBattlePoints),
     victimStealsToday: BigInt(victimStealsToday),

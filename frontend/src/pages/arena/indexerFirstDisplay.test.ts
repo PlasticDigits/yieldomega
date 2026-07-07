@@ -47,14 +47,14 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toMatch(/enabled:\s*Boolean\(tc && address && !indexerOn\)/);
     expect(src).toMatch(/functionName:\s*"warbowGuardUntil"[\s\S]*enabled:\s*Boolean\(tc && address && !indexerOn\)/);
     expect(src).toContain("WARBOW_STEAL_DOUB_WAD");
+    expect(src).toContain("readWarbowStealCapDisplay");
   });
 
-  it("useArenaWarbowHero reads UTC-day steal caps onchain even when indexer is on (#361)", () => {
+  it("useArenaWarbowHero uses one-shot steal-cap reads when indexer is on (#361 · #301)", () => {
     const src = readArena("useArenaWarbowHero.ts");
-    expect(src).toContain('functionName: "stealsCommittedByAttackerOnDay"');
-    expect(src).toContain('functionName: "stealsReceivedOnDay"');
+    expect(src).toContain("readWarbowStealCapDisplay");
     expect(src).toMatch(
-      /stealsCommittedByAttackerOnDay[\s\S]*?query:\s*\{\s*enabled:\s*Boolean\(tc && address && chainNowSec !== undefined\)/,
+      /stealsCommittedByAttackerOnDay[\s\S]*?enabled:\s*Boolean\(tc && address && !indexerOn\)/,
     );
     expect(src).toContain("warbowUtcDayResetSec");
   });
