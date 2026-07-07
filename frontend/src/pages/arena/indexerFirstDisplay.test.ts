@@ -47,6 +47,7 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toMatch(/enabled:\s*Boolean\(tc && address && !indexerOn\)/);
     expect(src).toMatch(/functionName:\s*"warbowGuardUntil"[\s\S]*enabled:\s*Boolean\(tc && address && !indexerOn\)/);
     expect(src).toContain("WARBOW_STEAL_DOUB_WAD");
+    expect(src).toContain("readWarbowStealCapDisplay");
   });
 
   it("useArenaPendingRevengeTargets uses indexer pending-revenge HTTP only (#135)", () => {

@@ -182,23 +182,10 @@ export function ArenaWarbowHeroPanel({
     focusWarbowTargetAt(moved.index);
   };
 
-  if (!w.ready) return null;
-
   const stealCost = formatCompactFromRaw(BigInt(w.stealDoubWad), 18, { sigfigs: 4 });
   const guardCost = formatCompactFromRaw(BigInt(w.guardDoubWad), 18, { sigfigs: 4 });
   const bypassCost = formatCompactFromRaw(BigInt(w.bypassDoubWad), 18, { sigfigs: 4 });
   const revengeCost = formatCompactFromRaw(BigInt(w.revengeDoubWad), 18, { sigfigs: 4 });
-
-  const guardRemaining =
-    w.chainNowSec !== undefined && w.guardedActive
-      ? Math.max(0, Number(BigInt(w.guardUntilSec) - BigInt(Math.floor(w.chainNowSec))))
-      : undefined;
-
-  const flagLedgerNowSec = ledgerNowSec ?? w.chainNowSec;
-  const flagSilenceRemainingSec =
-    showClaimFlagControl && flagLedgerNowSec !== undefined
-      ? warbowClaimFlagSilenceRemainingSec(flagLedgerNowSec, flagSilenceEndSec)
-      : undefined;
 
   const subcardHelpCopy = useMemo(() => {
     if (!subcardHelpTopic) return null;
@@ -217,6 +204,19 @@ export function ArenaWarbowHeroPanel({
     revengeCost,
     w.maxStealsPerDay,
   ]);
+
+  if (!w.ready) return null;
+
+  const guardRemaining =
+    w.chainNowSec !== undefined && w.guardedActive
+      ? Math.max(0, Number(BigInt(w.guardUntilSec) - BigInt(Math.floor(w.chainNowSec))))
+      : undefined;
+
+  const flagLedgerNowSec = ledgerNowSec ?? w.chainNowSec;
+  const flagSilenceRemainingSec =
+    showClaimFlagControl && flagLedgerNowSec !== undefined
+      ? warbowClaimFlagSilenceRemainingSec(flagLedgerNowSec, flagSilenceEndSec)
+      : undefined;
 
   return (
     <ArenaLevelGate
@@ -267,6 +267,24 @@ export function ArenaWarbowHeroPanel({
                 {canClaimWarBowFlag
                   ? "claim now"
                   : `${formatCountdown(flagSilenceRemainingSec)} until claim`}
+              </strong>
+            </p>
+          ) : null}
+          {w.utcResetSec !== undefined ? (
+            <p
+              className="warbow-hero-viewer-summary__line"
+              data-testid="warbow-hero-viewer-summary-steal-quota"
+            >
+              STEAL QUOTA:{" "}
+              <strong>
+                {w.attackerStealsToday !== undefined
+                  ? `${formatLocaleInteger(w.attackerStealsToday)} / ${formatLocaleInteger(w.maxStealsPerDay)}`
+                  : "…"}{" "}
+                · resets in {formatCountdown(w.utcResetSec)}
+                {w.attackerStealsToday !== undefined &&
+                w.attackerStealsToday >= BigInt(w.maxStealsPerDay)
+                  ? " — bypass required until reset"
+                  : ""}
               </strong>
             </p>
           ) : null}
@@ -400,10 +418,21 @@ export function ArenaWarbowHeroPanel({
                 />{" "}
                 Pay {bypassCost} DOUB bypass if victim hit daily cap ({formatLocaleInteger(w.maxStealsPerDay)}/day)
               </label>
+              {w.stealVictim &&
+                (w.stealPreflight.tone === "warning" || w.stealPreflight.tone === "error") && (
+                  <StatusMessage
+                    variant={w.stealPreflight.tone === "error" ? "error" : "warning"}
+                    data-testid="warbow-hero-steal-preflight"
+                  >
+                    <strong>{w.stealPreflight.title}</strong> · {w.stealPreflight.detail}
+                  </StatusMessage>
+                )}
               <button
                 type="button"
                 className="btn-secondary btn-secondary--critical"
-                disabled={!w.canPress || !w.stealVictim}
+                disabled={
+                  !w.canPress || !w.stealVictim || w.stealPreflight.tone === "error"
+                }
                 onClick={() => void w.runWarBowSteal()}
                 data-testid="warbow-hero-steal-submit"
               >

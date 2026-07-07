@@ -304,4 +304,25 @@ describe("describeStealPreflight", () => {
       detail: expect.stringContaining("2×–10×"),
     });
   });
+
+  it("flags daily steal cap before signing", () => {
+    expect(
+      describeStealPreflight({
+        connected: true,
+        saleActive: true,
+        viewer: "0x1111111111111111111111111111111111111111",
+        victim: "0x2222222222222222222222222222222222222222",
+        viewerBattlePoints: 500n,
+        victimBattlePoints: 1200n,
+        victimStealsToday: 3n,
+        attackerStealsToday: 0n,
+        maxStealsPerDay: 3n,
+        bypassSelected: false,
+        guardActive: false,
+      }),
+    ).toMatchObject({
+      tone: "warning",
+      title: "Daily steal limit",
+    });
+  });
 });
