@@ -3,6 +3,7 @@
 import confetti from "canvas-confetti";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { GlassPanel } from "@/components/glass";
 import { type ArenaFeatureKey, markFeatureTutorialSeen } from "@/lib/arenaProgression";
 import { levelUpCelebrationUnlockLine } from "@/lib/arenaLevelUpCelebration";
@@ -41,6 +42,20 @@ export function LevelUpCelebrationPopover({ feature, onDismiss }: Props) {
     dismissTimerRef.current = window.setTimeout(dismiss, AUTO_DISMISS_MS);
     return clearDismissTimer;
   }, [feature, dismiss, clearDismissTimer]);
+
+  useEffect(() => {
+    if (!feature) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        dismiss();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dismiss, feature]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -105,13 +120,11 @@ export function LevelUpCelebrationPopover({ feature, onDismiss }: Props) {
   const unlockLine = levelUpCelebrationUnlockLine(feature);
   const reducedMotion = Boolean(prefersReducedMotion);
 
-  return (
+  const overlay = (
     <div
       className="level-up-celebration"
       data-testid="level-up-celebration"
       data-reduced-motion={reducedMotion ? "true" : "false"}
-      role="status"
-      aria-live="polite"
     >
       {!reducedMotion && (
         <canvas
@@ -125,14 +138,38 @@ export function LevelUpCelebrationPopover({ feature, onDismiss }: Props) {
         type="button"
         className="level-up-celebration__backdrop"
         aria-label="Dismiss level up celebration"
+        data-testid="level-up-celebration-backdrop"
         onClick={dismiss}
       />
       <GlassPanel className="level-up-celebration__panel" tone="gold">
-        <div className="level-up-celebration__content" data-testid="level-up-celebration-panel">
-          <p className="level-up-celebration__eyebrow">Level Up</p>
+        <div
+          className="level-up-celebration__content"
+          data-testid="level-up-celebration-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Level up"
+          aria-live="polite"
+        >
+          <div className="level-up-celebration__header">
+            <p className="level-up-celebration__eyebrow">Level Up</p>
+            <button
+              type="button"
+              className="level-up-celebration__close"
+              aria-label="Close level up celebration"
+              data-testid="level-up-celebration-close"
+              onClick={dismiss}
+            >
+              ×
+            </button>
+          </div>
           <p className="level-up-celebration__unlock">{unlockLine}</p>
         </div>
       </GlassPanel>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return overlay;
+  }
+  return createPortal(overlay, document.body);
 }

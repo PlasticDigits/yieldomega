@@ -49,6 +49,9 @@ describe("LevelUpCelebrationPopover (#335)", () => {
     expect(html).toContain("Level Up");
     expect(html).toContain("Time Booster unlocked");
     expect(html).toContain('data-testid="level-up-celebration-confetti"');
+    expect(html).toContain('data-testid="level-up-celebration-close"');
+    expect(html).toContain('data-testid="level-up-celebration-backdrop"');
+    expect(html).toContain('role="dialog"');
   });
 
   it("omits confetti canvas when reduced motion is preferred", () => {

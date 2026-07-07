@@ -14699,7 +14699,7 @@ a.podium-address-explorer:hover .address-inline__label {
 .level-up-celebration {
   position: fixed;
   inset: 0;
-  z-index: 120;
+  z-index: 1250;
   display: grid;
   place-items: start center;
   padding: clamp(4.5rem, 12vh, 7rem) 1rem 1rem;
@@ -14712,7 +14712,7 @@ a.podium-address-explorer:hover .address-inline__label {
   border: none;
   padding: 0;
   margin: 0;
-  background: transparent;
+  background: rgba(4, 10, 18, 0.42);
   pointer-events: auto;
   cursor: default;
 }
@@ -14735,18 +14735,36 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .level-up-celebration__content {
-  padding: 0.95rem 1.05rem 1rem;
+  padding: 0.8rem 0.9rem 0.95rem;
   text-align: center;
+}
+
+.level-up-celebration__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .level-up-celebration__eyebrow {
   margin: 0;
+  flex: 1 1 auto;
   color: var(--yo-text);
   font-family: var(--yga-font-display, "IBM Plex Mono", ui-monospace, monospace);
   font-size: 0.9rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.level-up-celebration__close {
+  border: none;
+  background: transparent;
+  color: var(--yo-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  cursor: pointer;
 }
 
 .level-up-celebration__unlock {

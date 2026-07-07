@@ -366,7 +366,7 @@
 .arena-buy-result-share {
   position: fixed;
   inset: 0;
-  z-index: 115;
+  z-index: 1250;
   display: grid;
   place-items: end center;
   padding: clamp(0.75rem, 4vh, 1.25rem) 0.75rem
