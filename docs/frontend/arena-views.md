@@ -159,7 +159,21 @@ The live production components must stay mechanics-first, not reskins of retired
 - Participant addresses use [`AddressInline`](../../frontend/src/components/AddressInline.tsx): blockie + last six hex digits by default; profile modal remains the primary in-app action.
 - `/arena/protocol` activity uses **`GET /v1/arena/activity`** for recent **buy / steal / guard / revenge** actions plus **level_up / cred_claim / podium_epoch / epoch_started / feature_unlocked** transitions ([#345](https://gitlab.com/PlasticDigits/yieldomega/-/issues/345)) with explicit deltas (DOUB, BP, seconds, guard expiry, level/epoch metadata). Older indexers fall back to `GET /v1/arena/buys`.
 - [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) presents epoch CHARM/CRED yield state only; it is not a leaderboard.
-- [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) groups **Steal**, **Guard**, **Revenge**, and **Flag** as one PvP action cluster.
+- [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) groups **Steal**, **Guard**, **Revenge**, and **Flag** as one PvP action cluster. Viewer summary shows **YOUR BP**, **GUARD**, and **STEAL QUOTA** (`X/3` + UTC-day reset countdown); the steal card renders **`describeStealPreflight`** inline above **Steal** ([#361](https://gitlab.com/PlasticDigits/yieldomega/-/issues/361)).
+
+<a id="warbow-steal-cap-ux-gitlab-361"></a>
+
+### WarBow steal daily-cap UX (GitLab [#361](https://gitlab.com/PlasticDigits/yieldomega/-/issues/361))
+
+Parent UX gap: [#360](https://gitlab.com/PlasticDigits/yieldomega/-/issues/360).
+
+| Surface | Behavior |
+|---------|----------|
+| Viewer summary (`warbow-hero-viewer-summary`) | **`STEAL QUOTA: X / 3`** from onchain **`stealsCommittedByAttackerOnDay`**; live **`resets in HH:MM:SS`** via **`warbowUtcDayResetSec(chainNowSec, SECONDS_PER_DAY)`** (same floor division as `TimeArena`) |
+| Steal card | When a victim is selected, **`describeStealPreflight`** appears directly above **Steal** (warning/error before submit); **Steal** disabled on preflight **`error`** |
+| Indexer-first (#301) | **`chainNowSec`** from indexer head; victim BP from indexed target list when available; UTC-day cap reads remain targeted onchain **`eth_call`** (indexer does not mirror daily caps) |
+
+Invariant: **`INV-FRONTEND-361-WARBOW-STEAL-CAP-UX`** · tests: `warbowUtcDayReset.test.ts`, `ArenaWarbowHeroPanel.test.tsx`, `indexerFirstDisplay.test.ts` · skill: [`play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
 
 Invariant: **`INV-FRONTEND-292-ARENA-PRODUCTION-COMPONENTS`** in [invariants](../testing/invariants-and-business-logic.md#frontend-arena-production-components-gitlab-292). Manual QA: [manual checklist §292](../testing/manual-qa-checklists.md#manual-qa-issue-292).
 

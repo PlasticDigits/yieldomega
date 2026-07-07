@@ -9,7 +9,8 @@ import { readArenaDoubUnlimitedApproval } from "@/lib/arenaDoubApprovalPreferenc
 import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { readFreshWarbowStealPreflight } from "@/lib/timeArenaWarbowStealSubmitPreflight";
-import { describeStealPreflight } from "@/lib/timeArenaUx";
+import { describeStealPreflight, type WarbowPreflightNarrative } from "@/lib/timeArenaUx";
+import { warbowUtcDayResetSec } from "@/lib/warbowUtcDayReset";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import {
   WARBOW_STEAL_VICTIM_EMPTY_ATTEMPT,
@@ -38,11 +39,18 @@ export type IndexerWarbowHeroHead = {
   guardUntilSec?: bigint;
 };
 
+export type WarbowTargetBattlePoints = {
+  address: `0x${string}`;
+  battlePoints?: string;
+};
+
 export function useArenaWarbowHero(
   phase: SaleSessionPhase,
   opts?: {
     indexerViewerBattlePoints?: bigint;
     indexerWarbowHead?: IndexerWarbowHeroHead;
+    /** Indexer-sourced victim BP for steal preflight when `VITE_INDEXER_URL` is set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
+    warbowTargets?: readonly WarbowTargetBattlePoints[];
   },
 ) {
   const tc = addresses.timeArena;
@@ -142,6 +150,89 @@ export function useArenaWarbowHero(
     return isAddress(t) ? (t as `0x${string}`) : undefined;
   }, [stealVictimInput]);
 
+  const { data: attackerStealsRaw, refetch: refetchAttackerSteals } = useReadContract({
+    ...readOpts,
+    functionName: "stealsCommittedByAttackerOnDay",
+    args: address ? [address, utcDayId] : undefined,
+    query: { enabled: Boolean(tc && address && chainNowSec !== undefined) },
+  });
+  const { data: victimStealsRaw, refetch: refetchVictimSteals } = useReadContract({
+    ...readOpts,
+    functionName: "stealsReceivedOnDay",
+    args: stealVictim ? [stealVictim, utcDayId] : undefined,
+    query: { enabled: Boolean(tc && stealVictim && chainNowSec !== undefined) },
+  });
+  const { data: victimBpRaw } = useReadContract({
+    ...readOpts,
+    functionName: "battlePoints",
+    args: stealVictim ? [stealVictim] : undefined,
+    query: { enabled: Boolean(tc && stealVictim && !indexerOn) },
+  });
+  const { data: victimGuardUntilRaw } = useReadContract({
+    ...readOpts,
+    functionName: "warbowGuardUntil",
+    args: stealVictim ? [stealVictim] : undefined,
+    query: { enabled: Boolean(tc && stealVictim && chainNowSec !== undefined) },
+  });
+
+  const indexerVictimBattlePoints = useMemo(() => {
+    if (!indexerOn || !stealVictim || !opts?.warbowTargets) return undefined;
+    const target = opts.warbowTargets.find(
+      (row) => row.address.toLowerCase() === stealVictim.toLowerCase(),
+    );
+    if (!target?.battlePoints?.trim()) return undefined;
+    try {
+      return BigInt(target.battlePoints);
+    } catch {
+      return undefined;
+    }
+  }, [indexerOn, stealVictim, opts?.warbowTargets]);
+
+  const victimBattlePointsEffective = indexerOn ? indexerVictimBattlePoints : victimBpRaw;
+  const attackerStealsToday =
+    attackerStealsRaw !== undefined ? BigInt(attackerStealsRaw) : undefined;
+  const victimStealsToday = victimStealsRaw !== undefined ? BigInt(victimStealsRaw) : undefined;
+  const utcDayResetSec =
+    chainNowSec !== undefined ? warbowUtcDayResetSec(chainNowSec, Number(daySec)) : undefined;
+
+  const victimGuarded =
+    chainNowSec !== undefined &&
+    victimGuardUntilRaw !== undefined &&
+    BigInt(chainNowSec) < BigInt(victimGuardUntilRaw);
+
+  const stealPreflight: WarbowPreflightNarrative = useMemo(
+    () =>
+      describeStealPreflight(
+        {
+          connected: isConnected,
+          saleActive,
+          viewer: address,
+          victim: stealVictim,
+          viewerBattlePoints: viewerBattlePointsEffective,
+          victimBattlePoints: victimBattlePointsEffective,
+          victimStealsToday,
+          attackerStealsToday,
+          maxStealsPerDay: BigInt(maxSteals),
+          bypassSelected: stealBypass,
+          guardActive: victimGuarded,
+        },
+        shortAddress,
+      ),
+    [
+      isConnected,
+      saleActive,
+      address,
+      stealVictim,
+      viewerBattlePointsEffective,
+      victimBattlePointsEffective,
+      victimStealsToday,
+      attackerStealsToday,
+      maxSteals,
+      stealBypass,
+      victimGuarded,
+    ],
+  );
+
   const stealVictimFormatError = warbowStealVictimInputFormatError(stealVictimInput);
   const wrongChain = chainMismatchWriteMessage(chainId) !== null;
   const writesPaused = indexerOn ? indexerWarbowHead?.paused === true : paused === true;
@@ -155,8 +246,13 @@ export function useArenaWarbowHero(
       : false;
 
   const refetch = useCallback(async () => {
-    await Promise.all([refetchBp(), refetchGuard()]);
-  }, [refetchBp, refetchGuard]);
+    await Promise.all([
+      refetchBp(),
+      refetchGuard(),
+      refetchAttackerSteals(),
+      refetchVictimSteals(),
+    ]);
+  }, [refetchBp, refetchGuard, refetchAttackerSteals, refetchVictimSteals]);
 
   const failIfWrongChain = useCallback(() => {
     const msg = chainMismatchWriteMessage(chainId);
@@ -184,8 +280,13 @@ export function useArenaWarbowHero(
       return;
     }
     try {
-      const fresh = await readFreshWarbowStealPreflight({ tc, victim: stealVictim, utcDayId });
-      const victimGuarded =
+      const fresh = await readFreshWarbowStealPreflight({
+        tc,
+        victim: stealVictim,
+        attacker: address,
+        utcDayId,
+      });
+      const freshVictimGuarded =
         chainNowSec !== undefined && BigInt(chainNowSec) < fresh.victimGuardUntil;
       const preflight = describeStealPreflight(
         {
@@ -196,10 +297,10 @@ export function useArenaWarbowHero(
           viewerBattlePoints: viewerBattlePointsEffective,
           victimBattlePoints: fresh.victimBattlePoints,
           victimStealsToday: fresh.victimStealsToday,
-          attackerStealsToday: undefined,
+          attackerStealsToday: fresh.attackerStealsToday,
           maxStealsPerDay: BigInt(maxSteals),
           bypassSelected: stealBypass,
-          guardActive: victimGuarded,
+          guardActive: freshVictimGuarded,
         },
         shortAddress,
       );
@@ -367,6 +468,9 @@ export function useArenaWarbowHero(
     bypassDoubWad: bypassDoubWei.toString(),
     revengeDoubWad: revengeDoubWei.toString(),
     maxStealsPerDay: maxSteals,
+    attackerStealsToday: attackerStealsToday?.toString(),
+    utcDayResetSec,
+    stealPreflight,
     stealVictimInput,
     setStealVictimInput,
     stealVictimFormatError,

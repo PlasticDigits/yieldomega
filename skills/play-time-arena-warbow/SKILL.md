@@ -25,7 +25,7 @@ WarBow on **`TimeArena`** spends **DOUB** (not CL8Y). Canonical costs and BP rul
 
 ## Frontend (GitLab [#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256))
 
-Participant UI: **`/`** → [`ArenaWarbowHeroPanel.tsx`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (`data-testid="warbow-hero-actions"`). Cost pills read **`WARBOW_STEAL_DOUB`**, **`WARBOW_GUARD_DOUB`**, **`WARBOW_STEAL_LIMIT_BYPASS_DOUB`**, **`WARBOW_REVENGE_DOUB`** from the `TimeArena` proxy. Doc map: [arena-views § unified](../../docs/frontend/arena-views.md#unified-arena-page-gitlab-256) · **`INV-FRONTEND-256-UNIFIED-ARENA`**.
+Participant UI: **`/`** → [`ArenaWarbowHeroPanel.tsx`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (`data-testid="warbow-hero-actions"`). Cost pills read **`WARBOW_STEAL_DOUB`**, **`WARBOW_GUARD_DOUB`**, **`WARBOW_STEAL_LIMIT_BYPASS_DOUB`**, **`WARBOW_REVENGE_DOUB`** from the `TimeArena` proxy. Viewer summary includes **STEAL QUOTA** (`stealsCommittedByAttackerOnDay` / **`WARBOW_MAX_STEALS_PER_DAY`**) and UTC-day reset countdown; steal card shows **`describeStealPreflight`** above **Steal** before submit ([#361](https://gitlab.com/PlasticDigits/yieldomega/-/issues/361)). Doc map: [arena-views § unified](../../docs/frontend/arena-views.md#unified-arena-page-gitlab-256) · **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-361-WARBOW-STEAL-CAP-UX`**.
 
 ## Local stack
 

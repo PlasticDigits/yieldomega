@@ -49,6 +49,16 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("WARBOW_STEAL_DOUB_WAD");
   });
 
+  it("useArenaWarbowHero reads UTC-day steal caps onchain even when indexer is on (#361)", () => {
+    const src = readArena("useArenaWarbowHero.ts");
+    expect(src).toContain('functionName: "stealsCommittedByAttackerOnDay"');
+    expect(src).toContain('functionName: "stealsReceivedOnDay"');
+    expect(src).toMatch(
+      /stealsCommittedByAttackerOnDay[\s\S]*?query:\s*\{\s*enabled:\s*Boolean\(tc && address && chainNowSec !== undefined\)/,
+    );
+    expect(src).toContain("warbowUtcDayResetSec");
+  });
+
   it("useArenaPendingRevengeTargets uses indexer pending-revenge HTTP only (#135)", () => {
     const src = readFileSync(
       resolve(arenaDir, "../../hooks/useArenaPendingRevengeTargets.ts"),
