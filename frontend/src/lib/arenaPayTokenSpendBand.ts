@@ -123,7 +123,7 @@ export function resolveArenaPayTokenSpendBand(input: {
     if (minEst === null || maxEst === null || maxEst < minEst) {
       return null;
     }
-    let maxPayWei = capMaxPayWei(maxEst, input.walletPayBalanceWei);
+    const maxPayWei = capMaxPayWei(maxEst, input.walletPayBalanceWei);
     if (maxPayWei < minEst) return null;
     return {
       minPayWei: minEst,
