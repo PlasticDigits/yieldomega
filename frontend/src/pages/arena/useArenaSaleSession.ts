@@ -97,10 +97,12 @@ import { useArenaPlayCred } from "@/hooks/useArenaPlayCred";
 import {
   arenaV2CoreContracts,
   arenaV2UserContracts,
+  arenaV2WarbowFlagSupplementContracts,
   coreReadRowsFromArenaTimers,
   isTimeArenaV2,
   mapArenaV2CoreRows,
   mapArenaV2UserRows,
+  mapArenaV2WarbowFlagSupplementRows,
 } from "@/pages/arena/arenaV2SaleSessionBridge";
 import { useArenaHeroTimer } from "@/pages/arena/useArenaHeroTimer";
 import {
@@ -496,6 +498,19 @@ export function useArenaSaleSession(
     userDataRaw as readonly { status: string; result?: unknown }[] | undefined,
   ) as readonly ContractReadRow[] | undefined;
 
+  const warbowFlagSupplementContracts = tc ? [...arenaV2WarbowFlagSupplementContracts(tc)] : [];
+  const { data: warbowFlagSupplementRaw } = useReadContracts({
+    contracts: warbowFlagSupplementContracts as readonly unknown[],
+    query: {
+      enabled: Boolean(tc && indexerOn && isArenaV2),
+      refetchInterval: false,
+      placeholderData: (previous) => previous,
+    },
+  });
+  const warbowFlagSupplement = mapArenaV2WarbowFlagSupplementRows(
+    warbowFlagSupplementRaw as readonly { status: string; result?: unknown }[] | undefined,
+  );
+
   const {
     heroTimer,
     secondsRemaining: saleCountdownSec,
@@ -783,9 +798,11 @@ export function useArenaSaleSession(
       : referralMetaLatchRef.current.referralFlatCredWad;
 
   const warbowFlagClaimBp =
-    warbowFlagClaimBpR?.status === "success" ? (warbowFlagClaimBpR.result as bigint) : undefined;
+    warbowFlagSupplement?.claimBp ??
+    (warbowFlagClaimBpR?.status === "success" ? (warbowFlagClaimBpR.result as bigint) : undefined);
   const warbowFlagSilenceSec =
-    warbowFlagSilenceSecR?.status === "success" ? (warbowFlagSilenceSecR.result as bigint) : undefined;
+    warbowFlagSupplement?.silenceSec ??
+    (warbowFlagSilenceSecR?.status === "success" ? (warbowFlagSilenceSecR.result as bigint) : undefined);
 
   const blockTimestampSec =
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
@@ -1820,14 +1837,16 @@ export function useArenaSaleSession(
     activeDefendedStreakR?.status === "success" ? (activeDefendedStreakR.result as bigint) : undefined;
 
   const warbowPendingFlagOwner =
-    warbowPendingFlagOwnerR?.status === "success"
+    warbowFlagSupplement?.owner ??
+    (warbowPendingFlagOwnerR?.status === "success"
       ? (warbowPendingFlagOwnerR.result as HexAddress)
-      : undefined;
+      : undefined);
 
   const warbowPendingFlagPlantAt =
-    warbowPendingFlagPlantAtR?.status === "success"
+    warbowFlagSupplement?.plantAt ??
+    (warbowPendingFlagPlantAtR?.status === "success"
       ? (warbowPendingFlagPlantAtR.result as bigint)
-      : 0n;
+      : 0n);
 
   const warbowFlagSilenceSecEffective = warbowFlagSilenceSec ?? 300n;
 

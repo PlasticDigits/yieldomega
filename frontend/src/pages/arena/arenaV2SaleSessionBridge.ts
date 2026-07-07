@@ -109,6 +109,48 @@ export function arenaV2UserContracts(tc: HexAddress, wallet: HexAddress) {
   ] as const;
 }
 
+/**
+ * `GET /v1/arena/timers` omits planted-flag fields; supplement when indexer-first ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301) · [#362](https://gitlab.com/PlasticDigits/yieldomega/-/issues/362)).
+ */
+export function arenaV2WarbowFlagSupplementContracts(tc: HexAddress) {
+  return [
+    { address: tc, abi: timeArenaReadAbi, functionName: "warbowPendingFlagOwner" as const },
+    { address: tc, abi: timeArenaReadAbi, functionName: "warbowPendingFlagPlantAt" as const },
+    { address: tc, abi: timeArenaReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" as const },
+    { address: tc, abi: timeArenaReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" as const },
+  ] as const;
+}
+
+export type ArenaV2WarbowFlagSupplement = {
+  owner?: HexAddress;
+  plantAt?: bigint;
+  claimBp?: bigint;
+  silenceSec?: bigint;
+};
+
+export function mapArenaV2WarbowFlagSupplementRows(
+  raw: readonly { status: string; result?: unknown }[] | undefined,
+): ArenaV2WarbowFlagSupplement | undefined {
+  if (!raw || raw.length < 4) {
+    return undefined;
+  }
+  const ok = (i: number) => raw[i]?.status === "success";
+  const out: ArenaV2WarbowFlagSupplement = {};
+  if (ok(0)) {
+    out.owner = raw[0]!.result as HexAddress;
+  }
+  if (ok(1)) {
+    out.plantAt = raw[1]!.result as bigint;
+  }
+  if (ok(2)) {
+    out.claimBp = raw[2]!.result as bigint;
+  }
+  if (ok(3)) {
+    out.silenceSec = raw[3]!.result as bigint;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 export function mapArenaV2UserRows(
   raw: readonly { status: string; result?: unknown }[] | undefined,
 ): readonly ContractReadRow[] | undefined {
