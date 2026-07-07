@@ -327,7 +327,7 @@ _e2e_note "Vite preview ready"
 
 _DEFAULT_PLAYWRIGHT_SPECS="e2e/anvil-arena-*.spec.ts e2e/anvil-referrals.spec.ts"
 if [[ "${YIELDOMEGA_E2E_INDEXER:-0}" == "1" ]]; then
-  _DEFAULT_PLAYWRIGHT_SPECS="${_DEFAULT_PLAYWRIGHT_SPECS} e2e/anvil-indexer-first.spec.ts"
+  _DEFAULT_PLAYWRIGHT_SPECS="${_DEFAULT_PLAYWRIGHT_SPECS} e2e/anvil-indexer-first.spec.ts e2e/anvil-audit-events.spec.ts"
 fi
 PLAYWRIGHT_SPECS="${PLAYWRIGHT_SPECS:-${_DEFAULT_PLAYWRIGHT_SPECS}}"
 # Playwright specs read deploy addresses (e.g. #257 claim warp); build-time unset must not leak.
