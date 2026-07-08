@@ -15,6 +15,7 @@ pub async fn connect_and_migrate(database_url: &str, max_connections: u32) -> Re
     tracing::info!(max_connections, "postgres connection pool ready");
     tracing::info!("running pending migrations");
     sqlx::migrate!("./migrations").run(&pool).await?;
+    crate::arena_defended_streak::backfill_if_needed(&pool).await?;
 
     Ok(pool)
 }

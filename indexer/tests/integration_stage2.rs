@@ -1046,6 +1046,8 @@ async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
         "unexpected block_timestamp: {:?}",
         db_row.3
     );
+    assert!(row.get("buyer_active_defended_streak").is_some());
+    assert!(row.get("buyer_best_defended_streak").is_some());
 }
 
 /// `GET /v1/arena/activity` exposes buy + WarBow action rows with explicit deltas (GitLab #292).

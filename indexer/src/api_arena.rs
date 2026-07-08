@@ -472,6 +472,7 @@ fn kumbaya_entry_pay_asset(pay_kind: Option<i16>) -> Option<String> {
 const ARENA_BUYS_SELECT_SQL: &str = r#"SELECT b.buyer, b.charm_wad::text, b.doub_paid::text, b.block_number, b.tx_hash,
                       b.timer_hard_reset, b.paid_with_cred, b.actual_seconds_added::text,
                       b.new_deadline::text, b.buy_index::text, b.log_index, b.pay_kind,
+                      b.buyer_active_defended_streak::text, b.buyer_best_defended_streak::text,
                       FLOOR(EXTRACT(EPOCH FROM b.block_timestamp))::bigint::text AS block_timestamp_sec,
                       k.gross_doub::text AS router_attested_gross_doub
                FROM idx_arena_buy b
@@ -602,6 +603,10 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
         };
         let router_attested_gross_doub: Option<String> =
             r.try_get("router_attested_gross_doub").ok();
+        let buyer_active_defended_streak: Option<String> =
+            r.try_get("buyer_active_defended_streak").ok();
+        let buyer_best_defended_streak: Option<String> =
+            r.try_get("buyer_best_defended_streak").ok();
         items.push(json!({
             "buyer": buyer,
             "charm_wad": charm_wad,
@@ -618,6 +623,8 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
             "pay_kind": pay_kind,
             "entry_pay_asset": kumbaya_entry_pay_asset(pay_kind),
             "router_attested_gross_doub": router_attested_gross_doub,
+            "buyer_active_defended_streak": buyer_active_defended_streak,
+            "buyer_best_defended_streak": buyer_best_defended_streak,
         }));
     }
 

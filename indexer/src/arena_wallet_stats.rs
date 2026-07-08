@@ -7,7 +7,6 @@ use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
 
 /// Mirrors onchain `TimeArena` constants used for derived metrics.
-const DEFENDED_STREAK_WINDOW_SEC: i64 = 900;
 const WARBOW_BASE_BUY_BP: u128 = 250;
 const WARBOW_TIMER_RESET_BONUS_BP: u128 = 500;
 const WARBOW_CLUTCH_BONUS_BP: u128 = 150;
@@ -293,10 +292,108 @@ async fn fetch_xp_progression(pool: &PgPool, wallet: &str) -> Result<(String, St
     Ok((level.to_string(), toward.to_string()))
 }
 
+/// Gate level after applying `charm_wad` to cached progression — fallback when same-tx `XpGained` is absent.
+pub async fn gate_level_after_charm_wad(
+    conn: &mut sqlx::postgres::PgConnection,
+    wallet: &str,
+    charm_wad: u128,
+) -> Result<u64, sqlx::Error> {
+    let rows = sqlx::query(
+        r#"SELECT xp_gained::text AS xp_gained
+           FROM idx_player_xp
+           WHERE player = $1
+           ORDER BY block_number ASC, log_index ASC"#,
+    )
+    .bind(wallet)
+    .fetch_all(&mut *conn)
+    .await?;
+
+    let mut level = 1u128;
+    let mut toward = 0u128;
+    for row in rows {
+        let gain_s: String = row.get("xp_gained");
+        let gain = gain_s.parse::<u128>().unwrap_or(0);
+        (level, toward) = apply_xp_gain(level, toward, gain);
+    }
+    let (lvl_after, _) = apply_xp_gain(level, toward, xp_for_charm(charm_wad));
+    Ok(lvl_after.clamp(1, MAX_PLAYER_LEVEL) as u64)
+}
+
+async fn fetch_longest_defended_streak_sql(pool: &PgPool, wallet: &str) -> Result<String, sqlx::Error> {
+    let value: Option<String> = sqlx::query_scalar(
+        r#"SELECT COALESCE(MAX(buyer_best_defended_streak), 0)::text
+           FROM idx_arena_buy
+           WHERE lower(buyer) = lower($1)
+             AND buyer_best_defended_streak IS NOT NULL"#,
+    )
+    .bind(wallet)
+    .fetch_one(pool)
+    .await?;
+    Ok(value.unwrap_or_else(|| "0".into()))
+}
+
+async fn fetch_current_defended_streak_sql(pool: &PgPool, wallet: &str) -> Result<String, sqlx::Error> {
+    let value: Option<String> = sqlx::query_scalar(
+        r#"SELECT COALESCE(MAX(b.buyer_active_defended_streak), 0)::text
+           FROM idx_arena_buy b
+           WHERE lower(b.buyer) = lower($1)
+             AND b.buyer_active_defended_streak IS NOT NULL
+             AND (
+               NOT EXISTS (SELECT 1 FROM idx_arena_podium_epoch WHERE category = 2)
+               OR (b.block_number, b.log_index) > (
+                 SELECT block_number, log_index
+                 FROM idx_arena_podium_epoch
+                 WHERE category = 2
+                 ORDER BY block_number DESC, log_index DESC
+                 LIMIT 1
+               )
+             )"#,
+    )
+    .bind(wallet)
+    .fetch_one(pool)
+    .await?;
+    Ok(value.unwrap_or_else(|| "0".into()))
+}
+
+async fn fetch_peak_defended_streak_sql(
+    pool: &PgPool,
+    wallet: &str,
+) -> Result<(String, String), sqlx::Error> {
+    let row = sqlx::query(
+        r#"SELECT buyer_active_defended_streak::text AS score,
+                  last_buy_epoch::text AS epoch
+           FROM idx_arena_buy
+           WHERE lower(buyer) = lower($1)
+             AND buyer_active_defended_streak IS NOT NULL
+           ORDER BY buyer_active_defended_streak DESC, block_number DESC, log_index DESC
+           LIMIT 1"#,
+    )
+    .bind(wallet)
+    .fetch_optional(pool)
+    .await?;
+    if let Some(r) = row {
+        return Ok((r.get("score"), r.get("epoch")));
+    }
+    Ok(("0".into(), "0".into()))
+}
+
+async fn fetch_peak_warbow_bp_sql(pool: &PgPool, wallet: &str) -> Result<Option<(String, String)>, sqlx::Error> {
+    let row = sqlx::query(
+        r#"SELECT battle_points::text AS score, epoch::text AS epoch
+           FROM idx_warbow_epoch_score
+           WHERE lower(player) = lower($1)
+           ORDER BY battle_points DESC, block_number DESC, log_index DESC
+           LIMIT 1"#,
+    )
+    .bind(wallet)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|r| (r.get::<String, _>("score"), r.get::<String, _>("epoch"))))
+}
+
 #[derive(Debug, Clone, Default)]
 struct PodiumRollBoundaries {
     time_booster: Vec<u64>,
-    defended_streak: Vec<u64>,
     warbow: Vec<u64>,
 }
 
@@ -438,12 +535,10 @@ pub async fn fetch_wallet_stats(
     let steals = fetch_all_steals(pool).await?;
     let roll_boundaries = PodiumRollBoundaries {
         time_booster: fetch_podium_epoch_resets(pool, 1).await?,
-        defended_streak: fetch_podium_epoch_resets(pool, 2).await?,
         warbow: fetch_podium_epoch_resets(pool, 3).await?,
     };
 
-    let longest_defended_streak =
-        simulate_longest_defended_streak(&global_buys, wallet).to_string();
+    let longest_defended_streak = fetch_longest_defended_streak_sql(pool, wallet).await?;
 
     let placements = fetch_podium_placements(pool, wallet).await?;
     let prizes_won = prizes_from_placements(&placements);
@@ -463,21 +558,22 @@ pub async fn fetch_wallet_stats(
     let warbow_guard_until = fetch_latest_warbow_guard_until(pool, wallet).await?;
 
     let highest_scores = compute_highest_scores(
+        pool,
         wallet,
         &wallet_buys,
         &global_buys,
         &steals,
         &roll_boundaries,
         &placements,
-    );
+    )
+    .await?;
 
     let current_epochs = fetch_current_epochs(pool, head_epochs).await?;
     let current_scores = compute_current_scores(
         pool,
         wallet,
         &wallet_buys,
-        &global_buys,
-        &steals,
+        &warbow_battle_points,
         &roll_boundaries,
         &current_epochs,
     )
@@ -719,36 +815,6 @@ fn gate_level_after_buy(buy: &BuyRow, progress: &mut (u128, u128)) -> u128 {
     lvl_after
 }
 
-fn simulate_longest_defended_streak(global_buys: &[BuyRow], wallet: &str) -> u64 {
-    let mut ds_last_under_window: Option<&str> = None;
-    let mut active: u64 = 0;
-    let mut best: u64 = 0;
-
-    for buy in global_buys {
-        let remaining = remaining_before_sec(buy);
-        let seconds_added = buy.actual_seconds_added;
-
-        if remaining < DEFENDED_STREAK_WINDOW_SEC && seconds_added > 0 {
-            if ds_last_under_window == Some(buy.buyer.as_str()) {
-                if buy.buyer == wallet {
-                    active += 1;
-                }
-            } else if buy.buyer == wallet {
-                active = 1;
-            } else {
-                active = 0;
-            }
-            ds_last_under_window = Some(&buy.buyer);
-            if buy.buyer == wallet && active > best {
-                best = active;
-            }
-        } else if remaining >= DEFENDED_STREAK_WINDOW_SEC && buy.buyer == wallet {
-            active = 0;
-        }
-    }
-    best
-}
-
 fn build_timeline(
     global_buys: &[BuyRow],
     steals: &[StealRow],
@@ -986,92 +1052,6 @@ fn peak_time_booster_epoch_score(
     (peak, peak_epoch)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DefendedStreakEventKind {
-    Buy,
-    EpochReset,
-}
-
-#[derive(Debug, Clone)]
-struct DefendedStreakEvent {
-    kind: DefendedStreakEventKind,
-    order_key: u64,
-    buy: Option<BuyRow>,
-}
-
-fn build_defended_streak_timeline(
-    global_buys: &[BuyRow],
-    streak_resets: &[u64],
-) -> Vec<DefendedStreakEvent> {
-    let mut events = Vec::with_capacity(global_buys.len() + streak_resets.len());
-    for buy in global_buys {
-        events.push(DefendedStreakEvent {
-            kind: DefendedStreakEventKind::Buy,
-            order_key: buy.order_key,
-            buy: Some(buy.clone()),
-        });
-    }
-    for &key in streak_resets {
-        events.push(DefendedStreakEvent {
-            kind: DefendedStreakEventKind::EpochReset,
-            order_key: key,
-            buy: None,
-        });
-    }
-    events.sort_by_key(|e| e.order_key);
-    events
-}
-
-/// `(current_epoch_best, lifetime_peak_across_epoch_windows)` for Defended Streak podium scoring.
-fn simulate_defended_streak_epoch_scores(
-    global_buys: &[BuyRow],
-    wallet: &str,
-    streak_resets: &[u64],
-) -> (u64, u64) {
-    let timeline = build_defended_streak_timeline(global_buys, streak_resets);
-    let mut ds_last_under_window: Option<String> = None;
-    let mut active: u64 = 0;
-    let mut epoch_best: u64 = 0;
-    let mut lifetime_peak: u64 = 0;
-
-    for event in timeline {
-        if event.kind == DefendedStreakEventKind::EpochReset {
-            active = 0;
-            epoch_best = 0;
-            ds_last_under_window = None;
-            continue;
-        }
-        let buy = event.buy.expect("buy event");
-        let remaining = remaining_before_sec(&buy);
-        let seconds_added = buy.actual_seconds_added;
-
-        if remaining < DEFENDED_STREAK_WINDOW_SEC && seconds_added > 0 {
-            if ds_last_under_window.as_deref() == Some(buy.buyer.as_str()) {
-                if buy.buyer == wallet {
-                    active += 1;
-                }
-            } else if buy.buyer == wallet {
-                active = 1;
-            } else {
-                active = 0;
-            }
-            ds_last_under_window = Some(buy.buyer.clone());
-            if buy.buyer == wallet {
-                if active > epoch_best {
-                    epoch_best = active;
-                }
-                if active > lifetime_peak {
-                    lifetime_peak = active;
-                }
-            }
-        } else if remaining >= DEFENDED_STREAK_WINDOW_SEC && buy.buyer == wallet {
-            active = 0;
-        }
-    }
-
-    (epoch_best, lifetime_peak)
-}
-
 fn latest_buy_sec_in_epoch(wallet_buys: &[BuyRow], epoch: &str) -> String {
     let epoch_n: u64 = epoch.parse().unwrap_or(0);
     wallet_buys
@@ -1114,8 +1094,7 @@ async fn compute_current_scores(
     pool: &PgPool,
     wallet: &str,
     wallet_buys: &[BuyRow],
-    global_buys: &[BuyRow],
-    steals: &[StealRow],
+    warbow_battle_points: &str,
     roll_boundaries: &PodiumRollBoundaries,
     epochs: &[String; 4],
 ) -> Result<Vec<Value>, sqlx::Error> {
@@ -1124,15 +1103,9 @@ async fn compute_current_scores(
     };
 
     let mut conn = pool.acquire().await?;
-    let (defended_epoch_best, _) = simulate_defended_streak_epoch_scores(
-        global_buys,
-        wallet,
-        &roll_boundaries.defended_streak,
-    );
+    let defended_epoch_best = fetch_current_defended_streak_sql(pool, wallet).await?;
     let time_booster_total =
         sum_time_booster_seconds(wallet_buys, &roll_boundaries.time_booster);
-    let (warbow_current, _, _) =
-        simulate_warbow_bp(wallet, global_buys, steals, &roll_boundaries.warbow);
 
     let mut scores = Vec::with_capacity(4);
     for (ux_i, &cat) in PODIUM_UX_CATEGORY_ORDER.iter().enumerate() {
@@ -1143,8 +1116,8 @@ async fn compute_current_scores(
         let score = match cat {
             0 => latest_buy_sec_in_epoch(wallet_buys, &epoch),
             1 => time_booster_total.to_string(),
-            2 => defended_epoch_best.to_string(),
-            3 => warbow_current.to_string(),
+            2 => defended_epoch_best.clone(),
+            3 => warbow_battle_points.to_string(),
             _ => "0".into(),
         };
         scores.push(json!({
@@ -1157,14 +1130,15 @@ async fn compute_current_scores(
     Ok(scores)
 }
 
-fn compute_highest_scores(
+async fn compute_highest_scores(
+    pool: &PgPool,
     wallet: &str,
     wallet_buys: &[BuyRow],
     global_buys: &[BuyRow],
     steals: &[StealRow],
     roll_boundaries: &PodiumRollBoundaries,
     placements: &[PodiumPlacement],
-) -> Vec<Value> {
+) -> Result<Vec<Value>, sqlx::Error> {
     let mut scores: Vec<HighestScore> = Vec::with_capacity(4);
 
     let mut charm_by_epoch: std::collections::HashMap<u64, u128> = std::collections::HashMap::new();
@@ -1192,38 +1166,36 @@ fn compute_highest_scores(
         });
     }
 
-    let (_, defended_peak) = simulate_defended_streak_epoch_scores(
-        global_buys,
-        wallet,
-        &roll_boundaries.defended_streak,
-    );
-    let streak_epoch = wallet_buys
-        .last()
-        .map(|b| b.last_buy_epoch.to_string())
-        .unwrap_or_else(|| "0".into());
+    let (defended_peak, streak_epoch) = fetch_peak_defended_streak_sql(pool, wallet).await?;
     scores.push(HighestScore {
         podium: "defended_streak",
         epoch: streak_epoch,
-        score: defended_peak.to_string(),
+        score: defended_peak,
         rank: placements
             .iter()
             .find(|p| p.category == 2)
             .map(|p| p.rank),
     });
 
-    let (_, peak_bp, bp_epoch) =
-        simulate_warbow_bp(wallet, global_buys, steals, &roll_boundaries.warbow);
+    let (peak_bp, bp_epoch) = if let Some((peak, epoch)) = fetch_peak_warbow_bp_sql(pool, wallet).await?
+    {
+        (peak, epoch)
+    } else {
+        let (_, simulated_peak, simulated_epoch) =
+            simulate_warbow_bp(wallet, global_buys, steals, &roll_boundaries.warbow);
+        (simulated_peak.to_string(), simulated_epoch)
+    };
     scores.push(HighestScore {
         podium: "warbow",
         epoch: bp_epoch,
-        score: peak_bp.to_string(),
+        score: peak_bp,
         rank: placements
             .iter()
             .find(|p| p.category == 3)
             .map(|p| p.rank),
     });
 
-    scores
+    Ok(scores
         .into_iter()
         .map(|s| {
             json!({
@@ -1233,7 +1205,7 @@ fn compute_highest_scores(
                 "rank": s.rank,
             })
         })
-        .collect()
+        .collect())
 }
 
 fn placement_rank(placements: &[PodiumPlacement], category: i16, epoch: &str) -> Option<u8> {
@@ -1538,57 +1510,6 @@ mod tests {
         let (peak, epoch) = peak_time_booster_epoch_score(&buys, &[25]);
         assert_eq!(peak, 200);
         assert_eq!(epoch, "1");
-    }
-
-    #[test]
-    fn defended_streak_epoch_scores_reset_on_roll() {
-        let wallet = "0xalice";
-        let other = "0xother";
-        let buys = vec![
-            BuyRow {
-                buyer: wallet.into(),
-                charm_wad: 1,
-                actual_seconds_added: 120,
-                new_deadline: 1000,
-                block_timestamp_sec: Some(800),
-                timer_hard_reset: false,
-                last_buy_epoch: 0,
-                order_key: 10,
-            },
-            BuyRow {
-                buyer: wallet.into(),
-                charm_wad: 1,
-                actual_seconds_added: 120,
-                new_deadline: 1120,
-                block_timestamp_sec: Some(900),
-                timer_hard_reset: false,
-                last_buy_epoch: 0,
-                order_key: 20,
-            },
-            BuyRow {
-                buyer: other.into(),
-                charm_wad: 1,
-                actual_seconds_added: 120,
-                new_deadline: 1240,
-                block_timestamp_sec: Some(950),
-                timer_hard_reset: false,
-                last_buy_epoch: 0,
-                order_key: 25,
-            },
-            BuyRow {
-                buyer: wallet.into(),
-                charm_wad: 1,
-                actual_seconds_added: 120,
-                new_deadline: 1360,
-                block_timestamp_sec: Some(1000),
-                timer_hard_reset: false,
-                last_buy_epoch: 1,
-                order_key: 40,
-            },
-        ];
-        let (current, peak) = simulate_defended_streak_epoch_scores(&buys, wallet, &[30]);
-        assert_eq!(current, 1);
-        assert_eq!(peak, 2);
     }
 
     #[test]

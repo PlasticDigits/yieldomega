@@ -223,6 +223,29 @@ describe("buildArenaBuyActualEffectLines", () => {
     expect(lines[lines.length - 1]).toBe("Last Buyer");
   });
 
+  it("uses indexed buyer_active_defended_streak for streak pill copy", () => {
+    const lines = buildArenaBuyActualEffectLines(
+      {
+        ...baseBuy,
+        buyer_active_defended_streak: "2",
+      },
+      { playerLevel: 5 },
+    );
+    expect(lines).toContain("+1 streak (2)");
+    expect(lines).not.toContain("Start streak");
+  });
+
+  it("shows Start streak when indexed active defended streak is one", () => {
+    const lines = buildArenaBuyActualEffectLines(
+      {
+        ...baseBuy,
+        buyer_active_defended_streak: "1",
+      },
+      { playerLevel: 5 },
+    );
+    expect(lines).toContain("Start streak");
+  });
+
   it("infers pre-buy remaining from deadline, actual seconds, and block time", () => {
     expect(inferSecondsRemainingBeforeBuy(baseBuy)).toBe(880);
   });

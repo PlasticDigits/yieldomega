@@ -15,6 +15,7 @@ pub mod arena_buy_routing;
 pub mod arena_podium_epoch;
 pub mod arena_podium_prize;
 pub mod arena_podium_participants;
+pub mod arena_defended_streak;
 pub mod arena_wallet_stats;
 pub mod arena_warbow_pending_revenge;
 pub mod chain_timer;

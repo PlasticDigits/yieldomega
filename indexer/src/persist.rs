@@ -22,6 +22,14 @@ fn b256_hex(h: alloy_primitives::B256) -> String {
     format!("{:#x}", h)
 }
 
+fn u256_to_u128(n: U256) -> u128 {
+    if n > U256::from(u128::MAX) {
+        u128::MAX
+    } else {
+        n.to::<u128>()
+    }
+}
+
 pub async fn persist_decoded_log_conn(
     conn: &mut PgConnection,
     head: &mut LastBuyEpochHead,
@@ -87,6 +95,19 @@ pub async fn persist_decoded_log_conn(
             .bind(*paid_with_cred)
             .bind(last_buy_epoch)
             .execute(&mut *conn)
+            .await?;
+            crate::arena_defended_streak::apply_defended_streak_after_buy(
+                conn,
+                &crate::arena_defended_streak::DefendedStreakBuyInput {
+                    tx_hash: tx_h.clone(),
+                    log_index: log_i,
+                    buyer: addr_hex(*buyer),
+                    charm_wad: u256_to_u128(*charm_wad),
+                    new_deadline: u256_to_u128(*new_deadline),
+                    actual_seconds_added: u256_to_u128(*actual_seconds_added),
+                    block_timestamp_sec: block_ts,
+                },
+            )
             .await?;
         }
         DecodedEvent::ArenaReferralCred {
@@ -253,6 +274,9 @@ pub async fn persist_decoded_log_conn(
             .bind(u256_dec(*pool_paid))
             .execute(&mut *conn)
             .await?;
+            if *category == 2 {
+                crate::arena_defended_streak::clear_holder_on_defended_epoch_roll(conn).await?;
+            }
         }
         DecodedEvent::ArenaPodiumTimerArmed { category, epoch } => {
             sqlx::query(

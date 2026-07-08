@@ -217,6 +217,30 @@ function parseBuyBigIntField(v: string | undefined): bigint | undefined {
   }
 }
 
+function formatIndexedDefendedStreakPill(activeStreak: bigint): string | undefined {
+  if (activeStreak <= 0n) {
+    return undefined;
+  }
+  if (activeStreak === 1n) {
+    return formatPreviewStreakPill({ kind: "start" });
+  }
+  return formatPreviewStreakPill({
+    kind: "continue",
+    nextStreak: Number(activeStreak),
+  });
+}
+
+function indexedDefendedStreakPill(buy: BuyItem, levelNum: number): string | undefined {
+  if (!isFeatureUnlocked(levelNum, "defended_streak")) {
+    return undefined;
+  }
+  const active = parseBuyBigIntField(buy.buyer_active_defended_streak);
+  if (active === undefined) {
+    return undefined;
+  }
+  return formatIndexedDefendedStreakPill(active);
+}
+
 /** Pre-buy seconds remaining inferred from indexed deadline + block time. */
 export function inferSecondsRemainingBeforeBuy(buy: BuyItem): number | undefined {
   const newDeadline = parseBuyBigIntField(buy.new_deadline);
@@ -297,8 +321,13 @@ export function buildArenaBuyActualEffectLines(
   }
 
   const indexedBp = buildBuyBattlePointBreakdown(buy);
+  const indexedStreakLine = indexedDefendedStreakPill(buy, levelNum);
   const remainingBefore = inferSecondsRemainingBeforeBuy(buy);
   const priorBuys = buysBeforeTarget(recentBuys, buy);
+
+  if (indexedStreakLine) {
+    items.push(indexedStreakLine);
+  }
 
   if (indexedBp.length > 0 && isFeatureUnlocked(levelNum, "warbow")) {
     for (const row of indexedBp) {
@@ -309,7 +338,7 @@ export function buildArenaBuyActualEffectLines(
         }),
       );
     }
-  } else if (remainingBefore !== undefined) {
+  } else if (remainingBefore !== undefined && !indexedStreakLine) {
     let preBuyStreak: bigint | undefined;
     const postStreak = parseBuyBigIntField(buy.buyer_active_defended_streak);
     if (postStreak !== undefined) {

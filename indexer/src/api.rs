@@ -22,7 +22,7 @@ use crate::chain_timer::TimecurveHeadSnapshot;
 use crate::doub_spot_price;
 use crate::rpc_metrics::RpcMetrics;
 
-const SCHEMA_VERSION: &str = "2.24.0";
+const SCHEMA_VERSION: &str = "2.25.0";
 
 #[derive(Clone)]
 pub struct AppState {
