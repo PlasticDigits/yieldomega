@@ -9,10 +9,12 @@ import { formatLocaleInteger } from "@/lib/formatAmount";
 import type { BuyItem } from "@/lib/indexerApi";
 import {
   type ArenaBuyPreviewPolicy,
+  DEFAULT_ARENA_BUY_PREVIEW_POLICY,
   formatPreviewBpPill,
   formatPreviewStreakPill,
   formatPreviewTimerPill,
   previewWarbowBuyEffects,
+  STREAK_PILL_END_OTHER,
 } from "@/lib/timeArenaBuyPreview";
 import { buildBuyBattlePointBreakdown } from "@/lib/timeArenaUx";
 
@@ -221,24 +223,58 @@ function formatIndexedDefendedStreakPill(activeStreak: bigint): string | undefin
   if (activeStreak <= 0n) {
     return undefined;
   }
-  if (activeStreak === 1n) {
-    return formatPreviewStreakPill({ kind: "start" });
-  }
   return formatPreviewStreakPill({
     kind: "continue",
     nextStreak: Number(activeStreak),
   });
 }
 
-function indexedDefendedStreakPill(buy: BuyItem, levelNum: number): string | undefined {
+/**
+ * Streak pill for a completed buy — prefers indexed streak-break / end-streak outcomes
+ * over post-buy active streak when the buy ended someone else's run.
+ */
+function completedBuyDefendedStreakPill(
+  buy: BuyItem,
+  levelNum: number,
+  args: {
+    recentBuys?: readonly BuyItem[] | null;
+    previewPolicy?: ArenaBuyPreviewPolicy;
+  },
+): string | undefined {
   if (!isFeatureUnlocked(levelNum, "defended_streak")) {
     return undefined;
   }
-  const active = parseBuyBigIntField(buy.buyer_active_defended_streak);
-  if (active === undefined) {
-    return undefined;
+
+  const streakBreakBp = parseBuyBigIntField(buy.bp_streak_break_bonus) ?? 0n;
+  if (streakBreakBp > 0n) {
+    return STREAK_PILL_END_OTHER;
   }
-  return formatIndexedDefendedStreakPill(active);
+
+  const postStreak = parseBuyBigIntField(buy.buyer_active_defended_streak);
+  const remainingBefore = inferSecondsRemainingBeforeBuy(buy);
+  const policy = args.previewPolicy ?? DEFAULT_ARENA_BUY_PREVIEW_POLICY;
+  const priorBuys = buysBeforeTarget(args.recentBuys, buy);
+  const preBuyStreak =
+    postStreak !== undefined ? (postStreak > 0n ? postStreak - 1n : 0n) : undefined;
+
+  if (remainingBefore !== undefined) {
+    const fx = previewWarbowBuyEffects({
+      secondsRemaining: remainingBefore,
+      policy,
+      walletAddress: buy.buyer as HexAddress,
+      activeDefendedStreak: preBuyStreak,
+      recentBuys: priorBuys,
+    });
+    if (fx.streak?.kind === "end_own" || fx.streak?.kind === "end_other") {
+      return formatPreviewStreakPill(fx.streak);
+    }
+  }
+
+  if (postStreak !== undefined && postStreak > 0n) {
+    return formatIndexedDefendedStreakPill(postStreak);
+  }
+
+  return undefined;
 }
 
 /** Pre-buy seconds remaining inferred from indexed deadline + block time. */
@@ -321,7 +357,10 @@ export function buildArenaBuyActualEffectLines(
   }
 
   const indexedBp = buildBuyBattlePointBreakdown(buy);
-  const indexedStreakLine = indexedDefendedStreakPill(buy, levelNum);
+  const indexedStreakLine = completedBuyDefendedStreakPill(buy, levelNum, {
+    recentBuys,
+    previewPolicy,
+  });
   const remainingBefore = inferSecondsRemainingBeforeBuy(buy);
   const priorBuys = buysBeforeTarget(recentBuys, buy);
 

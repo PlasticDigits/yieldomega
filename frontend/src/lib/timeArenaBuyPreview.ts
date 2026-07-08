@@ -69,8 +69,15 @@ export type PreviewWarbowBpPill = {
 
 export type PreviewDefendedStreakPill =
   | { kind: "continue"; nextStreak: number }
-  | { kind: "break"; priorStreak: number; bpAmount: number }
+  | { kind: "end_other"; priorStreak?: number; bpAmount?: number }
+  | { kind: "end_own" }
   | { kind: "start" };
+
+/** Pre-buy checkout copy when a buy clears the viewer's defended streak above the window. */
+export const STREAK_PILL_END_OWN = "Warning: Ends Your Streak";
+
+/** Pre-buy / post-buy copy when a buy ends another wallet's defended streak. */
+export const STREAK_PILL_END_OTHER = "End Streak";
 
 export type PreviewWarbowBuyEffects = {
   timer: PreviewBuyTimerResult | undefined;
@@ -110,6 +117,16 @@ export function inferDefendedStreakHolderFromRecentBuys(
   return undefined;
 }
 
+function resolveWalletDefendedStreak(
+  activeDefendedStreak: bigint | undefined,
+  holderInfo: { holderActiveStreak: bigint } | undefined,
+): bigint {
+  if ((activeDefendedStreak ?? 0n) > 0n) {
+    return activeDefendedStreak!;
+  }
+  return holderInfo?.holderActiveStreak ?? 0n;
+}
+
 export function previewWarbowBuyEffects(args: {
   secondsRemaining: number | undefined;
   policy?: ArenaBuyPreviewPolicy;
@@ -140,31 +157,37 @@ export function previewWarbowBuyEffects(args: {
   let bpStreakBreak = 0;
   let bpAmbush = 0;
 
-  if (remaining < policy.defendedStreakWindowSec) {
-    const holderInfo = inferDefendedStreakHolderFromRecentBuys(args.recentBuys);
-    const wallet = args.walletAddress?.toLowerCase();
-    const holderAddr = holderInfo?.holder.toLowerCase();
-    const holderStreakOnChain =
-      holderAddr && wallet && holderAddr === wallet
-        ? args.activeDefendedStreak
-        : holderInfo?.holderActiveStreak;
+  const holderInfo = inferDefendedStreakHolderFromRecentBuys(args.recentBuys);
+  const wallet = args.walletAddress?.toLowerCase();
+  const holderAddr = holderInfo?.holder.toLowerCase();
+  const walletIsHolder = Boolean(holderInfo && holderAddr && wallet && holderAddr === wallet);
+  const holderStreak = holderInfo
+    ? walletIsHolder
+      ? resolveWalletDefendedStreak(args.activeDefendedStreak, holderInfo)
+      : holderInfo.holderActiveStreak
+    : 0n;
 
-    if (holderInfo && holderAddr && wallet && holderAddr === wallet) {
-      const cur = args.activeDefendedStreak ?? 0n;
+  if (remaining >= policy.defendedStreakWindowSec) {
+    if (holderStreak > 0n && wallet) {
+      streak = walletIsHolder ? { kind: "end_own" } : { kind: "end_other" };
+    }
+  } else if (remaining < policy.defendedStreakWindowSec) {
+    if (walletIsHolder) {
+      const cur = resolveWalletDefendedStreak(args.activeDefendedStreak, holderInfo);
       if (cur > 0n) {
         streak = { kind: "continue", nextStreak: Number(cur) + 1 };
       } else {
         streak = { kind: "start" };
       }
-    } else if (holderInfo && (holderStreakOnChain ?? 0n) > 0n) {
-      const prior = Number(holderStreakOnChain);
+    } else if (holderInfo && holderStreak > 0n) {
+      const prior = Number(holderStreak);
       bpStreakBreak = prior * policy.warbowStreakBreakMultBp;
       bpPills.push({ amount: bpStreakBreak, label: "Streak break" });
       if (hardReset) {
         bpAmbush = policy.warbowAmbushBonusBp;
         bpPills.push({ amount: bpAmbush, label: "Ambush" });
       }
-      streak = { kind: "break", priorStreak: prior, bpAmount: bpStreakBreak };
+      streak = { kind: "end_other", priorStreak: prior, bpAmount: bpStreakBreak };
     } else {
       streak = { kind: "start" };
     }
@@ -188,8 +211,10 @@ export function formatPreviewStreakPill(streak: PreviewDefendedStreakPill): stri
   switch (streak.kind) {
     case "continue":
       return `+1 streak (${formatLocaleInteger(streak.nextStreak)})`;
-    case "break":
-      return "Break streak";
+    case "end_other":
+      return STREAK_PILL_END_OTHER;
+    case "end_own":
+      return STREAK_PILL_END_OWN;
     case "start":
       return "Start streak";
   }

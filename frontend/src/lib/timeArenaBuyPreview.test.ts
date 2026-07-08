@@ -80,7 +80,7 @@ describe("previewWarbowBuyEffects", () => {
       "Ambush",
     ]);
     expect(fx.bpPills.find((p) => p.label === "Streak break")?.amount).toBe(200);
-    expect(fx.streak).toEqual({ kind: "break", priorStreak: 2, bpAmount: 200 });
+    expect(fx.streak).toEqual({ kind: "end_other", priorStreak: 2, bpAmount: 200 });
   });
 
   it("shows continue streak for the window holder", () => {
@@ -107,6 +107,84 @@ describe("previewWarbowBuyEffects", () => {
       ],
     });
     expect(fx.streak).toEqual({ kind: "continue", nextStreak: 3 });
+    expect(fx.bpPills.map((p) => p.label)).toEqual(["Base"]);
+  });
+
+  it("continues streak from indexer head when onchain read is still zero (#366)", () => {
+    const fx = previewWarbowBuyEffects({
+      secondsRemaining: 800,
+      policy,
+      walletAddress: holder,
+      activeDefendedStreak: 0n,
+      recentBuys: [
+        {
+          buyer: holder,
+          actual_seconds_added: "120",
+          buyer_active_defended_streak: "1",
+          block_number: "1",
+          tx_hash: "0xabc",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          new_deadline: "1",
+          total_raised_after: "1",
+          buy_index: "1",
+        },
+      ],
+    });
+    expect(fx.streak).toEqual({ kind: "continue", nextStreak: 2 });
+  });
+
+  it("warns when the holder buys above the defended-streak window", () => {
+    const fx = previewWarbowBuyEffects({
+      secondsRemaining: 1000,
+      policy,
+      walletAddress: holder,
+      activeDefendedStreak: 2n,
+      recentBuys: [
+        {
+          buyer: holder,
+          actual_seconds_added: "120",
+          buyer_active_defended_streak: "2",
+          block_number: "1",
+          tx_hash: "0xabc",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          new_deadline: "1",
+          total_raised_after: "1",
+          buy_index: "1",
+        },
+      ],
+    });
+    expect(fx.streak).toEqual({ kind: "end_own" });
+  });
+
+  it("ends a rival streak when buying above the defended-streak window", () => {
+    const fx = previewWarbowBuyEffects({
+      secondsRemaining: 1000,
+      policy,
+      walletAddress: rival,
+      recentBuys: [
+        {
+          buyer: holder,
+          actual_seconds_added: "120",
+          buyer_active_defended_streak: "3",
+          block_number: "1",
+          tx_hash: "0xabc",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          new_deadline: "1",
+          total_raised_after: "1",
+          buy_index: "1",
+        },
+      ],
+    });
+    expect(fx.streak).toEqual({ kind: "end_other" });
     expect(fx.bpPills.map((p) => p.label)).toEqual(["Base"]);
   });
 

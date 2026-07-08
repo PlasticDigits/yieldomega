@@ -13,6 +13,7 @@ import {
   mergeArenaBuyProjectedEffectBonusLines,
   previewBuyPlayerLevelAfterCharm,
 } from "./arenaBuyProjectedEffects";
+import { STREAK_PILL_END_OTHER, STREAK_PILL_END_OWN } from "@/lib/timeArenaBuyPreview";
 import type { BuyItem } from "@/lib/indexerApi";
 
 const fmt = (a: `0x${string}`) => `${a.slice(0, 6)}…`;
@@ -81,7 +82,7 @@ describe("buildArenaBuyProjectedEffectLines", () => {
     const lines = buildArenaBuyProjectedEffectLines({
       charmWadSelected: 1n * 10n ** 18n,
       secondsRemaining: 800,
-      activeDefendedStreak: 1n,
+      activeDefendedStreak: 0n,
       walletAddress: wallet,
       recentBuys: [
         {
@@ -103,8 +104,70 @@ describe("buildArenaBuyProjectedEffectLines", () => {
       formatRivalWallet: fmt,
     });
     expect(lines).toContain("+1 streak (2)");
+    expect(lines).not.toContain("Start streak");
     expect(lines).not.toContain("Start or break");
     expect(lines).not.toContain("Continue your streak");
+  });
+
+  it("warns when the holder buys above the defended-streak window", () => {
+    const wallet = "0x1111111111111111111111111111111111111111" as const;
+    const lines = buildArenaBuyProjectedEffectLines({
+      charmWadSelected: 1n * 10n ** 18n,
+      secondsRemaining: 1000,
+      activeDefendedStreak: 2n,
+      walletAddress: wallet,
+      recentBuys: [
+        {
+          buyer: wallet,
+          actual_seconds_added: "120",
+          buyer_active_defended_streak: "2",
+          block_number: "1",
+          tx_hash: "0xabc",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          new_deadline: "1",
+          total_raised_after: "1",
+          buy_index: "1",
+        },
+      ],
+      plantWarBowFlag: false,
+      playerLevel: 5,
+      formatRivalWallet: fmt,
+    });
+    expect(lines).toContain(STREAK_PILL_END_OWN);
+  });
+
+  it("shows End Streak when breaking a rival below the window", () => {
+    const holder = "0x1111111111111111111111111111111111111111" as const;
+    const rival = "0x2222222222222222222222222222222222222222" as const;
+    const lines = buildArenaBuyProjectedEffectLines({
+      charmWadSelected: 1n * 10n ** 18n,
+      secondsRemaining: 800,
+      walletAddress: rival,
+      recentBuys: [
+        {
+          buyer: holder,
+          actual_seconds_added: "120",
+          buyer_active_defended_streak: "2",
+          block_number: "1",
+          tx_hash: "0xabc",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          new_deadline: "1",
+          total_raised_after: "1",
+          buy_index: "1",
+        },
+      ],
+      plantWarBowFlag: false,
+      playerLevel: 5,
+      formatRivalWallet: fmt,
+    });
+    expect(lines).toContain(STREAK_PILL_END_OTHER);
+    expect(lines).toContain("+200 BP Streak break");
   });
 
   it("uses charmWeightTotalWad for the +xp chip when provided (referral / presale bonus weight)", () => {
@@ -243,11 +306,52 @@ describe("buildArenaBuyActualEffectLines", () => {
       },
       { playerLevel: 5 },
     );
-    expect(lines).toContain("Start streak");
+    expect(lines).toContain("+1 streak (1)");
+    expect(lines).not.toContain("Start streak");
   });
 
   it("infers pre-buy remaining from deadline, actual seconds, and block time", () => {
     expect(inferSecondsRemainingBeforeBuy(baseBuy)).toBe(880);
+  });
+
+  it("shows End Streak in results when indexed streak-break BP is present", () => {
+    const lines = buildArenaBuyActualEffectLines(
+      {
+        ...baseBuy,
+        buyer_active_defended_streak: "1",
+        bp_streak_break_bonus: "200",
+      },
+      { playerLevel: 5 },
+    );
+    expect(lines).toContain(STREAK_PILL_END_OTHER);
+    expect(lines).not.toContain("+1 streak (1)");
+  });
+
+  it("shows warning when a holder ends their streak above the window", () => {
+    const wallet = "0x1111111111111111111111111111111111111111" as const;
+    const lines = buildArenaBuyActualEffectLines(
+      {
+        ...baseBuy,
+        buyer: wallet,
+        block_timestamp: "1700000000",
+        new_deadline: "1700001120",
+        actual_seconds_added: "120",
+        buyer_active_defended_streak: "0",
+      },
+      {
+        playerLevel: 5,
+        recentBuys: [
+          {
+            ...baseBuy,
+            buyer: wallet,
+            block_number: "99",
+            log_index: 0,
+            buyer_active_defended_streak: "2",
+          },
+        ],
+      },
+    );
+    expect(lines).toContain(STREAK_PILL_END_OWN);
   });
 });
 
