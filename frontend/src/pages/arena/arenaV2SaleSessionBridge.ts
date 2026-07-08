@@ -106,6 +106,7 @@ export function arenaV2UserContracts(tc: HexAddress, wallet: HexAddress) {
   return [
     { address: tc, abi: timeArenaReadAbi, functionName: "nextBuyAllowedAt" as const, args: [wallet] },
     { address: tc, abi: timeArenaReadAbi, functionName: "buyEnergyState" as const, args: [wallet] },
+    { address: tc, abi: timeArenaReadAbi, functionName: "activeDefendedStreak" as const, args: [wallet] },
   ] as const;
 }
 
@@ -157,7 +158,10 @@ export function mapArenaV2UserRows(
   if (!raw?.[0] || raw[0].status !== "success") return undefined;
   const nextBuy = raw[0].result as bigint;
   const energy = raw[1]?.status === "success" ? raw[1].result : undefined;
-  return [row(nextBuy), row(0n), row(energy)];
+  // `activeDefendedStreak(wallet)` — failure row so the session latch keeps the last good value.
+  const streak: ContractReadRow =
+    raw[2]?.status === "success" ? row(raw[2].result) : { status: "failure" };
+  return [row(nextBuy), streak, row(energy)];
 }
 
 /** Maps `GET /v1/arena/timers` into Arena v2 `useArenaSaleSession` core rows ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */

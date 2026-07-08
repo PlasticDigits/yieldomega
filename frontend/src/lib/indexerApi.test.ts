@@ -287,6 +287,8 @@ describe("fetchArenaBuysAsBuyItems (#282, #283)", () => {
               buy_index: "7",
               log_index: 3,
               block_timestamp: "1700000000",
+              buyer_active_defended_streak: "4",
+              buyer_best_defended_streak: "15",
             },
           ],
           limit: 1,
@@ -303,6 +305,8 @@ describe("fetchArenaBuysAsBuyItems (#282, #283)", () => {
     expect(item?.buy_index).toBe("7");
     expect(item?.log_index).toBe(3);
     expect(item?.block_timestamp).toBe("1700000000");
+    expect(item?.buyer_active_defended_streak).toBe("4");
+    expect(item?.buyer_best_defended_streak).toBe("15");
   });
 });
 

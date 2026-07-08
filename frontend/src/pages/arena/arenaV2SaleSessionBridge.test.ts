@@ -5,14 +5,44 @@ import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { WAD } from "@/lib/timeArenaMath";
 import {
   ARENA_SESSION_CORE_ROW_COUNT,
+  arenaV2UserContracts,
   coreReadRowsFromArenaTimers,
   mapArenaV2CoreRows,
+  mapArenaV2UserRows,
   mapArenaV2WarbowFlagSupplementRows,
 } from "./arenaV2SaleSessionBridge";
 
 const DOUB = "0x" + "1".repeat(40);
 const REF = "0x" + "2".repeat(40);
 const BUY_ROUTER = "0x" + "3".repeat(40);
+
+describe("arenaV2UserContracts / mapArenaV2UserRows", () => {
+  const TC = ("0x" + "a".repeat(40)) as `0x${string}`;
+  const WALLET = ("0x" + "b".repeat(40)) as `0x${string}`;
+
+  it("reads activeDefendedStreak for the wallet (streak pill copy)", () => {
+    const fns = arenaV2UserContracts(TC, WALLET).map((c) => c.functionName);
+    expect(fns).toEqual(["nextBuyAllowedAt", "buyEnergyState", "activeDefendedStreak"]);
+  });
+
+  it("maps the onchain streak result into the session row instead of hardcoded zero", () => {
+    const rows = mapArenaV2UserRows([
+      { status: "success", result: 0n },
+      { status: "success", result: [3, 3, 0n, 0n, 0n, 0n] },
+      { status: "success", result: 2n },
+    ]);
+    expect(rows?.[1]).toEqual({ status: "success", result: 2n });
+  });
+
+  it("emits a failure streak row when the read fails so the session latch holds", () => {
+    const rows = mapArenaV2UserRows([
+      { status: "success", result: 0n },
+      { status: "success", result: [3, 3, 0n, 0n, 0n, 0n] },
+      { status: "failure" },
+    ]);
+    expect(rows?.[1]?.status).toBe("failure");
+  });
+});
 
 describe("mapArenaV2CoreRows", () => {
   it("returns 23 rows aligned with useArenaSaleSession destructuring", () => {

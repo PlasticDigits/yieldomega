@@ -139,6 +139,8 @@ function mapArenaBuyToBuyItem(item: ArenaBuyItem): BuyItem {
     buy_index: item.buy_index,
     timer_hard_reset: item.timer_hard_reset,
     actual_seconds_added: item.actual_seconds_added,
+    buyer_active_defended_streak: item.buyer_active_defended_streak ?? undefined,
+    buyer_best_defended_streak: item.buyer_best_defended_streak ?? undefined,
   };
 }
 
@@ -837,6 +839,9 @@ export type ArenaBuyItem = {
   log_index: number;
   /** RPC block time at ingest (unix sec string); null when unavailable. */
   block_timestamp?: string | null;
+  /** Post-buy defended streak replay ([#366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366)); null before backfill. */
+  buyer_active_defended_streak?: string | null;
+  buyer_best_defended_streak?: string | null;
 };
 
 export type ArenaTimersResponse = {

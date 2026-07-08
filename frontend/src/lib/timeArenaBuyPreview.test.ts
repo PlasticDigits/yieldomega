@@ -230,4 +230,64 @@ describe("inferDefendedStreakHolderFromRecentBuys", () => {
       ]),
     ).toEqual({ holder, holderActiveStreak: 3n });
   });
+
+  it("clears the holder when the newest buy happened at or above the window", () => {
+    expect(
+      inferDefendedStreakHolderFromRecentBuys([
+        {
+          buyer: "0x1111111111111111111111111111111111111111",
+          actual_seconds_added: "120",
+          buyer_active_defended_streak: "0",
+          block_number: "2",
+          tx_hash: "0x2",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          // remaining before = 1700001120 - 120 - 1700000000 = 1000 ≥ 900 → holder cleared
+          new_deadline: "1700001120",
+          block_timestamp: "1700000000",
+          total_raised_after: "1",
+          buy_index: "2",
+        },
+        {
+          buyer: "0x1111111111111111111111111111111111111111",
+          actual_seconds_added: "120",
+          buyer_active_defended_streak: "2",
+          block_number: "1",
+          tx_hash: "0x1",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          new_deadline: "1",
+          total_raised_after: "1",
+          buy_index: "1",
+        },
+      ]),
+    ).toBeUndefined();
+  });
+
+  it("treats a missing streak field as holder with unknown streak (pre-#366 indexer)", () => {
+    const holder = "0x1111111111111111111111111111111111111111";
+    expect(
+      inferDefendedStreakHolderFromRecentBuys([
+        {
+          buyer: holder,
+          actual_seconds_added: "120",
+          block_number: "1",
+          tx_hash: "0x1",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          // remaining before = 880 < 900 → under window
+          new_deadline: "1700001000",
+          block_timestamp: "1700000000",
+          total_raised_after: "1",
+          buy_index: "1",
+        },
+      ]),
+    ).toEqual({ holder, holderActiveStreak: undefined });
+  });
 });

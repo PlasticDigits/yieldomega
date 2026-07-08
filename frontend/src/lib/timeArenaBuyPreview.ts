@@ -96,35 +96,66 @@ function parseBuyBigIntField(v: string | undefined): bigint | undefined {
   }
 }
 
+/** Pre-buy Last Buy seconds remaining from indexed `new_deadline` − `actual_seconds_added` − block time. */
+export function secondsRemainingBeforeBuyFromRow(buy: BuyItem): number | undefined {
+  const newDeadline = parseBuyBigIntField(buy.new_deadline);
+  const actualAdded = parseBuyBigIntField(buy.actual_seconds_added) ?? 0n;
+  const blockTs = parseBuyBigIntField(buy.block_timestamp ?? undefined);
+  if (newDeadline === undefined || blockTs === undefined) {
+    return undefined;
+  }
+  const remaining = newDeadline - actualAdded - blockTs;
+  if (remaining < 0n) {
+    return 0;
+  }
+  if (remaining > BigInt(Number.MAX_SAFE_INTEGER)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return Number(remaining);
+}
+
 /**
- * Infer `_dsLastUnderWindowBuyer` from indexer buys while the sale is in the defended-streak window.
- * Uses the newest buy with `actual_seconds_added > 0`. May be stale vs chain — see GitLab #227.
+ * Infer `_dsLastUnderWindowBuyer` from indexer buys, mirroring `TimeArena._processDefendedStreak`:
+ * newest-first, an over-window buy clears the holder; an under-window timer-moving buy takes it.
+ * `holderActiveStreak` is the indexed post-buy streak (#366); `undefined` on pre-backfill rows.
+ * May be stale vs chain — see GitLab #227.
  */
 export function inferDefendedStreakHolderFromRecentBuys(
   recentBuys: readonly BuyItem[] | null | undefined,
-): { holder: HexAddress; holderActiveStreak: bigint } | undefined {
+  windowSec = DEFAULT_ARENA_BUY_PREVIEW_POLICY.defendedStreakWindowSec,
+): { holder: HexAddress; holderActiveStreak: bigint | undefined } | undefined {
   if (!recentBuys?.length) {
     return undefined;
   }
   for (const b of recentBuys) {
+    const remainingBefore = secondsRemainingBeforeBuyFromRow(b);
+    if (remainingBefore !== undefined && remainingBefore >= windowSec) {
+      // Onchain: buys at/above the window clear the holder regardless of seconds added.
+      return undefined;
+    }
     const added = parseBuyBigIntField(b.actual_seconds_added) ?? 0n;
     if (added <= 0n) {
       continue;
     }
-    const streak = parseBuyBigIntField(b.buyer_active_defended_streak) ?? 0n;
+    const streak = parseBuyBigIntField(b.buyer_active_defended_streak);
+    if (streak !== undefined && streak <= 0n) {
+      // Under-window buy with post-buy streak 0: progression-gated buyer (#299) — holder unchanged.
+      continue;
+    }
     return { holder: b.buyer as HexAddress, holderActiveStreak: streak };
   }
   return undefined;
 }
 
+/** Only valid when the viewer is the inferred holder: an inferred holder always has streak ≥ 1. */
 function resolveWalletDefendedStreak(
   activeDefendedStreak: bigint | undefined,
-  holderInfo: { holderActiveStreak: bigint } | undefined,
+  holderInfo: { holderActiveStreak: bigint | undefined } | undefined,
 ): bigint {
-  if ((activeDefendedStreak ?? 0n) > 0n) {
-    return activeDefendedStreak!;
-  }
-  return holderInfo?.holderActiveStreak ?? 0n;
+  const chain = activeDefendedStreak ?? 0n;
+  const indexed = holderInfo?.holderActiveStreak ?? 0n;
+  const best = chain > indexed ? chain : indexed;
+  return best > 0n ? best : 1n;
 }
 
 export function previewWarbowBuyEffects(args: {
@@ -157,14 +188,17 @@ export function previewWarbowBuyEffects(args: {
   let bpStreakBreak = 0;
   let bpAmbush = 0;
 
-  const holderInfo = inferDefendedStreakHolderFromRecentBuys(args.recentBuys);
+  const holderInfo = inferDefendedStreakHolderFromRecentBuys(
+    args.recentBuys,
+    policy.defendedStreakWindowSec,
+  );
   const wallet = args.walletAddress?.toLowerCase();
   const holderAddr = holderInfo?.holder.toLowerCase();
   const walletIsHolder = Boolean(holderInfo && holderAddr && wallet && holderAddr === wallet);
   const holderStreak = holderInfo
     ? walletIsHolder
       ? resolveWalletDefendedStreak(args.activeDefendedStreak, holderInfo)
-      : holderInfo.holderActiveStreak
+      : holderInfo.holderActiveStreak ?? 1n
     : 0n;
 
   if (remaining >= policy.defendedStreakWindowSec) {
@@ -174,11 +208,7 @@ export function previewWarbowBuyEffects(args: {
   } else if (remaining < policy.defendedStreakWindowSec) {
     if (walletIsHolder) {
       const cur = resolveWalletDefendedStreak(args.activeDefendedStreak, holderInfo);
-      if (cur > 0n) {
-        streak = { kind: "continue", nextStreak: Number(cur) + 1 };
-      } else {
-        streak = { kind: "start" };
-      }
+      streak = { kind: "continue", nextStreak: Number(cur) + 1 };
     } else if (holderInfo && holderStreak > 0n) {
       const prior = Number(holderStreak);
       bpStreakBreak = prior * policy.warbowStreakBreakMultBp;
