@@ -499,7 +499,7 @@ export function useArenaSaleSession(
   ) as readonly ContractReadRow[] | undefined;
 
   const warbowFlagSupplementContracts = tc ? [...arenaV2WarbowFlagSupplementContracts(tc)] : [];
-  const { data: warbowFlagSupplementRaw } = useReadContracts({
+  const { data: warbowFlagSupplementRaw, refetch: refetchWarbowFlagSupplement } = useReadContracts({
     contracts: warbowFlagSupplementContracts as readonly unknown[],
     query: {
       enabled: Boolean(tc && indexerOn && isArenaV2),
@@ -1877,7 +1877,17 @@ export function useArenaSaleSession(
     void refetchCharmWalletBalance();
     void refreshHeroTimer();
     refetchCred();
-  }, [refetchCore, refetchUser, refetchLastBuyEpoch, refetchCharmWalletBalance, refreshHeroTimer, refetchCred]);
+    // Indexer timers omit warbowPendingFlag*; buy/claim must refresh the RPC supplement (#370).
+    void refetchWarbowFlagSupplement();
+  }, [
+    refetchCore,
+    refetchUser,
+    refetchLastBuyEpoch,
+    refetchCharmWalletBalance,
+    refreshHeroTimer,
+    refetchCred,
+    refetchWarbowFlagSupplement,
+  ]);
 
   const arenaPaused =
     arenaPausedRowR?.status === "success"
