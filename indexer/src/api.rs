@@ -5,6 +5,8 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
+use alloy_primitives::Address;
+use alloy_provider::ReqwestProvider;
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
@@ -22,7 +24,7 @@ use crate::chain_timer::TimecurveHeadSnapshot;
 use crate::doub_spot_price;
 use crate::rpc_metrics::RpcMetrics;
 
-const SCHEMA_VERSION: &str = "2.25.0";
+const SCHEMA_VERSION: &str = "2.26.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -32,6 +34,9 @@ pub struct AppState {
     pub ingestion_alive: Arc<AtomicBool>,
     pub last_indexed_at_ms: Arc<AtomicU64>,
     pub rpc_metrics: RpcMetrics,
+    /// Optional RPC + TimeArena for on-chain `pendingCred` overlays on wallet stats.
+    pub rpc_providers: Arc<Vec<ReqwestProvider>>,
+    pub time_arena: Option<Address>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -672,6 +677,8 @@ mod status_exposure_tests {
             ingestion_alive: Arc::new(AtomicBool::new(true)),
             last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
             rpc_metrics: RpcMetrics::default(),
+            rpc_providers: Arc::new(Vec::new()),
+            time_arena: None,
         }
     }
 

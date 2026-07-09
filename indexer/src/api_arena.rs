@@ -1113,7 +1113,19 @@ async fn arena_wallet_stats(
             h.timer.podium_epochs[3].clone(),
         ]
     });
-    let body = match arena_wallet_stats::fetch_wallet_stats(&state.pool, &w, head_epochs).await {
+    let rpc = arena_wallet_stats::WalletStatsRpc {
+        providers: state.rpc_providers.as_slice(),
+        time_arena: state.time_arena,
+        metrics: &state.rpc_metrics,
+    };
+    let body = match arena_wallet_stats::fetch_wallet_stats_with_rpc(
+        &state.pool,
+        &w,
+        head_epochs,
+        Some(rpc),
+    )
+    .await
+    {
         Ok(body) => body,
         Err(e) => return internal_db_error_response("GET /v1/arena/wallet/stats", e),
     };

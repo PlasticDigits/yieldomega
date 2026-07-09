@@ -2,9 +2,17 @@
 
 //! Aggregations for `GET /v1/arena/wallet/{address}/stats` (#255).
 
-use alloy_primitives::U256;
+use alloy_primitives::{Address, Bytes, U256};
+use alloy_provider::{Provider, ReqwestProvider};
+use alloy_rpc_types::TransactionRequest;
 use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
+
+use crate::rpc_http::rpc_first_ok_instrumented;
+use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
+
+/// `pendingCred(address,uint256)` — on-chain authority for claimable / accruing CRED.
+const SEL_PENDING_CRED: [u8; 4] = [0x01, 0x52, 0xf6, 0x5f];
 
 /// Mirrors onchain `TimeArena` constants used for derived metrics.
 const WARBOW_BASE_BUY_BP: u128 = 250;
@@ -145,18 +153,52 @@ async fn fetch_first_buy_bonus_epoch(pool: &PgPool, wallet: &str) -> Result<Opti
     Ok(epoch.map(|e| e.max(0) as u64))
 }
 
-async fn cred_epoch_claimed(pool: &PgPool, wallet: &str, epoch: u64) -> Result<bool, sqlx::Error> {
-    let claimed: bool = sqlx::query_scalar(
-        r#"SELECT EXISTS(
-               SELECT 1 FROM idx_play_cred_claim
-               WHERE claimer = $1 AND epoch = $2::numeric
-           )"#,
+fn encode_pending_cred_call(user: Address, epoch: u64) -> Bytes {
+    let mut data = Vec::with_capacity(4 + 64);
+    data.extend_from_slice(&SEL_PENDING_CRED);
+    let mut word = [0u8; 32];
+    word[12..].copy_from_slice(user.as_slice());
+    data.extend_from_slice(&word);
+    data.extend_from_slice(&U256::from(epoch).to_be_bytes::<32>());
+    Bytes::from(data)
+}
+
+fn decode_return_u256(data: &[u8]) -> Option<U256> {
+    if data.len() < 32 {
+        return None;
+    }
+    Some(U256::from_be_slice(&data[data.len() - 32..]))
+}
+
+/// Live `TimeArena.pendingCred(user, epoch)` — residual claimable after partial claims /
+/// `migrateLastBuyEpochToPodium` consolidation (SQL buy reconstruction cannot see remapped weight).
+pub async fn pending_cred_onchain(
+    providers: &[ReqwestProvider],
+    arena: Address,
+    wallet: Address,
+    epoch: u64,
+    metrics: &RpcMetrics,
+) -> Option<u128> {
+    if providers.is_empty() {
+        return None;
+    }
+    let input = encode_pending_cred_call(wallet, epoch);
+    let out = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::EthCall,
+        RpcCaller::WalletStats,
+        |provider| {
+            let req = TransactionRequest::default()
+                .to(arena)
+                .input(input.clone().into());
+            async move { provider.call(&req).await }
+        },
     )
-    .bind(wallet)
-    .bind(epoch.to_string())
-    .fetch_one(pool)
-    .await?;
-    Ok(claimed)
+    .await
+    .ok()?;
+    let n = decode_return_u256(out.as_ref())?;
+    n.try_into().ok()
 }
 
 async fn pending_cred_for_epoch(
@@ -172,6 +214,28 @@ async fn pending_cred_for_epoch(
         0
     };
     Ok(pending_cred_from_epoch_parts(parts.weight, parts.total, parts.epoch_buys, bonus).to_string())
+}
+
+/// Prefer on-chain `pendingCred` when RPC is available; fall back to SQL reconstruction.
+async fn pending_cred_for_epoch_prefer_onchain(
+    pool: &PgPool,
+    wallet: &str,
+    epoch: u64,
+    bonus_epoch: Option<u64>,
+    providers: &[ReqwestProvider],
+    arena: Option<Address>,
+    metrics: &RpcMetrics,
+) -> Result<String, sqlx::Error> {
+    if let Some(arena_addr) = arena {
+        if let Ok(wallet_addr) = wallet.parse::<Address>() {
+            if let Some(onchain) =
+                pending_cred_onchain(providers, arena_addr, wallet_addr, epoch, metrics).await
+            {
+                return Ok(onchain.to_string());
+            }
+        }
+    }
+    pending_cred_for_epoch(pool, wallet, epoch, bonus_epoch).await
 }
 
 async fn fetch_cred_balance_wad(pool: &PgPool, wallet: &str) -> Result<String, sqlx::Error> {
@@ -448,12 +512,36 @@ struct TimelineEvent {
     steal: Option<StealRow>,
 }
 
+/// Optional RPC overlay for on-chain `pendingCred` (claimable / accrual).
+pub struct WalletStatsRpc<'a> {
+    pub providers: &'a [ReqwestProvider],
+    pub time_arena: Option<Address>,
+    pub metrics: &'a RpcMetrics,
+}
+
 /// Head `lastBuyEpoch` + `podiumEpoch[1..3]` from chain timer (contract category order).
 pub async fn fetch_wallet_stats(
     pool: &PgPool,
     wallet: &str,
     head_epochs: Option<[String; 4]>,
 ) -> Result<Value, sqlx::Error> {
+    fetch_wallet_stats_with_rpc(pool, wallet, head_epochs, None).await
+}
+
+pub async fn fetch_wallet_stats_with_rpc(
+    pool: &PgPool,
+    wallet: &str,
+    head_epochs: Option<[String; 4]>,
+    rpc: Option<WalletStatsRpc<'_>>,
+) -> Result<Value, sqlx::Error> {
+    let (providers, arena, metrics_owned) = match &rpc {
+        Some(r) => (r.providers, r.time_arena, None),
+        None => (&[][..], None, Some(RpcMetrics::default())),
+    };
+    let metrics = match &rpc {
+        Some(r) => r.metrics,
+        None => metrics_owned.as_ref().unwrap(),
+    };
     let buy_agg = sqlx::query(
         r#"SELECT COUNT(*)::bigint AS buy_count,
                   COALESCE(SUM(doub_paid), 0)::text AS total_spent,
@@ -587,20 +675,32 @@ pub async fn fetch_wallet_stats(
     let epoch_parts = fetch_epoch_charm_cred_parts(pool, wallet, last_buy_epoch).await?;
     let epoch_charm_wad = epoch_parts.weight.to_string();
     let epoch_charm_total_wad = epoch_parts.total.to_string();
-    let pending_cred_accrual =
-        pending_cred_for_epoch(pool, wallet, last_buy_epoch, bonus_epoch).await?;
+    // Prefer on-chain `pendingCred` so residual weight after claim + migrateLastBuyEpochToPodium
+    // is visible (SQL buy reconstruction + "any CredClaimed ⇒ 0" was wrong for that case).
+    let pending_cred_accrual = pending_cred_for_epoch_prefer_onchain(
+        pool,
+        wallet,
+        last_buy_epoch,
+        bonus_epoch,
+        providers,
+        arena,
+        metrics,
+    )
+    .await?;
 
     let (claimable_cred_epoch, claimable_cred) = if last_buy_epoch > 0 {
         let ended = last_buy_epoch - 1;
-        let claimed = cred_epoch_claimed(pool, wallet, ended).await?;
-        let pending = if claimed {
-            0u128
-        } else {
-            parse_u128_decimal(
-                &pending_cred_for_epoch(pool, wallet, ended, bonus_epoch).await?,
-            )
-        };
-        (Some(ended.to_string()), pending.to_string())
+        let pending = pending_cred_for_epoch_prefer_onchain(
+            pool,
+            wallet,
+            ended,
+            bonus_epoch,
+            providers,
+            arena,
+            metrics,
+        )
+        .await?;
+        (Some(ended.to_string()), pending)
     } else {
         (None, "0".into())
     };
@@ -1556,6 +1656,16 @@ mod tests {
         assert!(alice_pending > bob_pending);
         // u128 `saturating_mul` used to pin every wallet at ~0.58 CRED on mainnet.
         assert!(alice_pending > CRED_PER_BUY_WAD);
+    }
+
+    #[test]
+    fn encode_pending_cred_call_matches_cast_selector() {
+        let user = Address::from_slice(&[0xa5; 20]);
+        let data = encode_pending_cred_call(user, 0);
+        assert_eq!(&data.as_ref()[..4], &SEL_PENDING_CRED);
+        assert_eq!(data.len(), 68);
+        assert_eq!(&data.as_ref()[16..36], user.as_slice());
+        assert_eq!(&data.as_ref()[36..], &[0u8; 32]);
     }
 
     #[test]
