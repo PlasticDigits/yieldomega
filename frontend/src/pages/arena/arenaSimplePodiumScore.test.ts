@@ -202,6 +202,36 @@ describe("formatSimplePodiumScoreLine", () => {
     ).toBe("02:21:24");
   });
 
+  it("formatViewerPodiumScoreLine shows No Buys when Last Buy score is missing or zero (#369)", () => {
+    expect(
+      formatViewerPodiumScoreLine(0, null, {
+        nowUnixSec: 1_700_008_484,
+        walletConnected: true,
+        compact: true,
+      }),
+    ).toBe("No Buys");
+    expect(
+      formatViewerPodiumScoreLine(0, "0", {
+        nowUnixSec: 1_700_008_484,
+        walletConnected: true,
+        compact: true,
+      }),
+    ).toBe("No Buys");
+  });
+
+  it("resolveViewerPodiumValueRaw ignores last_buy current_scores of 0 (#369)", () => {
+    const row: PodiumReadRow = {
+      winners: [ALICE, BOB, "0x0000000000000000000000000000000000000000"],
+      values: ["900", "500", "0"],
+      epoch: "12",
+    };
+    const walletCurrentScores = [
+      { podium: "last_buy", epoch: "12", score: "0", rank: null },
+    ];
+    const viewer = "0x0739a2229f9f8dae762830b415d244c4b5d50226";
+    expect(resolveViewerPodiumValueRaw(0, row, viewer, { walletCurrentScores })).toBeNull();
+  });
+
   it("formatSimplePodiumScoreLine uses hh:mm:ss for Last Buy on compact side-rail surfaces", () => {
     expect(
       formatSimplePodiumScoreLine(0, 0, {
