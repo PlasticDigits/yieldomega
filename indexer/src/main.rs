@@ -168,6 +168,27 @@ async fn main() -> Result<()> {
         );
     }
 
+    let time_arena_addr = config.address_registry.as_ref().and_then(|r| {
+        let s = r.contracts.time_arena.trim();
+        if s.is_empty() {
+            return None;
+        }
+        s.parse::<Address>().ok()
+    });
+    let rpc_providers = match yieldomega_indexer::rpc_http::parse_http_rpc_urls(&config.rpc_urls)
+        .and_then(|urls| {
+            yieldomega_indexer::rpc_http::build_reqwest_providers(
+                &urls,
+                config.rpc_request_timeout,
+            )
+        }) {
+        Ok(p) => Arc::new(p),
+        Err(e) => {
+            tracing::warn!(?e, "wallet-stats RPC providers unavailable");
+            Arc::new(Vec::new())
+        }
+    };
+
     let state = api::AppState {
         pool,
         chain_timer: chain_timer_cache,
@@ -175,6 +196,8 @@ async fn main() -> Result<()> {
         ingestion_alive: ingestion_progress.ingestion_alive.clone(),
         last_indexed_at_ms: ingestion_progress.last_indexed_at_ms.clone(),
         rpc_metrics,
+        rpc_providers,
+        time_arena: time_arena_addr,
     };
     let app = api::router_with_rate_limit(state)
         .layer(cors_config::cors_layer_for_runtime()?)

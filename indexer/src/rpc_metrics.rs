@@ -22,6 +22,7 @@ pub enum RpcCaller {
     WarbowScore,
     Reorg,
     DoubSpotPrice,
+    WalletStats,
 }
 
 impl RpcCaller {
@@ -33,6 +34,7 @@ impl RpcCaller {
             Self::WarbowScore => "warbow_score",
             Self::Reorg => "reorg",
             Self::DoubSpotPrice => "doub_spot_price",
+            Self::WalletStats => "wallet_stats",
         }
     }
 }
