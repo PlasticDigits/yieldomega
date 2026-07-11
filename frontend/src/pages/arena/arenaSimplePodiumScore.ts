@@ -175,8 +175,10 @@ export function resolveViewerPodiumValueRaw(
         : undefined;
     const match =
       exact ?? opts.walletCurrentScores.find((rowScore) => rowScore.podium === podiumKey);
-    if (match?.score?.trim()) {
-      return match.score;
+    const score = match?.score?.trim();
+    // Indexer last_buy current score is unix buy-sec; `"0"` means no buys in epoch (#369).
+    if (score && !(categoryIndex === 0 && score === "0")) {
+      return score;
     }
   }
 
@@ -202,6 +204,10 @@ export function resolveViewerPodiumValueRaw(
     }
   }
 
+  // Last Buy: no podium seat and no real buy-sec → empty (not unix epoch 0) (#369).
+  if (categoryIndex === 0) {
+    return null;
+  }
   return "0";
 }
 
@@ -213,6 +219,13 @@ export function formatViewerPodiumScoreLine(
 ): string {
   if (!opts.walletConnected) {
     return "—";
+  }
+  // Last Buy YOU row: no buy-sec (null / "0") → "No Buys", not a huge ago-from-epoch-0 (#369).
+  if (categoryIndex === 0) {
+    const buySec = valueRaw?.trim();
+    if (!buySec || buySec === "0") {
+      return "No Buys";
+    }
   }
   if (valueRaw === null) {
     return "—";
