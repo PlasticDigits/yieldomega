@@ -4,16 +4,16 @@ import { describe, expect, it } from "vitest";
 import { isWarbowStealVictimBpInBand, WARBOW_STEAL_VICTIM_MAX_MULT, WARBOW_STEAL_VICTIM_MIN_MULT } from "./warbowStealBpBand";
 
 describe("warbowStealBpBand", () => {
-  it("exports bracket multiples matching TimeCurve literals", () => {
-    expect(WARBOW_STEAL_VICTIM_MIN_MULT).toBe(2n);
-    expect(WARBOW_STEAL_VICTIM_MAX_MULT).toBe(10n);
+  it("exports bracket multiples matching TimeArena literals", () => {
+    expect(WARBOW_STEAL_VICTIM_MIN_MULT).toBe(1n);
+    expect(WARBOW_STEAL_VICTIM_MAX_MULT).toBe(50n);
   });
 
-  it("matches inclusive 2×–10× uint256 semantics", () => {
-    expect(isWarbowStealVictimBpInBand(250n, 500n)).toBe(true);
-    expect(isWarbowStealVictimBpInBand(250n, 2500n)).toBe(true);
-    expect(isWarbowStealVictimBpInBand(250n, 499n)).toBe(false);
-    expect(isWarbowStealVictimBpInBand(250n, 2501n)).toBe(false);
+  it("matches inclusive 1×–50× uint256 semantics", () => {
+    expect(isWarbowStealVictimBpInBand(250n, 250n)).toBe(true);
+    expect(isWarbowStealVictimBpInBand(250n, 12_500n)).toBe(true);
+    expect(isWarbowStealVictimBpInBand(250n, 249n)).toBe(false);
+    expect(isWarbowStealVictimBpInBand(250n, 12_501n)).toBe(false);
     expect(isWarbowStealVictimBpInBand(0n, 500n)).toBe(false);
   });
 });

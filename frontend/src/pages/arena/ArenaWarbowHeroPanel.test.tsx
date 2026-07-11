@@ -360,7 +360,7 @@ describe("ArenaWarbowHeroPanel (GitLab #321)", () => {
       stealVictimInput: TARGET_A,
       stealPreflight: {
         tone: "error",
-        title: "2× minimum not met",
+        title: "1× minimum not met",
         detail: "Victim has 200 BP vs your 100 BP, so the steal would revert right now.",
       },
     });

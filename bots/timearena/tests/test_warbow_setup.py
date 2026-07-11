@@ -66,9 +66,9 @@ def test_steal_band_state_ok() -> None:
     assert ok is True
 
 
-def test_steal_band_state_rejects_below_2x() -> None:
+def test_steal_band_state_rejects_below_1x() -> None:
     tc = MagicMock()
-    values = iter([150, 100])
+    values = iter([99, 100])
 
     def _bp(_addr: str) -> MagicMock:
         m = MagicMock()

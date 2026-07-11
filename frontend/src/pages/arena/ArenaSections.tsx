@@ -244,7 +244,7 @@ export function WarbowSection(props: {
         </summary>
         <div className="accordion-panel__content">
           <StatusMessage variant="muted">
-            Steals require the victim’s Battle Points to sit in the onchain **2×–10×** band versus yours. Each victim can be stolen from{" "}
+            Steals require the victim’s Battle Points to sit in the onchain **1×–50×** band versus yours. Each victim can be stolen from{" "}
             {formatLocaleInteger(warbowMaxSteals)} times per UTC day unless you pay the extra bypass spend. WarBow spends
             pull DOUB directly from the player. Guard lasts
             6h and reduces the next incoming steal to 1%. Revenge lets the victim hit the pending stealer once within
@@ -311,7 +311,7 @@ export function WarbowSection(props: {
                       <EmptyDataPlaceholder>Loading victim Battle Points…</EmptyDataPlaceholder>
                     )
                   }
-                  meta="Must be 2×–10× your BP (onchain band)"
+                  meta="Must be 1×–50× your BP (onchain band)"
                 />
                 <StatCard
                   label="Steal pressure today"

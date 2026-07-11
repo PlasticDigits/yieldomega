@@ -53,7 +53,8 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("indexerBaseUrl");
     expect(src).toMatch(/enabled:\s*Boolean\(tc && address && !indexerOn\)/);
     expect(src).toMatch(/functionName:\s*"warbowGuardUntil"[\s\S]*enabled:\s*Boolean\(tc && address && !indexerOn\)/);
-    expect(src).toContain("WARBOW_STEAL_DOUB_WAD");
+    expect(src).toContain("warbowStealDoubFromAnchor");
+    expect(src).toContain("epochCharmAnchorWad");
     expect(src).toContain("readWarbowStealCapDisplay");
   });
 
@@ -83,6 +84,7 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).toContain("resolveIndexerViewerWarbowBattlePoints");
     expect(src).toContain("warbow_guard_until");
     expect(src).toContain("indexerWarbowHead");
+    expect(src).toContain("epochCharmAnchorWad: session.epochCharmAnchorWad");
     expect(src).toContain("fetchArenaWarbowLatestBp");
   });
 

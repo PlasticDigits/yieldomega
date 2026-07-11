@@ -249,7 +249,7 @@ describe("describeStealPreflight", () => {
         viewer: "0x1111111111111111111111111111111111111111",
         victim: "0x2222222222222222222222222222222222222222",
         viewerBattlePoints: 500n,
-        victimBattlePoints: 900n,
+        victimBattlePoints: 499n,
         victimStealsToday: 0n,
         attackerStealsToday: 0n,
         maxStealsPerDay: 3n,
@@ -258,7 +258,7 @@ describe("describeStealPreflight", () => {
       }),
     ).toMatchObject({
       tone: "error",
-      title: "2× minimum not met",
+      title: "1× minimum not met",
     });
   });
 
@@ -270,7 +270,7 @@ describe("describeStealPreflight", () => {
         viewer: "0x1111111111111111111111111111111111111111",
         victim: "0x2222222222222222222222222222222222222222",
         viewerBattlePoints: 400n,
-        victimBattlePoints: 5000n,
+        victimBattlePoints: 20_001n,
         victimStealsToday: 0n,
         attackerStealsToday: 0n,
         maxStealsPerDay: 3n,
@@ -301,7 +301,7 @@ describe("describeStealPreflight", () => {
     ).toMatchObject({
       tone: "success",
       title: "Steal looks eligible",
-      detail: expect.stringContaining("2×–10×"),
+      detail: expect.stringContaining("1×–50×"),
     });
   });
 

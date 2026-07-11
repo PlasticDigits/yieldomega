@@ -93,7 +93,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 | CRED pay ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) | Select **CRED** in buy picker; balance + burn preview; **Buy** calls `buyWithCred`; insufficient CRED disables submit with copy. |
 | Wallet profile ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258), level history [#336](https://gitlab.com/PlasticDigits/yieldomega/-/issues/336)) | Click participant **`AddressInline`** on live buy row or podium winner → **`WalletProfileModal`** opens; sections Overview / Podium wins / Spending / XP / **Level history** / WarBow / Referrals / Fun facts load from **`GET /v1/arena/wallet/{address}/stats`**. |
 | Referrals | Register code on `/referrals`; referred buy shows in `GET /v1/referrals/applied`. |
-| WarBow | Steal/guard txs spend DOUB (no CL8Y burn path). |
+| WarBow ([#366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366), [#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)) | Steal/guard/revenge spend DOUB (no CL8Y burn). Cost pills = anchor/5, anchor/2, anchor/5 (Anvil `1000e18` → 200 / 500 / 200); bypass still 50k. Steal band **1×–50×** (equal-BP OK). See [§366/367](#manual-qa-issue-366-367). |
 
 **Automated:** `TimeArena.t.sol`, `ArenaPrizeRouting.t.sol`, `e2e/anvil-arena-*.spec.ts`, `indexer` `integration_stage2`.
 
@@ -1038,6 +1038,24 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
   `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/anvil-arena-03-wallet-writes.spec.ts` (after `bash scripts/e2e-anvil.sh`).
 
 **Doc map:** [arena views §365](../frontend/arena-views.md#post-buy-result-share-gitlab-365) · [invariants — #365](invariants-and-business-logic.md#frontend-post-buy-result-share-gitlab-365) · [play-time-arena-doub skill](../../skills/play-time-arena-doub/SKILL.md)
+
+<a id="manual-qa-issue-366-367"></a>
+
+## WarBow steal band 1×–50× + anchor-derived DOUB costs (GitLab #366 / #367)
+
+**Scope:** Onchain `TimeArena` WarBow economics. Product: [`arena-v2.md` § WarBow](../product/arena-v2.md#warbow-doub) · [`time-arena.md`](../product/time-arena.md) · [`PARAMETERS.md`](../../contracts/PARAMETERS.md) · play skill [`play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md). Invariants **`INV-TIME-ARENA-WARBOW-STEAL-BAND`**, **`INV-TIME-ARENA-WARBOW-DOUB`**.
+
+### Checklist
+
+- [ ] Anvil / DeployDev: `WARBOW_STEAL_DOUB()` / `WARBOW_REVENGE_DOUB()` = **200e18**, `WARBOW_GUARD_DOUB()` = **500e18** at `epochCharmAnchorWad = 1000e18`.
+- [ ] Cost pills on **`/`** WarBow hero match those amounts (indexer-first from `epoch_charm_anchor_wad`, or RPC getters).
+- [ ] Equal-BP steal succeeds; higher-BP attacker vs lower-BP victim reverts `TimeArena: steal band`.
+- [ ] Steal preflight / help copy say **1×–50×** (no stale 2×–10×).
+- [ ] Steal-limit bypass still adds fixed **50_000** DOUB on top of dynamic steal price.
+- [ ] After owner `setEpochCharmAnchorWad(20_000e18)` (or epoch re-anchor), next steal/guard/revenge pay **4k / 10k / 4k**; 10%/day charm growth does **not** move WarBow prices mid-epoch.
+- [ ] Automated: `cd contracts && forge test --match-test warbow_`; `cd frontend && npm run typecheck && npm test -- --run src/lib/warbowStealBpBand.test.ts src/lib/arenaWarbowConstants.test.ts`; `cd simulations && python3 -m pytest tests/test_ecostrategy.py`.
+
+**Doc map:** [invariants — WarBow DOUB / steal band](invariants-and-business-logic.md) · [guardrails §6e](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [play-time-arena-warbow](../../skills/play-time-arena-warbow/SKILL.md)
 
 <a id="manual-qa-issue-337"></a>
 

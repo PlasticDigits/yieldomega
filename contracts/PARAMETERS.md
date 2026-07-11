@@ -58,17 +58,19 @@ Canonical table: [`ArenaPodiumTimerConfig.sol`](src/arena/libraries/ArenaPodiumT
 | XP per buy (CHARM-scaled) | `1` at `CHARM_MIN_WAD` → `10` at `CHARM_MAX_WAD` | `ArenaXp.xpForCharm(charmWad)`; DOUB and CRED paths ([#304](https://gitlab.com/PlasticDigits/yieldomega/-/issues/304) · **`INV-TIME-ARENA-XP-CHARM-SCALE`**) |
 | First-buy CRED bonus | `150e18` scheduled for `lastBuyEpoch + 1` | One wallet lifetime ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
 
-### WarBow DOUB costs ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252))
+### WarBow DOUB costs ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252), [#366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366), [#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367))
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `WARBOW_STEAL_DOUB` | `1000e18` | Per steal |
-| `WARBOW_GUARD_DOUB` | `10_000e18` | 6h guard |
-| `WARBOW_STEAL_LIMIT_BYPASS_DOUB` | `50_000e18` | Extra when daily steal cap exceeded |
-| `WARBOW_REVENGE_DOUB` | `1000e18` | Revenge window 24h |
+| `WARBOW_STEAL_DOUB()` | `epochCharmAnchor / 5` | Derived from epoch charm anchor; `200e18` at the `1000e18` Dev/Anvil anchor |
+| `WARBOW_GUARD_DOUB()` | `epochCharmAnchor / 2` | Derived from epoch charm anchor; `500e18` at the `1000e18` Dev/Anvil anchor; 6h guard |
+| `WARBOW_STEAL_LIMIT_BYPASS_DOUB` | `50_000e18` | Fixed extra when daily steal cap exceeded |
+| `WARBOW_REVENGE_DOUB()` | `epochCharmAnchor / 5` | Derived from epoch charm anchor; `200e18` at the `1000e18` Dev/Anvil anchor; revenge window 24h |
 | Flag claim | `0` | +1000 BP after 300s silence |
 
 All WarBow DOUB spends (**steal / guard / revenge**, including steal-limit bypass) route **100%** to podium vaults via the same **`_routeDoubPrizeSplit`** as **`buy`** and increment **`totalDoubRaised`** ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)); no DOUB stranded on **`TimeArena`**.
+
+WarBow prices use the **epoch charm anchor after autoroll**, not the `effectiveCharmPriceWad()` +10%/day growth ([#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)).
 
 Buy-path WarBow BP includes **streak-break** (`activeDefendedStreak × WARBOW_STREAK_BREAK_MULT_BP` when a different buyer buys under **`DEFENDED_STREAK_WINDOW_SEC`**) and **ambush** (+`WARBOW_AMBUSH_BONUS_BP` on hard reset + streak break), matching [`warbow_buy_bp_delta`](../../simulations/timecurve_sim/model.py).
 
@@ -94,11 +96,11 @@ Forge: `TimeArena.t.sol::test_warbow_*`, `test_warbow_roll_auto_pays_onchain_win
 | WarBow streak-break mult | **100** BP per prior active streak count | `WARBOW_STREAK_BREAK_MULT_BP` | Fixed |
 | WarBow ambush bonus BP | **200** | With hard reset + streak break under window — wired in `_applyBuyWarBowBp` ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)) | Fixed |
 | WarBow flag claim BP | **1000** | `WARBOW_FLAG_CLAIM_BP`; silence **300s** | Fixed |
-| WarBow steal / revenge spend | **1000e18** each | `WARBOW_STEAL_DOUB`, `WARBOW_REVENGE_DOUB`; routed like **`buy`** via `_routeDoubPrizeSplit`; **`totalDoubRaised +=` gross** ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)) | Fixed |
+| WarBow steal / revenge spend | **`epochCharmAnchor / 5`** each | `WARBOW_STEAL_DOUB()`, `WARBOW_REVENGE_DOUB()`; `200e18` each at the `1000e18` Dev/Anvil anchor; routed like **`buy`** via `_routeDoubPrizeSplit`; **`totalDoubRaised +=` gross** ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310), [#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)) | Derived from epoch charm anchor |
 | WarBow steal limit bypass spend | **50_000e18** | When daily steal cap exceeded (`WARBOW_STEAL_LIMIT_BYPASS_DOUB`); same routing as steal | Fixed |
-| WarBow guard spend / duration | **10_000e18** / **6h** | `WARBOW_GUARD_DOUB`, `WARBOW_GUARD_DURATION_SEC`; same routing as **`buy`** ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)) | Fixed |
+| WarBow guard spend / duration | **`epochCharmAnchor / 2`** / **6h** | `WARBOW_GUARD_DOUB()`, `WARBOW_GUARD_DURATION_SEC`; `500e18` at the `1000e18` Dev/Anvil anchor; same routing as **`buy`** ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310), [#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)) | Derived from epoch charm anchor |
 | WarBow steal drain BPS | **1000** (10%) normal, **100** (1%) guarded | `WARBOW_STEAL_DRAIN_BPS`, `WARBOW_STEAL_DRAIN_GUARDED_BPS` | Fixed |
-| WarBow steal BP bracket | **2×–10×** attacker BP | `warbowSteal`: **`victimBP ≥ 2 × attackerBP`** and **`victimBP ≤ 10 × attackerBP`** (reverts **`TimeCurve: steal 2x rule`** / **`TimeCurve: steal 10x cap`**) — [GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211) | Fixed |
+| WarBow steal BP bracket | **1×–50×** attacker BP | `warbowSteal`: **`victimBP ≥ attackerBP`** and **`victimBP ≤ 50 × attackerBP`**; equal-BP steals are allowed and higher-BP attackers cannot target lower-BP victims ([#366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366)) | Fixed |
 | Defended streak window | **900** seconds | `DEFENDED_STREAK_WINDOW_SEC` — remaining time **below** this before buy counts as “under 15 minutes” | Fixed |
 | Total tokens for sale | **Production target:** **200M DOUB** on TimeCurve (`totalTokensForSale`); dev mocks may use smaller values | > 0 | **TODO** — confirm at deploy |
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |

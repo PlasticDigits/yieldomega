@@ -53,15 +53,19 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     uint256 public constant WARBOW_AMBUSH_BONUS_BP = 200;
     uint256 public constant WARBOW_FLAG_CLAIM_BP = 1000;
     uint256 public constant WARBOW_FLAG_SILENCE_SEC = 300;
-    uint256 public constant WARBOW_STEAL_DOUB = 1000e18;
-    uint256 public constant WARBOW_REVENGE_DOUB = 1000e18;
-    uint256 public constant WARBOW_GUARD_DOUB = 10_000e18;
+    /// @dev Steal/guard/revenge DOUB = epoch charm anchor ÷ these divisors ([#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)).
+    uint256 public constant WARBOW_STEAL_ANCHOR_DIV = 5;
+    uint256 public constant WARBOW_GUARD_ANCHOR_DIV = 2;
+    uint256 public constant WARBOW_REVENGE_ANCHOR_DIV = 5;
     uint256 public constant WARBOW_STEAL_LIMIT_BYPASS_DOUB = 50_000e18;
     uint256 public constant WARBOW_GUARD_DURATION_SEC = 6 hours;
     uint16 public constant WARBOW_STEAL_DRAIN_BPS = 1000;
     uint16 public constant WARBOW_STEAL_DRAIN_GUARDED_BPS = 100;
     uint8 public constant WARBOW_MAX_STEALS_PER_DAY = 3;
     uint256 public constant WARBOW_REVENGE_WINDOW_SEC = 24 hours;
+    /// @dev Inclusive victim BP band vs attacker: `minMult * abp ≤ vbp ≤ maxMult * abp` ([#366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366)).
+    uint256 public constant WARBOW_STEAL_VICTIM_MIN_MULT = 1;
+    uint256 public constant WARBOW_STEAL_VICTIM_MAX_MULT = 50;
 
     uint256 internal constant WAD = 1e18;
 
@@ -375,14 +379,28 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
     /// @dev Current DOUB wei per 1e18 CHARM for DOUB buys — epoch anchor + 10%/day growth (#305).
     function effectiveCharmPriceWad() public view returns (uint256) {
-        uint256 anchor = epochCharmAnchorWad;
-        if (anchor == 0) anchor = charmPriceWad;
+        uint256 anchor = _warbowCharmAnchorWad();
         if (anchor == 0) return 0;
         if (epochAnchorTimestamp == 0 || block.timestamp <= epochAnchorTimestamp) {
             return anchor;
         }
         uint256 elapsed = block.timestamp - epochAnchorTimestamp;
         return TimeMath.growWad(anchor, CHARM_GROWTH_RATE_WAD, elapsed);
+    }
+
+    /// @notice Steal DOUB cost = epoch charm anchor ÷ `WARBOW_STEAL_ANCHOR_DIV` (not 10%/day growth) (#367).
+    function WARBOW_STEAL_DOUB() public view returns (uint256) {
+        return _warbowCharmAnchorWad() / WARBOW_STEAL_ANCHOR_DIV;
+    }
+
+    /// @notice Guard DOUB cost = epoch charm anchor ÷ `WARBOW_GUARD_ANCHOR_DIV` (#367).
+    function WARBOW_GUARD_DOUB() public view returns (uint256) {
+        return _warbowCharmAnchorWad() / WARBOW_GUARD_ANCHOR_DIV;
+    }
+
+    /// @notice Revenge DOUB cost = epoch charm anchor ÷ `WARBOW_REVENGE_ANCHOR_DIV` (#367).
+    function WARBOW_REVENGE_DOUB() public view returns (uint256) {
+        return _warbowCharmAnchorWad() / WARBOW_REVENGE_ANCHOR_DIV;
     }
 
     /// @notice Gross DOUB wei for `buy` / `buyFor` at the current block — `eth_call` / `staticcall` safe (#315).
@@ -547,7 +565,10 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         uint8 attackerSteals = stealsCommittedByAttackerOnDay[msg.sender][day];
         bool needBypass = victimSteals >= WARBOW_MAX_STEALS_PER_DAY || attackerSteals >= WARBOW_MAX_STEALS_PER_DAY;
 
-        uint256 spent = _pullDoubExact(msg.sender, WARBOW_STEAL_DOUB);
+        // Price after autoroll so same-tx Last Buy re-anchor is paid (#367).
+        uint256 stealPrice = WARBOW_STEAL_DOUB();
+        require(stealPrice > 0, "TimeArena: warbow price");
+        uint256 spent = _pullDoubExact(msg.sender, stealPrice);
         if (needBypass) {
             require(payBypassBurn, "TimeArena: steal limit");
             spent += _pullDoubExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_DOUB);
@@ -556,7 +577,10 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
 
         uint256 vbp = _effectiveBattlePoints(victim);
         uint256 abp = _effectiveBattlePoints(msg.sender);
-        require(abp > 0 && vbp >= 2 * abp && vbp <= 10 * abp, "TimeArena: steal band");
+        require(
+            abp > 0 && vbp >= WARBOW_STEAL_VICTIM_MIN_MULT * abp && vbp <= WARBOW_STEAL_VICTIM_MAX_MULT * abp,
+            "TimeArena: steal band"
+        );
 
         uint16 bps = block.timestamp < warbowGuardUntil[victim] ? WARBOW_STEAL_DRAIN_GUARDED_BPS : WARBOW_STEAL_DRAIN_BPS;
         uint256 take = Math.mulDiv(vbp, bps, 10_000);
@@ -581,7 +605,9 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         uint256 exp = warbowPendingRevengeExpiryExclusive[msg.sender][stealer];
         require(exp != 0 && block.timestamp < exp, "TimeArena: revenge");
 
-        uint256 spent = _pullDoubExact(msg.sender, WARBOW_REVENGE_DOUB);
+        uint256 revengePrice = WARBOW_REVENGE_DOUB();
+        require(revengePrice > 0, "TimeArena: warbow price");
+        uint256 spent = _pullDoubExact(msg.sender, revengePrice);
         _routeWarbowDoubSpend(spent);
         uint256 take = Math.mulDiv(_effectiveBattlePoints(stealer), WARBOW_STEAL_DRAIN_BPS, 10_000);
         require(take > 0, "TimeArena: revenge zero");
@@ -596,7 +622,9 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
     function warbowActivateGuard() external nonReentrant {
         _requireLiveAndAutoroll();
         _requireWarbowLevel(msg.sender);
-        uint256 spent = _pullDoubExact(msg.sender, WARBOW_GUARD_DOUB);
+        uint256 guardPrice = WARBOW_GUARD_DOUB();
+        require(guardPrice > 0, "TimeArena: warbow price");
+        uint256 spent = _pullDoubExact(msg.sender, guardPrice);
         _routeWarbowDoubSpend(spent);
         warbowGuardUntil[msg.sender] = block.timestamp + WARBOW_GUARD_DURATION_SEC;
         emit WarBowGuard(msg.sender, spent, warbowGuardUntil[msg.sender]);
@@ -1099,6 +1127,13 @@ contract TimeArena is Initializable, Ownable2StepUpgradeable, ReentrancyGuard, U
         epochCharmAnchorWad = wad;
         epochAnchorTimestamp = block.timestamp;
         charmPriceWad = wad;
+    }
+
+    /// @dev Epoch charm anchor for WarBow pricing (no 10%/day growth) — same fallback as `effectiveCharmPriceWad` (#367).
+    function _warbowCharmAnchorWad() internal view returns (uint256) {
+        uint256 anchor = epochCharmAnchorWad;
+        if (anchor == 0) anchor = charmPriceWad;
+        return anchor;
     }
 
     /// @dev Read-only anchor sample for hard-reset re-anchor and `doubOwedForBuy` preview (#315).

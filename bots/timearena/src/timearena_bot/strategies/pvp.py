@@ -58,7 +58,7 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
     mean = loop_mean_sec("YIELDOMEGA_PVP_MEAN_SEC", "120")
     print(
         f"pvp: loop victim {victim.address} buys + attacker {attacker.address} warbowSteal "
-        f"(level ≥ {WARBOW_MIN_LEVEL}, 2×–10× BP band); mean inter-cycle={mean}s"
+        f"(level ≥ {WARBOW_MIN_LEVEL}, 1×–50× BP band); mean inter-cycle={mean}s"
     )
 
     if not send:
@@ -90,7 +90,7 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
             print(f"pvp: BP before steal victim={vbp} attacker={abp} (attacker L{player_level(tc, attacker.address)})")
             if not ok:
                 raise RuntimeError(
-                    f"steal band not met (need victim BP in [2×, 10×] attacker BP; got {vbp} vs {abp})"
+                    f"steal band not met (need victim BP in [1×, 50×] attacker BP; got {vbp} vs {abp})"
                 )
 
             warbow_steal(

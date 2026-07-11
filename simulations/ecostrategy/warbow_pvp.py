@@ -1,7 +1,7 @@
 """WarBow PvP mechanics aligned with `TimeCurve.warbowSteal` / `warbowRevenge` / `warbowActivateGuard`.
 
 Invariant-style rules (see GitLab #161, audit M-02):
-- Steal: attacker BP > 0, **2× attacker BP ≤ victim BP ≤ 10× attacker BP** ([GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211)); drain uses `WARBOW_STEAL_DRAIN_*_BPS`; guard reduces to 1%.
+- Steal: attacker BP > 0, **1× attacker BP ≤ victim BP ≤ 50× attacker BP** ([GitLab #366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366)); drain uses `WARBOW_STEAL_DRAIN_*_BPS`; guard reduces to 1%.
 - UTC-day caps on steals received (victim) and steals committed (attacker); optional bypass (sim assumes paid).
 - Revenge: within 24h window per (victim, stealer), drain 10% of stealer BP once.
 
@@ -22,6 +22,8 @@ from ecostrategy.constants import (
     WARBOW_REVENGE_WINDOW_SEC,
     WARBOW_STEAL_DRAIN_BPS,
     WARBOW_STEAL_DRAIN_GUARDED_BPS,
+    WARBOW_STEAL_VICTIM_MAX_MULT,
+    WARBOW_STEAL_VICTIM_MIN_MULT,
 )
 
 
@@ -75,9 +77,9 @@ class WarBowWorld:
         abp, vbp = self.bp[attacker], self.bp[victim]
         if abp <= 0:
             return False
-        if vbp < 2 * abp:
+        if vbp < WARBOW_STEAL_VICTIM_MIN_MULT * abp:
             return False
-        if vbp > 10 * abp:
+        if vbp > WARBOW_STEAL_VICTIM_MAX_MULT * abp:
             return False
         return True
 

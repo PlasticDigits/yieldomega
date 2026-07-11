@@ -616,8 +616,14 @@ export function ArenaSimplePage({
       chainNowSec: session.chainNowSec,
       paused: session.arenaPaused,
       guardUntilSec: parseNonNegativeUnixSec(playerWalletStats?.warbow_guard_until),
+      epochCharmAnchorWad: session.epochCharmAnchorWad,
     };
-  }, [playerWalletStats?.warbow_guard_until, session.arenaPaused, session.chainNowSec]);
+  }, [
+    playerWalletStats?.warbow_guard_until,
+    session.arenaPaused,
+    session.chainNowSec,
+    session.epochCharmAnchorWad,
+  ]);
 
   const indexerViewerWarbowBattlePoints = useMemo(() => {
     if (!indexerBaseUrl()) return undefined;

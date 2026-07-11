@@ -8,6 +8,8 @@ from ecostrategy.constants import (
     WARBOW_FLAG_SILENCE_SEC,
     WARBOW_MAX_STEALS_PER_DAY,
     WARBOW_STEAL_DRAIN_BPS,
+    WARBOW_STEAL_VICTIM_MAX_MULT,
+    WARBOW_STEAL_VICTIM_MIN_MULT,
 )
 from ecostrategy.fee_routing import fee_router_five_shares
 from ecostrategy.scenarios import (
@@ -31,11 +33,13 @@ class TestWarBowWorld(unittest.TestCase):
     def test_steal_bp_band_blocks_steal(self) -> None:
         w = WarBowWorld(3)
         w.bp[0] = 100
-        w.bp[1] = 150  # 150 < 2 * 100
+        w.bp[1] = 99  # 99 < 1 * 100
         self.assertFalse(w.can_steal(0, 1, 0.0))
-        w.bp[1] = 200
+        w.bp[1] = WARBOW_STEAL_VICTIM_MIN_MULT * 100
         self.assertTrue(w.can_steal(0, 1, 0.0))
-        w.bp[1] = 2500  # > 10 * 100
+        w.bp[1] = WARBOW_STEAL_VICTIM_MAX_MULT * 100
+        self.assertTrue(w.can_steal(0, 1, 0.0))
+        w.bp[1] = WARBOW_STEAL_VICTIM_MAX_MULT * 100 + 1
         self.assertFalse(w.can_steal(0, 1, 0.0))
 
     def test_steal_drain_matches_bps(self) -> None:
@@ -78,7 +82,7 @@ class TestWarBowWorld(unittest.TestCase):
         self.assertEqual(w.bp[0], max(0, sbp_before - take_rev))
 
     def test_utc_rollover_fourth_steal_without_bypass(self) -> None:
-        """UTC-day counters reset at the day boundary; a fresh victim stays inside the 2×–10× band."""
+        """UTC-day counters reset at the day boundary; a fresh victim stays inside the 1×–50× band."""
         w = WarBowWorld(3)
         w.bp[0] = 1000
         w.bp[1] = 5000

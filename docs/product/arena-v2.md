@@ -92,13 +92,13 @@ Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`Podiu
 
 | Action | DOUB cost |
 |--------|-----------|
-| Steal | 1000e18 |
-| Guard | 10000e18 |
+| Steal | `epochCharmAnchor / 5` (200e18 at Dev/Anvil `1000e18` anchor) |
+| Guard | `epochCharmAnchor / 2` (500e18 at Dev/Anvil `1000e18` anchor) |
 | Steal-limit override | 50000e18 |
-| Revenge | 1000e18 |
+| Revenge | `epochCharmAnchor / 5` (200e18 at Dev/Anvil `1000e18` anchor) |
 | Flag claim | 0 |
 
-BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses including **streak-break** and **ambush** on qualifying buys ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)), steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity, then **100%** podium routing and **`totalDoubRaised`** increment — same split as **`buy`** ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). **`claimWarBowFlag`** uses **`_requireLive()`** — blocked when **`paused`** (same as other WarBow writes).
+BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses including **streak-break** and **ambush** on qualifying buys ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)), inclusive **1×–50×** steal band: `victimBP ≥ attackerBP` and `victimBP ≤ 50 × attackerBP`; equal-BP steals are allowed but a higher-BP attacker cannot target a lower-BP victim ([#366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366)), flag plant/claim). Steal, guard, and revenge prices are derived from the **epoch charm anchor after autoroll**, not `effectiveCharmPriceWad()` daily growth ([#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)). All spends are **DOUB** pulls with balance-delta parity, then **100%** podium routing and **`totalDoubRaised`** increment — same split as **`buy`** ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). **`claimWarBowFlag`** uses **`_requireLive()`** — blocked when **`paused`** (same as other WarBow writes).
 
 ## Routes (frontend)
 
