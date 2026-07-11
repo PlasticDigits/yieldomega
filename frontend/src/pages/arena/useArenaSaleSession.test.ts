@@ -36,4 +36,14 @@ describe("useArenaSaleSession submit paths (GitLab #321)", () => {
     expect(src).toContain("payTokenWeiForDoubSpend");
     expect(src).not.toContain("currentPayTokenWei !== undefined");
   });
+
+  it("refetches WarBow flag supplement after buy/claim success (#370)", () => {
+    expect(src).toContain("refetch: refetchWarbowFlagSupplement");
+    expect(src).toContain("void refetchWarbowFlagSupplement()");
+    const refetchAllBlock = src.slice(
+      src.indexOf("const refetchAll = useCallback"),
+      src.indexOf("const arenaPaused ="),
+    );
+    expect(refetchAllBlock).toContain("refetchWarbowFlagSupplement");
+  });
 });
