@@ -95,13 +95,13 @@ Default wiring maps every tranche slot to **`address(PodiumVaults)`** (commingle
 
 | Action | DOUB cost |
 |--------|-----------|
-| Steal | 1000e18 |
-| Guard | 10000e18 |
-| Revenge | 1000e18 |
+| Steal | `epochCharmAnchor / 5` (200e18 at Dev/Anvil `1000e18` anchor) |
+| Guard | `epochCharmAnchor / 2` (500e18 at Dev/Anvil `1000e18` anchor) |
+| Revenge | `epochCharmAnchor / 5` (200e18 at Dev/Anvil `1000e18` anchor) |
 | Steal-limit override (flag) | 50000e18 |
 | Flag claim | 0 |
 
-- Steal/guard/revenge/flag mechanics; BP buy bonuses, steal band **2×–10×**, flag plant/claim silence window.
+- Steal/guard/revenge/flag mechanics; BP buy bonuses, inclusive steal band **1×–50×** (`victimBP ≥ attackerBP` and `victimBP ≤ 50 × attackerBP`), flag plant/claim silence window ([#366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366)). Steal, guard, and revenge costs derive from the epoch charm anchor after autoroll—never `effectiveCharmPriceWad()` daily growth ([#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)).
 - **WarBow scores reset** when the WarBow timer epoch ends (`rollPodiumEpoch(CAT_WARBOW)` / autoroll bumps **`warbowBpGeneration`** and clears live BP podium; stale BP reads as zero). Roll / autoroll pays on-chain top-3 **4∶2∶1** and emits **`WarbowPodiumFinalized`**; owner **`finalizeWarbowPodium`** is superseded ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252), [#312](https://gitlab.com/PlasticDigits/yieldomega/-/issues/312)).
 
 ---
@@ -140,7 +140,7 @@ Default wiring maps every tranche slot to **`address(PodiumVaults)`** (commingle
 
 | # | Question | Resolution |
 |---|----------|------------|
-| 1 | Revenge DOUB cost | **1000 DOUB** (same as steal) — `WARBOW_REVENGE_DOUB` |
+| 1 | Revenge DOUB cost | **`epochCharmAnchor / 5`** (same as steal; **200 DOUB** at Dev/Anvil `1000e18` anchor) — `WARBOW_REVENGE_DOUB()` ([#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)) |
 | 2 | Referral registration burn | Keep **1 CL8Y** for existing-code continuity |
 | 3 | CRED referral payout | **Flat 5 CRED per side** (`REFERRAL_CRED_FLAT_WAD = 5e18`); supersedes BPS basis — [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272) |
 | 4 | Podium settlement trigger | Permissionless **`rollPodiumEpoch(cat)`** after deadline (not auto on first post-expiry buy) |

@@ -181,6 +181,7 @@ function baseSession(overrides: Partial<UseArenaSaleSession> = {}): UseArenaSale
     buySubmitBusy: false,
     totalRaisedWei: 0n,
     pricePerCharmWad: 1000n * 10n ** 18n,
+    epochCharmAnchorWad: 1000n * 10n ** 18n,
     buyEnvelopeParams: null,
     referralRegistryOn: false,
     pendingReferralCode: null,

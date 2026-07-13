@@ -74,7 +74,7 @@ def seed_warbow_steal_band(
     attacker: LocalAccount,
     cfg: BotConfig,
 ) -> None:
-    """Level both wallets, boost victim BP, give attacker minimal BP — 2×–10× steal band."""
+    """Level both wallets, boost victim BP, give attacker minimal BP — 1×–50× steal band."""
     ensure_level(w3, tc, victim, cfg, WARBOW_MIN_LEVEL)
     boost_warbow_victim(w3, tc, victim, cfg)
     ensure_level(w3, tc, attacker, cfg, WARBOW_MIN_LEVEL)
@@ -92,5 +92,5 @@ def seed_warbow_steal_band(
 def steal_band_state(tc: Contract, victim: str, attacker: str) -> tuple[int, int, bool]:
     vbp = int(tc.functions.battlePoints(Web3.to_checksum_address(victim)).call())
     abp = int(tc.functions.battlePoints(Web3.to_checksum_address(attacker)).call())
-    ok = abp > 0 and vbp >= 2 * abp and vbp <= 10 * abp
+    ok = abp > 0 and vbp >= abp and vbp <= 50 * abp
     return vbp, abp, ok

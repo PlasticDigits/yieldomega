@@ -15,7 +15,7 @@ describe("warbowHeroSubcardHelpCopy", () => {
   it("includes steal band, drain, cap, and bypass numbers", () => {
     const copy = warbowHeroSubcardHelpCopy("steal", COSTS);
     expect(copy.title).toBe("Steal");
-    expect(copy.body.join(" ")).toContain("2× and 10×");
+    expect(copy.body.join(" ")).toContain("1× and 50×");
     expect(copy.body.join(" ")).toContain("10%");
     expect(copy.body.join(" ")).toContain("1%");
     expect(copy.body.join(" ")).toContain("3 times per UTC day");

@@ -35,6 +35,7 @@ import {
   warbowHeroSubcardHelpCopy,
 } from "@/pages/arena/warbowHeroSubcardHelpCopy";
 import { WarbowHeroSubcardHelpModal } from "@/components/WarbowHeroSubcardHelpModal";
+import { isWarbowStealVictimBpInBand } from "@/lib/warbowStealBpBand";
 
 function targetIsInsideAddressAction(target: EventTarget | null): boolean {
   return Boolean(
@@ -93,8 +94,7 @@ function sameAddress(a: string | undefined, b: string | undefined): boolean {
 function isEligibleTarget(target: WarbowTarget, viewerBattlePoints: string | undefined): boolean {
   const viewer = parseBp(viewerBattlePoints);
   const targetBp = parseBp(target.battlePoints);
-  if (viewer === undefined || targetBp === undefined || viewer === 0n) return false;
-  return targetBp >= viewer * 2n && targetBp <= viewer * 10n;
+  return viewer !== undefined && targetBp !== undefined && isWarbowStealVictimBpInBand(viewer, targetBp);
 }
 
 export function ArenaWarbowHeroPanel({

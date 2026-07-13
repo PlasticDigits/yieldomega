@@ -37,10 +37,10 @@ describe("friendlyRevertMessage", () => {
 
   it("maps common WarBow eligibility failures", () => {
     expect(friendlyRevertMessage("TimeArena: steal band")).toBe(
-      "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",
+      "Stealing requires positive Battle Points on your wallet and a victim with at least 1× your Battle Points (and at most 50× — see the steal preflight).",
     );
     expect(friendlyRevertMessage("TimeCurve: steal 10x cap")).toBe(
-      "That victim’s Battle Points are too far above yours for a steal under the onchain 2×–10× band.",
+      "That victim’s Battle Points are too far above yours for a steal under the onchain 1×–50× band.",
     );
     expect(friendlyRevertMessage("TimeArena: steal limit")).toContain("three steals today");
     expect(friendlyRevertMessage("TimeArena: flag silence")).toBe(

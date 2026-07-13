@@ -5533,7 +5533,7 @@ button.empty-data-placeholder--connect:disabled {
   min-width: 5.25rem;
 }
 
-/* Below 2× BP: muted static STEAL (no priority-bounce) */
+/* Below the onchain minimum BP: muted static STEAL (no priority-bounce) */
 .warbow-hero-candidate-row__steal--prospect:disabled {
   animation: none;
   cursor: not-allowed;

@@ -80,16 +80,12 @@ export function friendlyRevertMessage(raw: string): string {
     ],
     ["timearena: steal limit", "You already landed three steals today from this wallet unless you pay the bypass spend."],
     [
-      "timecurve: steal 2x rule",
-      "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",
-    ],
-    [
       "timearena: steal band",
-      "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",
+      "Stealing requires positive Battle Points on your wallet and a victim with at least 1× your Battle Points (and at most 50× — see the steal preflight).",
     ],
     [
       "timecurve: steal 10x cap",
-      "That victim’s Battle Points are too far above yours for a steal under the onchain 2×–10× band.",
+      "That victim’s Battle Points are too far above yours for a steal under the onchain 1×–50× band.",
     ],
     ["timecurve: bad victim", "Choose a real rival address instead of zero or your own wallet."],
     ["timearena: bad victim", "Choose a real rival address instead of zero or your own wallet."],

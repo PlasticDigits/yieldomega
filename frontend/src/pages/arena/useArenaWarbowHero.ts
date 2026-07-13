@@ -23,12 +23,13 @@ import {
   writeContractWithGasBuffer,
 } from "@/lib/writeContractWithGasBuffer";
 import {
-  WARBOW_GUARD_DOUB_WAD,
+  DEV_DEFAULT_ANCHOR_WAD,
   WARBOW_MAX_STEALS_PER_DAY,
-  WARBOW_REVENGE_DOUB_WAD,
   WARBOW_SECONDS_PER_DAY,
-  WARBOW_STEAL_DOUB_WAD,
   WARBOW_STEAL_LIMIT_BYPASS_DOUB_WAD,
+  warbowGuardDoubFromAnchor,
+  warbowRevengeDoubFromAnchor,
+  warbowStealDoubFromAnchor,
 } from "@/lib/arenaWarbowConstants";
 import { readWarbowStealCapDisplay } from "@/lib/readWarbowStealCapDisplay";
 import { warbowUtcDayId, warbowUtcDayResetSec } from "@/lib/warbowUtcDayReset";
@@ -38,6 +39,7 @@ export type IndexerWarbowHeroHead = {
   chainNowSec?: number;
   paused?: boolean;
   guardUntilSec?: bigint;
+  epochCharmAnchorWad?: bigint;
 };
 
 export function useArenaWarbowHero(
@@ -127,14 +129,19 @@ export function useArenaWarbowHero(
   });
   const guardUntilEffective = indexerWarbowHead?.guardUntilSec ?? guardUntil;
 
-  const stealDoubWei = indexerOn ? WARBOW_STEAL_DOUB_WAD : (stealDoub ?? WARBOW_STEAL_DOUB_WAD);
-  const guardDoubWei = indexerOn ? WARBOW_GUARD_DOUB_WAD : (guardDoub ?? WARBOW_GUARD_DOUB_WAD);
+  const warbowAnchorWad = indexerWarbowHead?.epochCharmAnchorWad ?? DEV_DEFAULT_ANCHOR_WAD;
+  const stealDoubWei = indexerOn
+    ? warbowStealDoubFromAnchor(warbowAnchorWad)
+    : (stealDoub ?? warbowStealDoubFromAnchor(DEV_DEFAULT_ANCHOR_WAD));
+  const guardDoubWei = indexerOn
+    ? warbowGuardDoubFromAnchor(warbowAnchorWad)
+    : (guardDoub ?? warbowGuardDoubFromAnchor(DEV_DEFAULT_ANCHOR_WAD));
   const bypassDoubWei = indexerOn
     ? WARBOW_STEAL_LIMIT_BYPASS_DOUB_WAD
     : (bypassDoub ?? WARBOW_STEAL_LIMIT_BYPASS_DOUB_WAD);
   const revengeDoubWei = indexerOn
-    ? WARBOW_REVENGE_DOUB_WAD
-    : (revengeDoub ?? WARBOW_REVENGE_DOUB_WAD);
+    ? warbowRevengeDoubFromAnchor(warbowAnchorWad)
+    : (revengeDoub ?? warbowRevengeDoubFromAnchor(DEV_DEFAULT_ANCHOR_WAD));
   const maxSteals = indexerOn
     ? WARBOW_MAX_STEALS_PER_DAY
     : maxStealsRaw !== undefined

@@ -84,7 +84,7 @@
 
 ### WarBow Ladder (UX)
 
-- Frame as **adversarial PvP**, not a passive “activity” board: explain **2× BP rule** for steals, **UTC-day** steal cap + optional **50,000 DOUB** bypass, **guard** (10,000 DOUB → 1% drain), **revenge** window and **single** pending stealer, **flag** silence and **when** the **2×** BP penalty applies (only after silence elapses).
+- Frame as **adversarial PvP**, not a passive “activity” board: explain the inclusive **1×–50× BP band** for steals (equal BP allowed; higher-BP attackers cannot target lower-BP wallets), **UTC-day** steal cap + fixed **50,000 DOUB** bypass, anchor-derived guard cost (→ 1% drain), revenge window and **single** pending stealer, flag silence, and when the **2×** BP penalty applies (only after silence elapses). Read live `WARBOW_*_DOUB()` values rather than displaying fixed action costs ([#366](https://gitlab.com/PlasticDigits/yieldomega/-/issues/366), [#367](https://gitlab.com/PlasticDigits/yieldomega/-/issues/367)).
 - Break down **Battle Points** sources from **`Buy`** fields: base, timer-reset bonus, clutch (`< 30s` remaining), streak-break, ambush; plus flag claim / penalty events.
 - Show **eligibility and revert reasons** before users sign (read contract state + simulate where possible).
 

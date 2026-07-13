@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-/** Lower multiple for `TimeCurve.warbowSteal` victim vs attacker BP (matches onchain literal `2`). */
-export const WARBOW_STEAL_VICTIM_MIN_MULT = 2n;
-/** Upper multiple for `TimeCurve.warbowSteal` victim vs attacker BP (matches onchain literal `10`). */
-export const WARBOW_STEAL_VICTIM_MAX_MULT = 10n;
+/** Lower multiple for `TimeArena.warbowSteal` victim vs attacker BP (matches onchain literal `1`). */
+export const WARBOW_STEAL_VICTIM_MIN_MULT = 1n;
+/** Upper multiple for `TimeArena.warbowSteal` victim vs attacker BP (matches onchain literal `50`). */
+export const WARBOW_STEAL_VICTIM_MAX_MULT = 50n;
 
 /**
- * Mirrors `TimeCurve.warbowSteal` BP bracket after CL8Y pulls: attacker BP must be positive and
- * victim BP must satisfy `2× attacker ≤ victim ≤ 10× attacker` (uint256 `*` semantics).
+ * Mirrors `TimeArena.warbowSteal` BP bracket after DOUB pulls: attacker BP must be positive and
+ * victim BP must satisfy `1× attacker ≤ victim ≤ 50× attacker` (uint256 `*` semantics).
  */
 export function isWarbowStealVictimBpInBand(attackerBp: bigint, victimBp: bigint): boolean {
   if (attackerBp <= 0n) {

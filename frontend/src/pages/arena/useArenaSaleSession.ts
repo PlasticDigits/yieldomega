@@ -251,6 +251,8 @@ export type UseArenaSaleSession = {
   totalRaisedWei: bigint | undefined;
   /** Live per-CHARM price in DOUB wei (Arena v2 `charmPriceWad`). */
   pricePerCharmWad: bigint | undefined;
+  /** Epoch CHARM price anchor from the indexer timer head; excludes intra-epoch growth. */
+  epochCharmAnchorWad: bigint | undefined;
   /** Fixed-price envelope for recent-buy min/max position displays. */
   buyEnvelopeParams: EnvelopeCurveParamsWire | null;
   referralRegistryOn: boolean;
@@ -888,6 +890,17 @@ export function useArenaSaleSession(
     }
     return undefined;
   }, [phase, pricePerCharmR]);
+
+  const epochCharmAnchorWad = useMemo((): bigint | undefined => {
+    const raw = indexerOn ? timersQuery.data?.epoch_charm_anchor_wad : undefined;
+    if (!raw) return undefined;
+    try {
+      const anchor = BigInt(raw);
+      return anchor > 0n ? anchor : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [indexerOn, timersQuery.data?.epoch_charm_anchor_wad]);
 
   const charmBoundsResolved = useMemo((): readonly [bigint, bigint] | undefined => {
     if (charmBoundsR?.status === "success") {
@@ -2230,6 +2243,7 @@ export function useArenaSaleSession(
     totalRaisedWei:
       totalRaisedR?.status === "success" ? (totalRaisedR.result as bigint) : undefined,
     pricePerCharmWad,
+    epochCharmAnchorWad,
     buyEnvelopeParams,
     referralRegistryOn,
     pendingReferralCode,

@@ -14,6 +14,8 @@ WARBOW_STEAL_DRAIN_GUARDED_BPS = 100  # 1%
 WARBOW_MAX_STEALS_PER_DAY = 3
 WARBOW_REVENGE_WINDOW_SEC = 24 * 3600
 WARBOW_GUARD_DURATION_SEC = 6 * 3600
+WARBOW_STEAL_VICTIM_MIN_MULT = 1
+WARBOW_STEAL_VICTIM_MAX_MULT = 50
 
 # WarBow flag ladder (`TimeCurve.claimWarBowFlag` / interrupt penalty on `_buy`)
 WARBOW_FLAG_CLAIM_BP = 1000
@@ -39,7 +41,10 @@ MIRRORED_FROM_CONTRACT = {
     "TimeCurve.WARBOW_GUARD_DURATION_SEC": WARBOW_GUARD_DURATION_SEC,
     "TimeCurve.WARBOW_FLAG_CLAIM_BP": WARBOW_FLAG_CLAIM_BP,
     "TimeCurve.WARBOW_FLAG_SILENCE_SEC": WARBOW_FLAG_SILENCE_SEC,
-    "TimeCurve — WarBow steal BP band (2×–10×)": "2 * attacker_bp <= victim_bp <= 10 * attacker_bp",
+    "TimeArena — WarBow steal BP band (1×–50×)": (
+        "WARBOW_STEAL_VICTIM_MIN_MULT * attacker_bp <= victim_bp "
+        "<= WARBOW_STEAL_VICTIM_MAX_MULT * attacker_bp"
+    ),
     "ReferralRegistry — CHARM weight add-ons (audit M-01 narrative)": (
         f"+{REFERRAL_REFEREE_BPS / 100:g}% referee + {REFERRAL_REFERRER_BPS / 100:g}% referrer"
     ),

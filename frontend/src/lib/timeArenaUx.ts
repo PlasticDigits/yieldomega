@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { sameAddress, shortAddress, type WalletFormatShort } from "./addressFormat";
-import { WARBOW_STEAL_VICTIM_MAX_MULT } from "./warbowStealBpBand";
+import {
+  WARBOW_STEAL_VICTIM_MAX_MULT,
+  WARBOW_STEAL_VICTIM_MIN_MULT,
+} from "./warbowStealBpBand";
 import type { BuyItem, WarbowBattleFeedItem } from "./indexerApi";
 
 export type TimerPreviewNarrative = {
@@ -463,7 +466,7 @@ export function describeStealPreflight(
       tone: "error",
       title: "Self-target blocked",
       detail:
-        "WarBow only targets rivals. Pick another wallet whose Battle Points sit in the onchain 2×–10× band versus yours.",
+        `WarBow only targets rivals. Pick another wallet whose Battle Points sit in the onchain ${WARBOW_STEAL_VICTIM_MIN_MULT}×–${WARBOW_STEAL_VICTIM_MAX_MULT}× band versus yours.`,
     };
   }
   if (viewerBattlePoints === undefined || victimBattlePoints === undefined) {
@@ -481,10 +484,10 @@ export function describeStealPreflight(
         "WarBow steals require your wallet to carry Battle Points already so fresh wallets cannot bypass the intended underdog-vs-leader framing.",
     };
   }
-  if (victimBattlePoints < viewerBattlePoints * 2n) {
+  if (victimBattlePoints < viewerBattlePoints * WARBOW_STEAL_VICTIM_MIN_MULT) {
     return {
       tone: "error",
-      title: "2× minimum not met",
+      title: `${WARBOW_STEAL_VICTIM_MIN_MULT}× minimum not met`,
       detail: `${formatShort(victim, "Victim")} has ${victimBattlePoints} BP vs your ${viewerBattlePoints} BP, so the steal would revert right now.`,
     };
   }
@@ -517,8 +520,8 @@ export function describeStealPreflight(
     tone: guardActive ? "warning" : "success",
     title: "Steal looks eligible",
     detail: guardActive
-      ? `${formatShort(victim, "Victim")} sits in the 2×–10× BP band versus you. Your own guard is already live, so decide whether to keep defending or convert that safety into pressure.`
-      : `${formatShort(victim, "Victim")} sits in the 2×–10× BP band versus you${victimStealsToday !== undefined ? ` and is at ${victimStealsToday}/${maxStealsPerDay} steals received today` : ""}${attackerStealsToday !== undefined ? `; your wallet is at ${attackerStealsToday}/${maxStealsPerDay} steals landed today` : ""}.`,
+      ? `${formatShort(victim, "Victim")} sits in the ${WARBOW_STEAL_VICTIM_MIN_MULT}×–${WARBOW_STEAL_VICTIM_MAX_MULT}× BP band versus you. Your own guard is already live, so decide whether to keep defending or convert that safety into pressure.`
+      : `${formatShort(victim, "Victim")} sits in the ${WARBOW_STEAL_VICTIM_MIN_MULT}×–${WARBOW_STEAL_VICTIM_MAX_MULT}× BP band versus you${victimStealsToday !== undefined ? ` and is at ${victimStealsToday}/${maxStealsPerDay} steals received today` : ""}${attackerStealsToday !== undefined ? `; your wallet is at ${attackerStealsToday}/${maxStealsPerDay} steals landed today` : ""}.`,
   };
 }
 

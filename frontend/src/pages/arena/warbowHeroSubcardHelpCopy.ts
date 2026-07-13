@@ -11,6 +11,10 @@ import {
 } from "@/lib/arenaWarbowConstants";
 import { FEATURE_UNLOCK_LEVEL } from "@/lib/arenaProgression";
 import { formatLocaleInteger } from "@/lib/formatAmount";
+import {
+  WARBOW_STEAL_VICTIM_MAX_MULT,
+  WARBOW_STEAL_VICTIM_MIN_MULT,
+} from "@/lib/warbowStealBpBand";
 
 export type WarbowHeroSubcardHelpTopic = "steal" | "guard" | "revenge" | "flag";
 
@@ -43,7 +47,7 @@ export function warbowHeroSubcardHelpCopy(
       return {
         title: "Steal",
         body: [
-          `Spend ${opts.stealCostLabel} DOUB to drain Battle Points from a rival whose BP is between 2× and 10× yours.`,
+          `Spend ${opts.stealCostLabel} DOUB to drain Battle Points from a rival whose BP is between ${WARBOW_STEAL_VICTIM_MIN_MULT}× and ${WARBOW_STEAL_VICTIM_MAX_MULT}× yours.`,
           `A normal steal moves ${STEAL_DRAIN_PCT}% of their BP to you (${GUARDED_DRAIN_PCT}% if they have Guard active).`,
           `Each wallet can be stolen from ${formatLocaleInteger(maxSteals)} times per UTC day. Pay ${opts.bypassCostLabel} DOUB extra to bypass that cap.`,
           "Opens a one-time Revenge window for the victim.",
