@@ -8,10 +8,17 @@ This document maps **[testing stages](strategy.md)** to **what runs in GitHub Ac
 
 | Host | Role |
 |------|------|
-| **GitLab** | Canonical project host — issues, merge requests, `glab`, agent workflows. **No** `.gitlab-ci.yml` by design ([#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309)): do not duplicate heavy Anvil/Postgres/Stage 2 jobs on GitLab runners. |
-| **GitHub Actions** | Merge gate under [`.github/workflows/`](../../.github/workflows/) — `unit-tests` (Foundry, Rust, frontend typecheck + **lint** + Vitest, Playwright UI smoke, doc gates), `slither`, `gitleaks`. Optional `workflow_dispatch` only: `e2e-anvil`, `contract-fork-smoke`. |
+| **Forgejo** (`git.cl8y.com`) | Canonical git, issues, and pull requests. Protected `main` merge gate: Woodpecker `ci/woodpecker/pr/woodpecker`, no direct push, no `force_merge`, no catch-all CODEOWNERS ([#544](#forgejo-merge-gate-issue-544)). |
+| **GitLab** | Historical issue/MR host and public mirror. **No** `.gitlab-ci.yml` by design ([#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309)): do not duplicate heavy Anvil/Postgres/Stage 2 jobs on GitLab runners. |
+| **GitHub Actions** | Mirrored unit-test suite under [`.github/workflows/`](../../.github/workflows/) — `unit-tests` (Foundry, Rust, frontend typecheck + **lint** + Vitest, Playwright UI smoke, doc gates), `slither`, `gitleaks`. Optional `workflow_dispatch` only: `e2e-anvil`, `contract-fork-smoke`. |
 
-Push branches to GitHub (or open a GitHub PR) to exercise the automated merge gate. Use GitLab MRs for review and issue tracking; CI status comes from the linked GitHub workflow runs when the remote is mirrored or when contributors push to GitHub.
+Push branches to GitHub (or open a GitHub PR) to exercise the automated **unit-test suite** on the public mirror. Canonical issues and pull requests live on Forgejo; the **write-path merge gate** is Forgejo branch protection plus Woodpecker, not CODEOWNERS ([#544](#forgejo-merge-gate-issue-544)).
+
+<a id="forgejo-merge-gate-issue-544"></a>
+
+## Forgejo merge gate ([#544](https://git.cl8y.com/code/yieldomega/issues/544))
+
+On [git.cl8y.com/code/yieldomega](https://git.cl8y.com/code/yieldomega), protected `main` requires Woodpecker `ci/woodpecker/pr/woodpecker`, forbids direct push and `force_merge`, and does **not** plant or block on catch-all CODEOWNERS official review. Decision: [ADR 0001](../architecture/adr/0001-remove-catchall-codeowners.md). This issue does **not** migrate `.github/workflows/*` into Woodpecker YAML or add `.gitlab-ci.yml`.
 
 ## Workflows
 
@@ -87,5 +94,6 @@ cd simulations && PYTHONPATH=. python3 -m unittest discover -s tests -v
 
 - [Testing strategy (three stages)](strategy.md)
 - [Agent Phase 14 — Testing strategy](../agent-phases.md#phase-14)
+- [ADR 0001 — catch-all CODEOWNERS](../architecture/adr/0001-remove-catchall-codeowners.md) ([#544](#forgejo-merge-gate-issue-544))
 
 **Agent phase:** [Phase 14 — Testing strategy (three stages)](../agent-phases.md#phase-14)

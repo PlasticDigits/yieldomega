@@ -24,6 +24,7 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | Glossary | [glossary.md](glossary.md) |
 | Licensing (AGPL-3.0) | [licensing.md](licensing.md) |
 | Architecture overview | [architecture/overview.md](architecture/overview.md) |
+| Architecture decision records | [architecture/adr/README.md](architecture/adr/README.md) |
 | Repository layout | [architecture/repository-layout.md](architecture/repository-layout.md) |
 | Product vision | [product/vision.md](product/vision.md) |
 | Arena v2 (TimeArena, DOUB buys, prize vaults) | [product/time-arena.md](product/time-arena.md) · [product/arena-v2.md](product/arena-v2.md) |

@@ -31,4 +31,4 @@ By submitting a contribution, you represent that you have the right to license y
 
 ## Process
 
-Use issues and pull requests as the project adopts them. Describe what changed and why; link related issues when relevant. For questions about licensing or compliance, prefer maintainers and [docs/licensing.md](docs/licensing.md).
+Canonical issues and pull requests are on [Forgejo](https://git.cl8y.com/code/yieldomega). Protected `main` uses Woodpecker `ci/woodpecker/pr/woodpecker` and does not use catch-all CODEOWNERS ([ADR 0001](docs/architecture/adr/0001-remove-catchall-codeowners.md)). Describe what changed and why; link related issues when relevant. For questions about licensing or compliance, prefer maintainers and [docs/licensing.md](docs/licensing.md).

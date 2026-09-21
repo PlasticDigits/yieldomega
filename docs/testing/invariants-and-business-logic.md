@@ -912,7 +912,7 @@ Gap follow-up from [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/3
 | **`INV-CI-322-FRONTEND-LINT`** | GitHub **`unit-tests`** job **`frontend-test`** runs **`npm run lint`** (errors block; warnings allowed until cleanup) | [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml) · `cd frontend && npm run lint` |
 | **`INV-ANVIL-E2E-322-REFERRALS-DEFAULT`** | Default **`scripts/e2e-anvil.sh`** Playwright set includes **`e2e/anvil-referrals.spec.ts`** | `bash scripts/e2e-anvil.sh` |
 | **`INV-ANVIL-E2E-322-INDEXER-MODE`** | **`YIELDOMEGA_E2E_INDEXER=1`** starts Postgres-backed indexer, inlines **`VITE_INDEXER_URL`**, runs **`e2e/anvil-indexer-first.spec.ts`** | `YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh` · [e2e-anvil.md §301](e2e-anvil.md#indexer-first-vs-minimal-e2e-gitlab-301) |
-| **`INV-DEVOPS-322-GITLAB-CI-MINIMAL`** | No `.gitlab-ci.yml`; GitLab is issue/MR host; merge gate stays on GitHub Actions | [ci.md §322](ci.md#gitlab-github-ci-split-gitlab-322) |
+| **`INV-DEVOPS-322-GITLAB-CI-MINIMAL`** | No `.gitlab-ci.yml`; do not duplicate heavy Anvil/Postgres/Stage 2 jobs on GitLab runners. GitHub Actions remains the mirrored unit-test suite. Forgejo `main` merge gate is Woodpecker + branch protection, not CODEOWNERS ([#544](#forgejo-catchall-codeowners-issue-544)) | [ci.md §322](ci.md#gitlab-github-ci-split-gitlab-322) · [ci.md §544](ci.md#forgejo-merge-gate-issue-544) |
 
 <a id="anvil-deploy-dev-caller-scope-gitlab-289"></a>
 
@@ -1186,6 +1186,20 @@ Cross-links: [AGENTS.md § Postgres without Docker](../../AGENTS.md#postgres-wit
 | [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) | Optional RPC fork smoke ([#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)); **`INV-CONTRACTS-275-FORK-SMOKE`** |
 
 Run `cd contracts && forge test --list` for the authoritative list. Pre–Arena v1 contract tests may remain in-tree but are **not** mapped here.
+
+---
+
+## Forgejo catch-all CODEOWNERS ([#544](https://git.cl8y.com/code/yieldomega/issues/544))
+
+<a id="forgejo-catchall-codeowners-issue-544"></a>
+
+Catch-all Forgejo CODEOWNERS (`.* @code/maintainers`) is not a merge gate. Protected `main` stays: no direct push, required Woodpecker `ci/woodpecker/pr/woodpecker`, no `force_merge`, official CODEOWNERS review not required. Decision: [ADR 0001](../architecture/adr/0001-remove-catchall-codeowners.md) · [overview §544](../architecture/overview.md#contribution-merge-gate-forgejo-544) · [ci.md §544](ci.md#forgejo-merge-gate-issue-544). Forge policy: [cl8y-forgejo#48](https://git.cl8y.com/PlasticDigits/cl8y-forgejo/issues/48).
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-DEVOPS-544-NO-CATCHALL-CODEOWNERS`** | No `CODEOWNERS` / `docs/CODEOWNERS` / `.forgejo/CODEOWNERS` with an active `.* @user-or-team` rule | After implementation: `test ! -e CODEOWNERS && test ! -e docs/CODEOWNERS && test ! -e .forgejo/CODEOWNERS` |
+| **`INV-DEVOPS-544-MERGE-GATE`** | Trusted merge to `main` is PR + Woodpecker `ci/woodpecker/pr/woodpecker` + no direct push + no `force_merge`; official CODEOWNERS review is not a merge gate | [ADR 0001](../architecture/adr/0001-remove-catchall-codeowners.md) · live protection JSON (admin) |
+| **`INV-DEVOPS-544-NO-REINTRODUCE`** | Re-adding CODEOWNERS in a PR does not restore the official-review merge block (protection PATCH is admin-only) | [ADR 0001](../architecture/adr/0001-remove-catchall-codeowners.md) · cl8y-forgejo INVARIANTS item 9 |
 
 ---
 

@@ -72,6 +72,12 @@ flowchart LR
 
 Step-by-step flows (mermaid diagrams, onchain vs offchain per step, indexer failure modes): [data-flows.md](data-flows.md).
 
+<a id="contribution-merge-gate-forgejo-544"></a>
+
+## Contribution merge gate (Forgejo)
+
+Canonical writes are pull requests on [git.cl8y.com/code/yieldomega](https://git.cl8y.com/code/yieldomega). Protected `main` does **not** use catch-all CODEOWNERS as a merge gate. Merge requires Woodpecker `ci/woodpecker/pr/woodpecker`, forbids direct push and `force_merge`, and does not block on official CODEOWNERS review requests. Decision: [ADR 0001](adr/0001-remove-catchall-codeowners.md) ([#544](https://git.cl8y.com/code/yieldomega/issues/544)). Onchain trust boundaries above are unchanged.
+
 ---
 
 **Agent phase:** [Phase 3 — Architecture overview and trust boundaries](agent-phases.md#phase-3)
