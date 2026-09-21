@@ -8,17 +8,23 @@ This document maps **[testing stages](strategy.md)** to **what runs in GitHub Ac
 
 | Host | Role |
 |------|------|
-| **Forgejo** (`git.cl8y.com`) | Canonical git, issues, and pull requests. Protected `main` merge gate: Woodpecker `ci/woodpecker/pr/woodpecker`, no direct push, no `force_merge`, no catch-all CODEOWNERS ([#544](#forgejo-merge-gate-issue-544)). |
+| **Forgejo** (`git.cl8y.com`) | Canonical git, issues, and pull requests. Protected `main` merge **block** gate: Woodpecker `ci/woodpecker/pr/woodpecker`, no direct push, no `force_merge`. Catch-all CODEOWNERS is **not** that gate ([#544](#forgejo-merge-gate-issue-544)). |
 | **GitLab** | Historical issue/MR host and public mirror. **No** `.gitlab-ci.yml` by design ([#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309)): do not duplicate heavy Anvil/Postgres/Stage 2 jobs on GitLab runners. |
 | **GitHub Actions** | Mirrored unit-test suite under [`.github/workflows/`](../../.github/workflows/) — `unit-tests` (Foundry, Rust, frontend typecheck + **lint** + Vitest, Playwright UI smoke, doc gates), `slither`, `gitleaks`. Optional `workflow_dispatch` only: `e2e-anvil`, `contract-fork-smoke`. |
 
-Push branches to GitHub (or open a GitHub PR) to exercise the automated **unit-test suite** on the public mirror. Canonical issues and pull requests live on Forgejo; the **write-path merge gate** is Forgejo branch protection plus Woodpecker, not CODEOWNERS ([#544](#forgejo-merge-gate-issue-544)).
+Push branches to GitHub (or open a GitHub PR) to exercise the automated **unit-test suite** on the public mirror. Canonical issues and pull requests live on Forgejo; the **write-path merge block** is Forgejo branch protection plus Woodpecker, not CODEOWNERS official review ([#544](#forgejo-merge-gate-issue-544)).
 
 <a id="forgejo-merge-gate-issue-544"></a>
 
 ## Forgejo merge gate ([#544](https://git.cl8y.com/code/yieldomega/issues/544))
 
-On [git.cl8y.com/code/yieldomega](https://git.cl8y.com/code/yieldomega), protected `main` requires Woodpecker `ci/woodpecker/pr/woodpecker`, forbids direct push and `force_merge`, and does **not** plant or block on catch-all CODEOWNERS official review. Decision: [ADR 0001](../architecture/adr/0001-remove-catchall-codeowners.md). This issue does **not** migrate `.github/workflows/*` into Woodpecker YAML or add `.gitlab-ci.yml`.
+On [git.cl8y.com/code/yieldomega](https://git.cl8y.com/code/yieldomega), protected `main` requires Woodpecker `ci/woodpecker/pr/woodpecker` and forbids direct push and `force_merge`.
+
+**Block (current):** official CODEOWNERS review is **not** a merge gate. Public `GET /branches/main` shows `protected: true`, `required_approvals: 0`, `enable_status_check: true`, `status_check_contexts: ["ci/woodpecker/pr/woodpecker"]`, `user_can_push: false`. Remaining flags (`enable_push`, `block_on_official_review_requests`, `block_on_rejected_reviews`) are admin-only on `GET /branch_protections` — dump and private policy SHA in [ADR 0001](../architecture/adr/0001-remove-catchall-codeowners.md).
+
+**Plant (file, still live on `main`):** root `CODEOWNERS` blob `f4ba0c82…` (`.* @code/maintainers`) still plants official requests. Closed empty-diff [#544](https://git.cl8y.com/code/yieldomega/pulls/544) did not remove it. `INV-DEVOPS-544-NO-CATCHALL-CODEOWNERS` is after the landing PR that deletes the file.
+
+This tree has **no** Woodpecker YAML. The required context is posted by the org/instance Woodpecker at [ci.cl8y.com](https://ci.cl8y.com) (repo UI [ci.cl8y.com/code/yieldomega](https://ci.cl8y.com/code/yieldomega)). This issue does **not** migrate `.github/workflows/*` into Woodpecker YAML or add `.gitlab-ci.yml`.
 
 ## Workflows
 

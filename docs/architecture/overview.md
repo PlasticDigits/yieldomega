@@ -76,7 +76,7 @@ Step-by-step flows (mermaid diagrams, onchain vs offchain per step, indexer fail
 
 ## Contribution merge gate (Forgejo)
 
-Canonical writes are pull requests on [git.cl8y.com/code/yieldomega](https://git.cl8y.com/code/yieldomega). Protected `main` does **not** use catch-all CODEOWNERS as a merge gate. Merge requires Woodpecker `ci/woodpecker/pr/woodpecker`, forbids direct push and `force_merge`, and does not block on official CODEOWNERS review requests. Decision: [ADR 0001](adr/0001-remove-catchall-codeowners.md) ([#544](https://git.cl8y.com/code/yieldomega/issues/544)). Onchain trust boundaries above are unchanged.
+Canonical writes are pull requests on [git.cl8y.com/code/yieldomega](https://git.cl8y.com/code/yieldomega). Protected `main` does **not** use catch-all CODEOWNERS as a merge **block**. Merge requires Woodpecker `ci/woodpecker/pr/woodpecker`, forbids direct push and `force_merge`, and does not block on official CODEOWNERS review requests. A catch-all file still **plants** official requests until the [ADR 0001](adr/0001-remove-catchall-codeowners.md) landing PR deletes it ([#544](https://git.cl8y.com/code/yieldomega/issues/544) is the closed empty-diff predecessor, not that PR). Onchain trust boundaries above are unchanged.
 
 ---
 

@@ -31,4 +31,4 @@ By submitting a contribution, you represent that you have the right to license y
 
 ## Process
 
-Canonical issues and pull requests are on [Forgejo](https://git.cl8y.com/code/yieldomega). Protected `main` uses Woodpecker `ci/woodpecker/pr/woodpecker` and does not use catch-all CODEOWNERS ([ADR 0001](docs/architecture/adr/0001-remove-catchall-codeowners.md)). Describe what changed and why; link related issues when relevant. For questions about licensing or compliance, prefer maintainers and [docs/licensing.md](docs/licensing.md).
+Canonical issues and pull requests are on [Forgejo](https://git.cl8y.com/code/yieldomega). Protected `main` uses Woodpecker `ci/woodpecker/pr/woodpecker` and does **not** block on official CODEOWNERS review ([ADR 0001](docs/architecture/adr/0001-remove-catchall-codeowners.md)). A catch-all `CODEOWNERS` file still plants official requests on `main` until the ADR 0001 landing PR deletes it; that file is not the merge gate. Describe what changed and why; link related issues when relevant. For questions about licensing or compliance, prefer maintainers and [docs/licensing.md](docs/licensing.md).

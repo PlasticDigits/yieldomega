@@ -18,7 +18,7 @@ yieldomega/
 Optional additions (to be decided at implementation time):
 
 - `scripts/` — deployment, verification, codegen
-- `.github/workflows/` — mirrored unit-test suite (GitHub); Forgejo merge gate is Woodpecker + protected `main`, not CODEOWNERS ([ADR 0001](adr/0001-remove-catchall-codeowners.md))
+- `.github/workflows/` — mirrored unit-test suite (GitHub); Forgejo merge **block** is Woodpecker + protected `main`, not CODEOWNERS official review ([ADR 0001](adr/0001-remove-catchall-codeowners.md))
 - `docker/` — local dev compose (Postgres + indexer + optional chain)
 
 ## Package responsibilities
